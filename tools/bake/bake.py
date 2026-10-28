@@ -267,6 +267,11 @@ def resolve_landmarks(outl):
             o = obb_m([m_of(la, lo) for la, lo in sp["poly"][:-1]]); o["h"] = 0
         elif sp.get("pt"):
             x, z = m_of(*sp["pt"]); o = {"x": round(x, 2), "z": round(z, 2), "ang": 0.0, "L": 0, "W": 0, "h": 0}
+        elif sp.get("parts"):  # комплекс из нескольких корпусов: модель строится по их контурам
+            o = obb_m([m_of(la, lo) for pt in sp["parts"] for la, lo in pt["p"]]); o["h"] = 0
+            o["parts"] = [{"h": pt["h"], "mh": pt.get("mh", 0), "p": [[round(v, 1) for v in m_of(la, lo)] for la, lo in pt["p"]]} for pt in sp["parts"]]
+            for pt in sp["parts"]:  # прячем здания OSM под каждым корпусом
+                q = obb_m([m_of(la, lo) for la, lo in pt["p"]]); q["m"] = sp.get("part_clear", 1.5); polys.append(q)
         if not o: print("landmark not found:", sp["id"]); continue
         if sp.get("pt2"): x2, z2 = m_of(*sp["pt2"]); o["x2"] = round(x2, 2); o["z2"] = round(z2, 2)
         if sp.get("entrance"): ex, ez = m_of(*sp["entrance"]); o["ex"] = round(ex, 2); o["ez"] = round(ez, 2)
