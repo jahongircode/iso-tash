@@ -193,30 +193,66 @@ window.TPM_GEO_WORKER = function () {
     }
     return N;
   }
-  const DECK = [170, 166, 158], PARA = [204, 200, 192], PILLAR = [150, 148, 142];
-  // пролётное строение: боковые грани плиты, парапеты, опоры
-  function bridgeDeck(G, l, H, w) {
-    const n = l.length / 2, N = edgeNormals(l), hw = w / 2;
-    let acc = 13;
+  const DECK = [172, 168, 160], GIRDER = [128, 125, 120], PARA = [206, 202, 194], CAPC = [226, 222, 214], PILLAR = [152, 150, 144], WALL = [178, 174, 166], WALLB = [150, 146, 140];
+  // брус-призма: центр (cx, cz), ось u — вдоль, a/b — полудлина/полуширина, от y0 до y1
+  function prism(G, cx, cz, ux, uz, a, b, y0, y1, col, top = true) {
+    const vx = -uz, vz = ux, P4 = [[a, -b], [a, b], [-a, b], [-a, -b]].map(([p, q]) => [cx + ux * p + vx * q, cz + uz * p + vz * q]);
+    for (let k = 0; k < 4; k++) { const [px, pz] = P4[k], [qx, qz] = P4[(k + 1) % 4]; face(G, [[px, y0, pz], [qx, y0, qz], [qx, y1, qz], [px, y1, pz]], col, 255); }
+    if (top) face(G, P4.map(([px, pz]) => [px, y1, pz]), col, 255);
+  }
+  // Мост, эстакада, путепровод. Низкие участки (съезды до ~3,6 м) — сплошные подпорные стенки до
+  // земли (насыпь), высокие — толстая плита с балкой снизу на опорах-«молотках»; по краям —
+  // бетонные парапеты со светлым верхом. metro — путепровод метро: узкая коробчатая балка на одиночных опорах.
+  function bridgeDeck(G, l, H, w, metro) {
+    const n = l.length / 2, N = edgeNormals(l), hw = w / 2, LOW = 3.6, step = metro ? 30 : 24;
+    let acc = step / 2;
     for (let i = 0; i < n - 1; i++) {
-      const h0 = H[i], h1 = H[i + 1]; if (Math.max(h0, h1) < 1.2) continue;
+      const h0 = H[i], h1 = H[i + 1]; if (Math.max(h0, h1) < 0.12) continue;
       const x0 = l[i * 2], z0 = l[i * 2 + 1], x1 = l[i * 2 + 2], z1 = l[i * 2 + 3];
+      const E = (k, off, s) => [l[k * 2] + N[k * 2] * off * s, l[k * 2 + 1] + N[k * 2 + 1] * off * s];
+      const low = Math.min(h0, h1) < LOW;
       for (const s of [1, -1]) {
-        const ax = x0 + N[i * 2] * hw * s, az = z0 + N[i * 2 + 1] * hw * s, bx = x1 + N[i * 2 + 2] * hw * s, bz = z1 + N[i * 2 + 3] * hw * s;
-        face(G, [[ax, h0 + 0.2, az], [bx, h1 + 0.2, bz], [bx, h1 - 0.9, bz], [ax, h0 - 0.9, az]], DECK, 255);
-        face(G, [[ax, h0 + 1.15, az], [bx, h1 + 1.15, bz], [bx, h1 + 0.2, bz], [ax, h0 + 0.2, az]], PARA, 255);
+        const [ax, az] = E(i, hw, s), [bx, bz] = E(i + 1, hw, s);
+        if (low) { // подпорная стенка насыпи с цоколем
+          face(G, [[ax, h0 + 0.2, az], [bx, h1 + 0.2, bz], [bx, 0.6, bz], [ax, 0.6, az]], WALL, 255);
+          face(G, [[ax, 0.6, az], [bx, 0.6, bz], [bx, 0, bz], [ax, 0, az]], WALLB, 255);
+        } else {
+          face(G, [[ax, h0 + 0.2, az], [bx, h1 + 0.2, bz], [bx, h1 - 0.75, bz], [ax, h0 - 0.75, az]], DECK, 255);   // торец плиты
+          const [cx, cz] = E(i, hw * 0.62, s), [dx, dz] = E(i + 1, hw * 0.62, s);                                     // балка под плитой
+          face(G, [[cx, h0 - 0.75, cz], [dx, h1 - 0.75, dz], [dx, h1 - 1.9, dz], [cx, h0 - 1.9, cz]], GIRDER, 255);
+          const [ex, ez] = E(i, hw, s), [fx, fz] = E(i + 1, hw, s);                                                   // нижняя кромка консоли
+          face(G, [[ex, h0 - 0.75, ez], [fx, h1 - 0.75, fz], [dx, h1 - 0.75, dz], [cx, h0 - 0.75, cz]], k3c(DECK, 0.8), 255);
+        }
+        // парапет: наружная и внутренняя грани, светлый верх
+        const [px, pz] = E(i, hw - 0.35, s), [qx, qz] = E(i + 1, hw - 0.35, s), ph = metro ? 1.6 : 1.05;
+        face(G, [[ax, h0 + 0.2 + ph, az], [bx, h1 + 0.2 + ph, bz], [bx, h1 + 0.2, bz], [ax, h0 + 0.2, az]], PARA, 255);
+        face(G, [[px, h0 + 0.2 + ph, pz], [qx, h1 + 0.2 + ph, qz], [qx, h1 + 0.2, qz], [px, h0 + 0.2, pz]], k3c(PARA, 0.92), 255);
+        face(G, [[ax, h0 + 0.2 + ph, az], [bx, h1 + 0.2 + ph, bz], [qx, h1 + 0.2 + ph, qz], [px, h0 + 0.2 + ph, pz]], CAPC, 255);
       }
-      // опоры каждые ~26 м
+      // опоры
       const L2 = Math.hypot(x1 - x0, z1 - z0); if (!L2) continue;
-      const ux = (x1 - x0) / L2, uz = (z1 - z0) / L2;
-      for (let t = acc; t < L2; t += 26) {
-        const h = h0 + (h1 - h0) * t / L2; if (h < 2.6) continue;
-        const cx = x0 + ux * t, cz = z0 + uz * t, vx = -uz, vz = ux, a = 0.8, b = hw * 0.55, top = h - 0.9;
-        const P4 = [[cx + ux * a + vx * b, cz + uz * a + vz * b], [cx - ux * a + vx * b, cz - uz * a + vz * b], [cx - ux * a - vx * b, cz - uz * a - vz * b], [cx + ux * a - vx * b, cz + uz * a - vz * b]];
-        for (let k = 0; k < 4; k++) { const [px, pz] = P4[k], [qx, qz] = P4[(k + 1) % 4]; face(G, [[px, 0, pz], [qx, 0, qz], [qx, top, qz], [px, top, pz]], PILLAR, 255); }
-        face(G, [[cx + vx * (b + 1.2) + ux * 1.2, top, cz + vz * (b + 1.2) + uz * 1.2], [cx + vx * (b + 1.2) - ux * 1.2, top, cz + vz * (b + 1.2) - uz * 1.2], [cx - vx * (b + 1.2) - ux * 1.2, top, cz - vz * (b + 1.2) - uz * 1.2], [cx - vx * (b + 1.2) + ux * 1.2, top, cz - vz * (b + 1.2) + uz * 1.2]], PILLAR, 255);
+      const ux = (x1 - x0) / L2, uz = (z1 - z0) / L2, vx = -uz, vz = ux;
+      for (let t = acc; t < L2; t += step) {
+        const h = h0 + (h1 - h0) * t / L2; if (h < LOW) continue;
+        const cx = x0 + ux * t, cz = z0 + uz * t, top = h - 1.9;
+        if (!metro && w > 13) for (const q of [-0.3, 0.3]) prism(G, cx + vx * w * q, cz + vz * w * q, ux, uz, 0.75, 0.75, 0, top - 1, PILLAR, false);
+        else prism(G, cx, cz, ux, uz, metro ? 0.9 : 0.8, metro ? 1.1 : 0.9, 0, top - 1, PILLAR, false);
+        prism(G, cx, cz, ux, uz, 0.9, hw * 0.78, top - 1, top, k3c(PILLAR, 1.05));                                   // ригель-«молоток»
       }
-      acc = ((acc - L2) % 26 + 26) % 26;
+      acc = ((acc - L2) % step + step) % step;
+    }
+  }
+  const k3c = (c, k) => [clamp(c[0] * k), clamp(c[1] * k), clamp(c[2] * k)];
+  // балластная призма под рельсами: откосы из щебня (верх рисует сама полоса пути)
+  function railBed(G, l, H, w, hb) {
+    const n = l.length / 2, N = edgeNormals(l), BAL = [118, 110, 102];
+    for (let i = 0; i < n - 1; i++) {
+      const h0 = H ? H[i] : 0, h1 = H ? H[i + 1] : 0; if (Math.max(h0, h1) > 0.3) continue;   // на мостах — без откосов
+      for (const s of [1, -1]) {
+        const T0 = [l[i * 2] + N[i * 2] * w / 2 * s, l[i * 2 + 1] + N[i * 2 + 1] * w / 2 * s], T1 = [l[i * 2 + 2] + N[i * 2 + 2] * w / 2 * s, l[i * 2 + 3] + N[i * 2 + 3] * w / 2 * s];
+        const B0 = [l[i * 2] + N[i * 2] * (w / 2 + 0.9) * s, l[i * 2 + 1] + N[i * 2 + 1] * (w / 2 + 0.9) * s], B1 = [l[i * 2 + 2] + N[i * 2 + 2] * (w / 2 + 0.9) * s, l[i * 2 + 3] + N[i * 2 + 3] * (w / 2 + 0.9) * s];
+        face(G, [[T0[0], hb + h0, T0[1]], [T1[0], hb + h1, T1[1]], [B1[0], 0.06 + h1, B1[1]], [B0[0], 0.06 + h0, B0[1]]], BAL, 255);
+      }
     }
   }
   // части полилинии, где выполняется условие (с интерполированными точками разреза)
@@ -242,11 +278,17 @@ window.TPM_GEO_WORKER = function () {
     for (const s of [-1, 1]) { const px = x + vx * hw * s, pz = z + vz * hw * s; face(G, [[px - ux * 0.6, 0, pz - uz * 0.6], [px + ux * 0.6, 0, pz + uz * 0.6], [px + ux * 0.6, 5.6, pz + uz * 0.6], [px - ux * 0.6, 5.6, pz - uz * 0.6]], CW, 255); }
     face(G, [[x - vx * (hw + 0.6) - ux * 0.7, 4.6, z - vz * (hw + 0.6) - uz * 0.7], [x + vx * (hw + 0.6) - ux * 0.7, 4.6, z + vz * (hw + 0.6) - uz * 0.7], [x + vx * (hw + 0.6) - ux * 0.7, 5.8, z + vz * (hw + 0.6) - uz * 0.7], [x - vx * (hw + 0.6) - ux * 0.7, 5.8, z - vz * (hw + 0.6) - uz * 0.7]], CW, 255);
   }
-  function rampWalls(G, l, w) {
-    const n = l.length / 2, N = edgeNormals(l), hw = w / 2 + 0.5;
+  // подпорные стенки въезда в тоннель: растут вместе с глубиной спуска (дорога как бы уходит вниз),
+  // сверху — светлая кромка
+  function rampWalls(G, l, w, hs) {
+    const n = l.length / 2, N = edgeNormals(l), hw = w / 2 + 0.5, wh = (k) => Math.max(0.9, Math.min(5.4, 0.9 - (hs ? hs[k] : 0) * 0.85));
     for (let i = 0; i < n - 1; i++) for (const s of [1, -1]) {
       const ax = l[i * 2] + N[i * 2] * hw * s, az = l[i * 2 + 1] + N[i * 2 + 1] * hw * s, bx = l[i * 2 + 2] + N[i * 2 + 2] * hw * s, bz = l[i * 2 + 3] + N[i * 2 + 3] * hw * s;
-      face(G, [[ax, 0, az], [bx, 0, bz], [bx, 1.1, bz], [ax, 1.1, az]], [184, 180, 172], 255);
+      const cx = l[i * 2] + N[i * 2] * (hw + 0.45) * s, cz = l[i * 2 + 1] + N[i * 2 + 1] * (hw + 0.45) * s, dx = l[i * 2 + 2] + N[i * 2 + 2] * (hw + 0.45) * s, dz = l[i * 2 + 3] + N[i * 2 + 3] * (hw + 0.45) * s;
+      const h0 = wh(i), h1 = wh(i + 1);
+      face(G, [[ax, 0, az], [bx, 0, bz], [bx, h1, bz], [ax, h0, az]], [184, 180, 172], 255);
+      face(G, [[cx, 0, cz], [dx, 0, dz], [dx, h1, dz], [cx, h0, cz]], [164, 160, 152], 255);
+      face(G, [[ax, h0, az], [bx, h1, bz], [dx, h1, dz], [cx, h0, cz]], [222, 218, 210], 255);
     }
   }
 
@@ -367,6 +409,40 @@ window.TPM_GEO_WORKER = function () {
     for (const p of pts3) G.v(p[0], p[1], p[2], nx, ny, nz, clamp(col[0] * sh), clamp(col[1] * sh), clamp(col[2] * sh), a, -1, -1);
     for (let i = 1; i < pts3.length - 1; i++) G.tri(base, base + i, base + i + 1);
   }
+  // Сблокированные здания (стоят вплотную, общие вершины контура) — один дом или квартал из корпусов:
+  // в небольшой группе стены берут цвет самого большого здания (с лёгким разбросом яркости),
+  // плоские крыши — общий цвет. Иначе квартал выглядит лоскутным одеялом со швами на стыках.
+  // Большие цепочки домов (махалли) не трогаем — там пестрота настоящая.
+  function harmonize(BL) {
+    const par = BL.map((_, i) => i), find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+    const grid = new Map(), C = 0.7;
+    BL.forEach((b, i) => {
+      const fp = b.fp;
+      for (let k = 0; k < fp.length; k += 2) {
+        const gx = Math.round(fp[k] / C), gz = Math.round(fp[k + 1] / C);
+        for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {
+          const l = grid.get((gx + a) + "," + (gz + c)); if (!l) continue;
+          for (const [j, x, z] of l) if (j !== i && Math.abs(x - fp[k]) < 0.6 && Math.abs(z - fp[k + 1]) < 0.6) { const ra = find(i), rb = find(j); if (ra !== rb) par[ra] = rb; }
+        }
+        const key = gx + "," + gz; let l = grid.get(key); if (!l) grid.set(key, l = []); l.push([i, fp[k], fp[k + 1]]);
+      }
+    });
+    const groups = new Map();
+    BL.forEach((b, i) => { if (b.roof === 7 || b.roof === 4 || b.roof === 5) return; const r = find(i); let g = groups.get(r); if (!g) groups.set(r, g = []); g.push(i); });
+    const area = (fp) => { let a = 0; const m = fp.length / 2; for (let i = 0; i < m; i++) { const j = (i + 1) % m; a += fp[i * 2] * fp[j * 2 + 1] - fp[j * 2] * fp[i * 2 + 1]; } return Math.abs(a) / 2; };
+    const shade = (c, k) => (clamp(((c >> 16) & 255) * k) << 16) | (clamp(((c >> 8) & 255) * k) << 8) | clamp((c & 255) * k);
+    for (const g of groups.values()) {
+      if (g.length < 2 || g.length > 16) continue;
+      let rep = g[0], best = -1; for (const i of g) { const a = area(BL[i].fp); if (a > best) { best = a; rep = i; } }
+      const R = BL[rep];
+      for (const i of g) {
+        if (i === rep) continue;
+        const b = BL[i];
+        b.wall = shade(R.wall, 0.97 + (hash(i, 7) % 7) / 100);
+        if (b.roof === 0 && R.roof === 0) b.rc = R.rc;
+      }
+    }
+  }
   function building(G, fp, h, mh, roof, rh, wall, rcol, kind, id) {
     if (roof === 7) { bowl(G, fp, h, wall, id); return; }
     const n = fp.length / 2;
@@ -394,11 +470,13 @@ window.TPM_GEO_WORKER = function () {
       else { G.tri(base, base + 1, base + 2); G.tri(base, base + 2, base + 3); }
       u += L;
     }
-    const RC2 = [rr, rg, rb];
+    const RC2 = [rr, rg, rb], Aabs = Math.abs(A) / 2;
     if (roof === 1 || roof === 2 || roof === 3) {
       const o = obb(fp);
-      if (o && o.Wd > 1.5) {
-        const ov = 0.35, L = o.L / 2 + ov, Wd = o.Wd / 2 + ov, y0 = h, y1 = h + rh;
+      // скатная крыша — только над (почти) прямоугольным домом: над Г-образным или неровным контуром
+      // крыша по описанному прямоугольнику нависала бы над двором и врезалась в соседей
+      if (o && o.Wd > 1.5 && n <= 8 && Aabs / (o.L * o.Wd) > 0.86) {
+        const ov = 0.12, L = o.L / 2 + ov, Wd = o.Wd / 2 + ov, y0 = h, y1 = h + rh;
         const P = (a, b, y) => [o.cx + o.ux * a + o.vx * b, y, o.cz + o.uz * a + o.vz * b];
         const c1 = P(-L, -Wd, y0), c2 = P(L, -Wd, y0), c3 = P(L, Wd, y0), c4 = P(-L, Wd, y0);
         if (roof === 1) { // двускатная
@@ -414,10 +492,11 @@ window.TPM_GEO_WORKER = function () {
         }
         return;
       }
+      roof = 0; // неровный контур — плоская крыша с бортиком
     }
     // парапет по краю плоской крыши (светлый бортик)
-    if (roof === 0 && h > 7) {
-      const pr = clamp(rr * 1.18 + 14), pg = clamp(rg * 1.18 + 14), pb = clamp(rb * 1.18 + 14), ph = 0.7;
+    if (roof === 0 && (h > 7 || n > 4)) {
+      const pr = clamp(rr * 1.18 + 14), pg = clamp(rg * 1.18 + 14), pb = clamp(rb * 1.18 + 14), ph = h > 7 ? 0.7 : 0.35;
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n, x0 = fp[i * 2], z0 = fp[i * 2 + 1], x1 = fp[j * 2], z1 = fp[j * 2 + 1];
         const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz); if (L < 0.05) continue;
@@ -436,6 +515,10 @@ window.TPM_GEO_WORKER = function () {
       const o = obb(fp);
       const cx = o ? o.cx : 0, cz = o ? o.cz : 0, R = Math.max(1.5, (o ? Math.min(o.L, o.Wd) : 6) * 0.34);
       dome(G, cx, h, cz, R, roof === 5 ? 1.35 : 1.0, RC2);
+    } else if (roof === 0 && n >= 10 && Aabs > 250) {
+      // круглое здание (цирк, павильоны) — пологий купол вместо плоской крыши
+      let P = 0, cx = 0, cz = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n; P += Math.hypot(fp[j * 2] - fp[i * 2], fp[j * 2 + 1] - fp[i * 2 + 1]); cx += fp[i * 2]; cz += fp[i * 2 + 1]; }
+      if (4 * Math.PI * Aabs / (P * P) > 0.86) dome(G, cx / n, h, cz / n, Math.sqrt(Aabs / Math.PI) * 0.94, 0.32, [clamp(rr * 0.6 + 70), clamp(rg * 0.6 + 74), clamp(rb * 0.6 + 80)]);
     }
   }
   function dome(G, cx, y, cz, R, hk, col) {
@@ -644,7 +727,7 @@ window.TPM_GEO_WORKER = function () {
         // порядок: тротуары → вода → асфальт → разметка.
         // У каждого класса своя высота: крупная дорога всегда сверху, без мерцания на стыках.
         const PH = profiles(L, T, OV), skipJ = junctions(L);
-        const ay = (cls) => (cls === 8 ? 0.12 : cls === 9 || cls === 10 ? 0.15 : 0.2 + (12 - Math.min(cls, 12)) * 0.006);
+        const ay = (cls) => (cls === 8 ? 0.12 : cls === 9 || cls === 10 ? 0.42 : 0.2 + (12 - Math.min(cls, 12)) * 0.006); // рельсы — на балластной призме
         const sideW = (cls) => RW[cls] + (cls <= 4 ? 5 : 2.6);
         for (let f = 0; f < L.length; f++) {
           const [cls, fl, l] = L[f], H = PH[f];
@@ -662,19 +745,22 @@ window.TPM_GEO_WORKER = function () {
             const RR = runs(l, H, (h) => h > -2.4);
             for (const r of RR) {
               strip(roads, r.p, RW[cls], 0.17, RC[cls], false);
-              rampWalls(bld, r.p, RW[cls]);
+              rampWalls(bld, r.p, RW[cls], r.h);
               const m = r.p.length;
               // портал — на том конце, где начинается подземная часть
               const atStart = r.cut0, i0 = atStart ? 0 : m - 2, i1 = atStart ? 2 : m - 4;
               const dx = r.p[i0] - r.p[i1], dz = r.p[i0 + 1] - r.p[i1 + 1], L2 = Math.hypot(dx, dz) || 1;
               if (r.cut0 || r.h[r.h.length - 1] < -2) tunnelPortal(bld, r.p[i0], r.p[i0 + 1], dx / L2, dz / L2, RW[cls]);
             }
+            // чем глубже спуск, тем темнее асфальт у портала
+            for (const d of runs(l, H, (h) => h > -2.4 && h < -1.0)) strip(roads, d.p, RW[cls] - 0.3, 0.176, [RC[cls][0] * 0.62, RC[cls][1] * 0.62, RC[cls][2] * 0.66], false);
             if (cls <= 5) out.lines.push({ cls, fl, p: l, h: H });
             continue;
           }
           const y = ay(cls);
           strip(roads, l, RW[cls], y, RC[cls], cls <= 6, H);
-          if (H && (fl & 2)) bridgeDeck(bld, l, H, cls <= 5 ? sideW(cls) : RW[cls]);
+          if (H && (fl & 2)) bridgeDeck(bld, l, H, cls <= 5 ? sideW(cls) : RW[cls] + 1.4, cls === 10);
+          if (cls === 9 || cls === 10) railBed(bld, l, H, RW[cls], y);
           if (cls === 9 || cls === 10) { // рельсы и шпалы
             dashes(roads, l, 0, RW[cls] * 0.9, y + 0.01, [96, 80, 66], 0.35, 0.55, H);
             dashes(roads, l, 0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0, H); dashes(roads, l, -0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0, H);
@@ -697,9 +783,12 @@ window.TPM_GEO_WORKER = function () {
         }
       } else if (tag === 3) {
         const n = vr(); out.bcount = n;
+        const BL = [];
+        for (let f = 0; f < n; f++) { const h = vr() / 10, mh = vr() / 10, roof = u8(), rh = vr() / 10, wall = u24(), rc = u24(), kind = u8(), fp = pts(); BL.push({ h, mh, roof, rh, wall, rc, kind, fp }); }
+        if (msg.skipBld) continue;
+        harmonize(BL);
         for (let f = 0; f < n; f++) {
-          const h = vr() / 10, mh = vr() / 10, roof = u8(), rh = vr() / 10, wall = u24(), rc = u24(), kind = u8(), fp = pts();
-          if (msg.skipBld) continue;
+          const { h, mh, roof, rh, wall, rc, kind, fp } = BL[f];
           const id = hash(f, fp.length) % 1000;
           if (far) {
             // дальний план: 3D остаются только заметные по высоте здания, остальные — в текстуре
