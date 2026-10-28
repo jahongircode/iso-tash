@@ -3,7 +3,7 @@
 // =====================================================================
 (function () {
   const C = TPM.config, S = TPM.scene;
-  const T = TPM.tiles = { index: null, loaded: new Map(), uNight: { value: 0 }, uTime: { value: 0 }, uWin: { value: 1 }, onLoad: [] };
+  const T = TPM.tiles = { index: null, loaded: new Map(), uNight: { value: 0 }, uTime: { value: 0 }, uWin: { value: 1 }, uTreeK: { value: 0 }, onLoad: [] };
   const Z = 14, SIZE = 256 / Math.pow(2, Z);
   const gx = (lng) => (lng + 180) / 360 * 256;
   const gy = (lat) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256; };
@@ -93,6 +93,17 @@
         .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n totalEmissiveRadiance += winLit * uNight * vec3(1.0, 0.76, 0.42) * 0.95;");
     };
     M.tree = new THREE.MeshLambertMaterial({ vertexColors: true });
+    // с отдалением кроны чуть крупнее и спокойнее по цвету: роща читается зелёной массой, а не пиксельным шумом
+    M.tree.onBeforeCompile = (sh) => {
+      sh.uniforms.uTreeK = T.uTreeK;
+      sh.vertexShader = "uniform float uTreeK;\n" + sh.vertexShader.replace("#include <begin_vertex>",
+        "#include <begin_vertex>\n if (transformed.y > 0.6) { transformed.xz *= 1.0 + 0.35 * uTreeK; transformed.y = 0.6 + (transformed.y - 0.6) * (1.0 + 0.12 * uTreeK); }");
+      sh.fragmentShader = "uniform float uTreeK;\n" + sh.fragmentShader.replace("#include <color_fragment>",
+        `#include <color_fragment>
+         float tl = dot(diffuseColor.rgb, vec3(0.333));
+         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.5, 0.27) * (0.75 + 0.6 * tl), 0.38 * uTreeK);`);
+    };
+    M.tree.customProgramCacheKey = () => "tree-lod";
     M.lamp = new THREE.PointsMaterial({ color: 0xfff0c0, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
     const hc = document.createElement("canvas"); hc.width = hc.height = 32;
     const hx = hc.getContext("2d"), gr = hx.createRadialGradient(16, 16, 0, 16, 16, 16);
@@ -140,22 +151,36 @@
     spring: [[0.46, 0.62, 0.3], [0.52, 0.66, 0.32], [0.9, 0.76, 0.8], [0.95, 0.9, 0.88]],
   }[T.season];
   const CONIFER = [0.2, 0.38, 0.24];
+  // одиночные деревья (меньше двух соседей в радиусе 9 м) — отдельная группа: вблизи видны,
+  // а на среднем плане скрываются, иначе вдоль улиц и в промзонах остаётся россыпь цветных точек
   function makeTrees(tr, ox, oz) {
-    const n = tr.length / 3;
+    const n = tr.length / 3, iso = new Uint8Array(n), grid = new Map(), G = 9;
+    for (let i = 0; i < n; i++) { const k = Math.floor(tr[i * 3] / G) + "," + Math.floor(tr[i * 3 + 1] / G); let l = grid.get(k); if (!l) grid.set(k, l = []); l.push(i); }
+    for (let i = 0; i < n; i++) {
+      const x = tr[i * 3], z = tr[i * 3 + 1], gx = Math.floor(x / G), gz = Math.floor(z / G); let cnt = 0;
+      for (let a = -1; a <= 1 && cnt < 2; a++) for (let b = -1; b <= 1 && cnt < 2; b++) { const l = grid.get((gx + a) + "," + (gz + b)); if (l) for (const j of l) if (j !== i && Math.hypot(tr[j * 3] - x, tr[j * 3 + 1] - z) < G && ++cnt >= 2) break; }
+      iso[i] = cnt < 2 ? 1 : 0;
+    }
+    const dense = [], lone = [];
+    for (let i = 0; i < n; i++) (iso[i] ? lone : dense).push(i);
+    return [...treeSet(tr, dense, ox, oz), ...treeSet(tr, lone, ox, oz)];
+  }
+  function treeSet(tr, ids, ox, oz) {
+    const n = ids.length;
     let nb = 0, nc = 0;
     const kinds = new Uint8Array(n);
-    for (let i = 0; i < n; i++) { const r = tr[i * 3 + 2]; const c = r < 1 && ((r * 7919) % 1) < 0.1 ? 1 : 0; kinds[i] = c; c ? nc++ : nb++; }
-    const mb = new THREE.InstancedMesh(treeGeo, M.tree, nb), mc = new THREE.InstancedMesh(coneGeo, M.tree, Math.max(1, nc));
-    mc.count = nc;
+    for (let k = 0; k < n; k++) { const r = tr[ids[k] * 3 + 2]; const c = r < 1 && ((r * 7919) % 1) < 0.1 ? 1 : 0; kinds[k] = c; c ? nc++ : nb++; }
+    const mb = new THREE.InstancedMesh(treeGeo, M.tree, Math.max(1, nb)), mc = new THREE.InstancedMesh(coneGeo, M.tree, Math.max(1, nc));
+    mb.count = nb; mc.count = nc;
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
     let ib = 0, ic = 0;
     const winter = T.season === "winter";
-    for (let i = 0; i < n; i++) {
-      const r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2;
+    for (let k = 0; k < n; k++) {
+      const i = ids[k], r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2;
       const hgt = poplar ? 13 + f * 8 : 6 + f * 7.5;
       p.set(tr[i * 3], 0.1, tr[i * 3 + 1]);
       q.setFromAxisAngle(up, f * 6.28);
-      if (kinds[i]) {
+      if (kinds[k]) {
         s.set(hgt / 3.4, hgt / 2.7, hgt / 3.4);
         m.compose(p, q, s); mc.setMatrixAt(ic, m); c.setRGB(CONIFER[0] * (0.9 + f * 0.2), CONIFER[1] * (0.9 + f * 0.2), CONIFER[2]); mc.setColorAt(ic++, c);
       } else {
@@ -168,8 +193,8 @@
     }
     for (const mm of [mb, mc]) { mm.position.set(ox, 0, oz); mm.castShadow = true; mm.receiveShadow = true; if (mm.instanceColor) mm.instanceColor.needsUpdate = true; mm.instanceMatrix.needsUpdate = true; }
     // те же экземпляры, но простая геометрия и без теней — для среднего плана
-    const lb = new THREE.InstancedMesh(treeLo, M.tree, nb), lc = new THREE.InstancedMesh(coneLo, M.tree, Math.max(1, nc));
-    lb.instanceMatrix = mb.instanceMatrix; lb.instanceColor = mb.instanceColor; lc.instanceMatrix = mc.instanceMatrix; lc.instanceColor = mc.instanceColor; lc.count = nc;
+    const lb = new THREE.InstancedMesh(treeLo, M.tree, Math.max(1, nb)), lc = new THREE.InstancedMesh(coneLo, M.tree, Math.max(1, nc));
+    lb.instanceMatrix = mb.instanceMatrix; lb.instanceColor = mb.instanceColor; lc.instanceMatrix = mc.instanceMatrix; lc.instanceColor = mc.instanceColor; lb.count = nb; lc.count = nc;
     for (const mm of [lb, lc]) { mm.position.set(ox, 0, oz); mm.castShadow = false; mm.receiveShadow = true; }
     for (const mm of [mb, mc, lb, lc]) mm.frustumCulled = false; // в r149 у InstancedMesh общий bounding sphere — отсекаем тайлами
     return [mb, mc, lb, lc];
@@ -324,6 +349,9 @@
       if (L.trees) { // 0 — нет, 1 — простые кроны, 2 — полные без теней, 3 — полные с тенями
         for (let i = 0; i < 2; i++) { L.trees[i].visible = on && treeMode >= 2; L.trees[i].castShadow = treeMode === 3; }
         L.trees[2].visible = on && treeMode === 1; L.trees[3].visible = on && treeMode === 1;
+        // одиночные деревья — только вблизи
+        for (let i = 4; i < 6; i++) { L.trees[i].visible = on && treeMode === 3; L.trees[i].castShadow = true; }
+        L.trees[6].visible = L.trees[7].visible = false;
       }
     }
     rec.shown = lod; rec.treeMode = treeMode;
@@ -332,6 +360,7 @@
   // какие тайлы нужны сейчас
   let lastUpd = 0;
   T.update = function () {
+    T.uTreeK.value = Math.min(1, Math.max(0, (S.mpp - 0.8) / 1.4));
     if (!T.index) return;
     T.applyPending();
     const now = performance.now();
