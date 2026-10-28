@@ -1,7 +1,7 @@
 // =====================================================================
 //  Детальные модели заметных ЖК и башен (без карточек — это фон города):
 //  U-Tower, Modera Towers, Mirabad Avenue, «Казахстан», NRG Oybek,
-//  Xon Saroy Sayram, экспериментальный дом «Жемчуг».
+//  Xon Saroy Sayram, экспериментальный дом «Жемчуг», башня Национального банка (НБУ).
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
 (function () {
@@ -243,5 +243,66 @@
       b.box(cx + s * (A - 5), yt + 2, cz + B - 0.9, 8, H - yt, 0.2, [0.3, 0.36, 0.44], 0, true);
     }
     b.cyl(cx + A - 5, H + 4, cz, 0.3, 8, [0.8, 0.8, 0.82], 6);
+  };
+
+  // ---------------- башня Национального банка (НБУ, 1997) ----------------
+  // План — крест (по контуру OSM): торцы рукавов — синее стекло между белыми кромками, тёмные пояса-уступы,
+  // внизу — стеклянный «шеврон» над входом; изломы креста — белый камень с тёмной щелью. Наверху над каждым
+  // торцом — стеклянная арка (крестовый свод), золотые буквы NBU, на шпиле — золотая птица Хумо.
+  // У подножия — стеклянный стилобат, рядом — низкий стеклянный корпус.
+  M.nbu = (b, o) => {
+    const Q = localParts(o), body = Q.filter((q) => q.h > 50).reduce((m, q) => (q.A > m.A ? q : m)), annex = Q.find((q) => q.h < 50);
+    const WS = [0.91, 0.9, 0.87], GL = [0.17, 0.34, 0.64], GL2 = [0.4, 0.58, 0.8], DK = [0.1, 0.14, 0.22], GOLD = [0.95, 0.74, 0.28];
+    // оси креста: по самому длинному ребру контура
+    let best = 0, th = 0;
+    for (let i = 0; i < body.p.length; i++) { const [x0, z0] = body.p[i], [x1, z1] = body.p[(i + 1) % body.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L > best) { best = L; th = Math.atan2(z1 - z0, x1 - x0); } }
+    const c = Math.cos(th), s = Math.sin(th), cx = body.cx, cz = body.cz;
+    const U = body.p.map(([x, z]) => [(x - cx) * c + (z - cz) * s, -(x - cx) * s + (z - cz) * c]);
+    const Bh = Math.max(...U.map(([u, v]) => Math.max(Math.abs(u), Math.abs(v)))), Ah = Math.min(Bh * 0.62, Math.max(6, best / 2));
+    const tf = (u, v) => [cx + u * c - v * s, cz + u * s + v * c], ry = -th, H = 101, y0 = 7;
+    // рукава: d — направление (ось и знак); n(u,v) в мировые локальные координаты модели
+    const arms = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const P = (d, along, across) => (d[0] ? tf(d[0] * along, across * d[0]) : tf(-across * d[1], d[1] * along));
+    // стилобат
+    const pod = []; for (const [u, v] of [[Bh + 4, -Ah - 4], [Bh + 4, Ah + 4], [Ah + 4, Ah + 4], [Ah + 4, Bh + 4], [-Ah - 4, Bh + 4], [-Ah - 4, Ah + 4], [-Bh - 4, Ah + 4], [-Bh - 4, -Ah - 4], [-Ah - 4, -Ah - 4], [-Ah - 4, -Bh - 4], [Ah + 4, -Bh - 4], [Ah + 4, -Ah - 4]]) pod.push(tf(u, v));
+    b.loft(pod, 0, pod, y0 - 1, GL, "glow"); band(b, pod, 0.4, y0 - 1, 1, WS); cap(b, pod, y0, [0.6, 0.62, 0.66]);
+    for (const d of arms) {
+      // торец рукава: стекло с окнами, белые кромки, пояса-уступы, шеврон
+      const e0 = P(d, Bh, -Ah + 1.6), e1 = P(d, Bh, Ah - 1.6);
+      b.winRing([e0, e1], y0, H, GL, 80); b.loft([e0, e1], H, [e0, e1], H + 0.01, GL);
+      for (const y of [24, 42, 60, 78]) { const r0 = P(d, Bh + 0.5, -Ah + 1.6), r1 = P(d, Bh + 0.5, Ah - 1.6); b.raw([r0[0], y, r0[1], r1[0], y, r1[1], r1[0], y + 1.6, r1[1], r0[0], y, r0[1], r1[0], y + 1.6, r1[1], r0[0], y + 1.6, r0[1]], DK); }
+      const t0 = P(d, Bh + 0.3, -Ah + 2.2), t1 = P(d, Bh + 0.3, Ah - 2.2), tm = P(d, Bh + 0.3, 0);
+      b.raw([t0[0], 22, t0[1], t1[0], 22, t1[1], tm[0], y0 + 2, tm[1]], GL2, "glow");                       // стеклянный шеврон
+      for (const sgn of [-1, 1]) { const [px, pz] = P(d, Bh - 0.6, sgn * (Ah - 0.8)); b.box(px, 0, pz, 1.6, H + 1.5, 1.6, WS, ry); }
+      // изломы креста: белый камень с тёмной щелью
+      for (const sgn of [-1, 1]) {
+        const w0 = P(d, Bh, sgn * Ah), w1 = P(d, Ah, sgn * Ah);
+        b.raw([w0[0], 0, w0[1], w1[0], 0, w1[1], w1[0], H + 1, w1[1], w0[0], 0, w0[1], w1[0], H + 1, w1[1], w0[0], H + 1, w0[1]], WS);
+        const [sx, sz] = P(d, (Bh + Ah) / 2, sgn * (Ah + 0.08)); b.box(sx, y0, sz, 0.5, H - y0 - 6, 0.5, DK, ry);
+      }
+      // арка короны над торцом (стеклянный фронтон) и свод
+      const R = (Ah * Ah + 36) / 12, yc = H + 6 - R, ph = Math.asin(Math.min(1, Ah / R)), N = 10, arc = [];
+      for (let k = 0; k <= N; k++) { const t = -ph + 2 * ph * k / N; arc.push([R * Math.sin(t), yc + R * Math.cos(t)]); }
+      const gab = []; for (let k = 0; k < N; k++) { const [a0, h0] = arc[k], [a1, h1] = arc[k + 1], q0 = P(d, Bh, a0), q1 = P(d, Bh, a1), qm = P(d, Bh, 0); gab.push(qm[0], H, qm[1], q0[0], h0, q0[1], q1[0], h1, q1[1]); }
+      b.raw(gab, GL, "glow");
+      const vault = []; for (let k = 0; k < N; k++) { const [a0, h0] = arc[k], [a1, h1] = arc[k + 1], p0 = P(d, Bh, a0), p1 = P(d, Bh, a1), m0 = P(d, 0, a0), m1 = P(d, 0, a1); vault.push(p0[0], h0, p0[1], p1[0], h1, p1[1], m1[0], h1, m1[1], p0[0], h0, p0[1], m1[0], h1, m1[1], m0[0], h0, m0[1]); }
+      b.raw(vault, [0.22, 0.4, 0.68]);
+      for (let k = 0; k <= N; k += N) { const [a0, h0] = arc[k], [q0x, q0z] = P(d, Bh + 0.2, a0); b.box(q0x, H, q0z, 1.2, h0 - H + 0.6, 1.2, WS, ry); }
+      // золотые буквы NBU под аркой
+      const txt = "NBU", px = 0.75, cols = txt.length * 6 - 1;
+      for (let ci = 0; ci < 3; ci++) { const g = MD.FONT[txt[ci]]; for (let gx = 0; gx < 5; gx++) for (let gy = 0; gy < 7; gy++) {
+        if (g[gy * 5 + gx] !== "1") continue;
+        const [lx, lz] = P(d, Bh + 0.6, -((ci * 6 + gx) - cols / 2) * px);                       // слева направо для смотрящего снаружи
+        b.box(lx, H - 7 + (6 - gy) * px, lz, px, px, 0.3, GOLD, ry + (d[0] ? Math.PI / 2 : 0), true);
+      } }
+    }
+    // перекрытие под сводами и шпиль с золотой птицей Хумо
+    const roof = [[Bh, -Ah], [Bh, Ah], [Ah, Ah], [Ah, Bh], [-Ah, Bh], [-Ah, Ah], [-Bh, Ah], [-Bh, -Ah], [-Ah, -Ah], [-Ah, -Bh], [Ah, -Bh], [Ah, -Ah]].map(([u, v]) => tf(u, v));
+    cap(b, roof, H + 1, [0.55, 0.56, 0.6]);
+    b.cyl(cx, H + 6, cz, 0.35, 9, GOLD, 8); b.sphere(cx, H + 15, cz, 0.8, GOLD, 8);
+    const bird = new THREE.ConeGeometry(0.9, 4, 6); bird.rotateZ(Math.PI / 2); b.add(bird, GOLD, cx, H + 16.5, cz, ry);
+    for (const sgn of [-1, 1]) { const w = new THREE.BoxGeometry(1.6, 0.25, 5); w.rotateX(sgn * 0.5); w.translate(0, 0, sgn * 2.3); b.add(w, GOLD, cx, H + 17.2, cz, ry); }
+    // соседний низкий стеклянный корпус
+    if (annex) { b.winRing(annex.p, 0, annex.h - 1.2, GL, 81); band(b, annex.p, 0.4, annex.h - 1.2, 1.2, WS); cap(b, annex.p, annex.h, [0.6, 0.62, 0.66]); }
   };
 })();

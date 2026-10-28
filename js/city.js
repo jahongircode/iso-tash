@@ -26,7 +26,7 @@
     let h; const st = sunTimes();
     if (City.timeMode === "auto") { const d = new Date(); h = (d.getUTCHours() + 5 + d.getUTCMinutes() / 60) % 24; }
     else if (City.timeMode === "day") h = 13.5;
-    else if (City.timeMode === "night") h = 23;
+    else if (City.timeMode === "night") h = 1.5;     // глубокая ночь: мало машин, автобусы не ходят
     else h = (City.simTime / C.cycleSeconds * 24 + 9) % 24;
     City.hour = h;
     const night = h < 12 ? 1 - sm(st.rise - 0.4, st.rise + 0.7, h) : sm(st.set - 0.5, st.set + 0.8, h);

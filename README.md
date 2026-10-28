@@ -13,13 +13,15 @@ Every building, road, park, river and tree comes from OpenStreetMap. The data is
 ## Features
 
 - **The whole city.** About 390,000 OSM buildings with heights, windows and roof shapes (hipped and gabled roofs in the mahallas, domes on mosques). Roads have sidewalks and lane markings, and there are rails, canals, parks and about 3 million trees whose colours change with the season.
-- **A living world.** Cars brake at about 2,000 real traffic lights from OSM. Street lamps and windows light up at night, the Ferris wheel turns, and construction cranes rotate.
-- **27 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, NestOne, Hilton Tashkent City, Tashkent City Mall, the TV Tower, Romanov Palace, Magic City, Independence Square, Minor Mosque, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
+- **A living world.** Cars brake at about 2,000 real traffic lights from OSM. Street lamps and windows light up at night, the Ferris wheel turns, and construction cranes rotate. Cars (sedans, hatchbacks, SUVs, Damas vans) follow each other with smooth acceleration and braking, slow down for turns, take turns at unsignalled junctions and never drive into each other. Traffic thins out at night; buses and marshrutkas run from about 5:30 to 23:30.
+- **28 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, NestOne, Hilton Tashkent City, Tashkent City Mall, the TV Tower, Romanov Palace, Magic City, Independence Square, Minor Mosque, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
+- **Friendship of Peoples Palace and its square.** The 1981 palace has its colonnade of white pylons with lattice screens and a crown of hexagonal capitals with lamps underneath. The square in front has a tall flagpole with a waving Uzbek flag and the memorial to the Shomahmudov family, lit warm at night.
 - **Stadiums matched against photos.** Pakhtakor has its sunken blue-and-yellow bowl, light-blue track and four lattice floodlight masts. Humo Arena has a flared media façade that glows violet at night. Milliy has its crown of white membrane "petals". All other OSM stadiums are drawn as stepped bowls with marked pitches.
 - **Detailed landmark models matched against photos.** NestOne is four stepped volumes around a core with a spire and orange stripes, and its edges glow at night. The TV Tower has three curved fin legs, a lattice shaft, two observation pods and a red-and-white antenna. Minor Mosque has white marble, turquoise friezes, a blue dome and two 56 m minarets. Romanov Palace, Magic City, Independence Square, Hilton and Tashkent City Mall were rebuilt the same way.
 - **Multi-level roads.** OSM bridges and flyovers rise above the ground on smooth ramps, with deck sides, parapets and pillars. Tunnels dip below ground with walled ramps and portals, and cars drive down into them. Each road class sits at its own height, and markings skip junctions, so roads no longer overlap.
+- **Railways and metro.** Where the metro comes up to cross a canal (by the TV Tower, at the Ankhor and at the Salar), it runs in a covered concrete gallery with a skylight, and enters the ground through a portal under a grassy mound. Dead-end sidings and depot tracks end in red-and-white buffer stops.
 - **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
-- **Notable residential towers.** U-Tower, Modera Towers, Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram and the experimental Zhemchug (Pearl) house have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
+- **Notable residential towers.** U-Tower, Modera Towers, Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram, the experimental Zhemchug (Pearl) house and the National Bank (NBU) tower have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
 - **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower is floodlit in warm gold at night, with cool-white lights twinkling along the shaft and pods.
 - **Minimap** (top right), with a frame showing the current view.
 - **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
@@ -93,6 +95,7 @@ python tools/bake/fetch_tiles.py raw        # vector tiles: land, roads, water, 
 python tools/bake/fetch_osm.py osm/bld      # all OSM buildings (Overpass)
 python tools/bake/fetch_extra.py osm        # traffic lights, trees, district boundaries
 python tools/bake/bake.py raw osm data      # build data/
+python tools/bake/seams.py data             # bridge/tunnel heights across tile edges
 ```
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.
