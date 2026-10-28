@@ -1,0 +1,110 @@
+# iso-tash — Tashkent Pixel Map 3D
+
+A living isometric pixel-art map of the whole of Tashkent, including New Tashkent, inspired by [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
+
+The city is a real 3D scene (WebGL, three.js). It is rendered at low resolution, and a post-processing shader turns it into pixel art:
+
+- dark outlines on depth edges;
+- a limited palette with ordered dithering;
+- a camera snapped to the pixel grid, so panning doesn't shimmer;
+- a real sun with shadows, and a day/night cycle that follows Tashkent time.
+
+Every building, road, park, river and tree comes from OpenStreetMap. The data is pre-baked into compact files that ship with the site, so the map works offline and loads fast.
+
+## Features
+
+- **The whole city.** About 390,000 OSM buildings with heights, windows and roof shapes (hipped and gabled roofs in the mahallas, domes on mosques). Roads have sidewalks and lane markings, and there are rails, canals, parks and about 3 million trees whose colours change with the season.
+- **A living world.** Cars brake at about 2,000 real traffic lights from OSM. Street lamps and windows light up at night, the Ferris wheel turns, and construction cranes rotate.
+- **23 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, the TV Tower, Independence Square, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
+- **Stadiums matched against photos.** Pakhtakor has its sunken blue-and-yellow bowl, light-blue track and four lattice floodlight masts. Humo Arena has a flared media façade that glows violet at night. Milliy has its crown of white membrane "petals". All other OSM stadiums are drawn as stepped bowls with marked pitches.
+- **Minimap** (top right), with a frame showing the current view.
+- **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
+- **Guided tour**, a time-of-day switch (auto, day, night, cycle) and quality presets.
+
+## Performance: levels of detail
+
+The map is built to run on weak devices. It uses the same LOD techniques as games:
+
+| Zoom | What is drawn |
+|---|---|
+| Close | Full 3D with real-time shadows, including tree shadows |
+| Mid | Low-poly tree crowns (8 triangles instead of about 30); shadows switch off |
+| Far | Each tile is one pre-drawn texture (an impostor) holding ground, roads, water, tree crowns and low roofs. Shadows come from a height map. Only tall buildings and landmarks stay 3D. |
+
+Impostor textures are rasterised in a Web Worker with OffscreenCanvas. Levels switch with hysteresis, and the previous level stays visible until the next one is ready, so zooming never shows holes.
+
+At far zoom, triangles dropped from about 15.5 million to about 0.3 million per frame, roughly 40 times fewer. This was measured at 1600×900 on the highest preset.
+
+Other optimisations:
+
+- **Tiles:** the city is split into 651 pre-baked tiles of about 1.8 × 1.8 km each. They are binary, use varint and delta encoding, and are deflate-compressed. Only visible tiles load, nearest first.
+- **Background work:** tiles are decoded and built into geometry in Web Workers. Meshes are uploaded to the GPU with a per-frame time budget, so loading doesn't stutter.
+- **Rendering:** each tile is a few large merged meshes. Trees, cars and traffic lights use instancing.
+- **Memory:** unused tiles and unused detail levels are unloaded.
+- **Quality presets:** "Eco", "Normal" and "Max". They set pixel size, FPS, shadows, the number of cars, tile limits and impostor resolution. "Auto" picks one for the device.
+
+## Running
+
+Open `index.html` in a browser. It works straight from disk via `file://`. You can also run `start-server.bat`, which needs Python 3, or any static web server.
+
+You need a browser with WebGL 2: a recent Chrome, Edge, Firefox or Safari. The internet is only needed for card photos, fonts and Google Maps links.
+
+## Controls
+
+| Action | Mouse / touch | Keyboard |
+|---|---|---|
+| Pan | Drag | WASD / arrow keys |
+| Zoom | Wheel / pinch, double-click | `+` / `−` |
+| Rotate 90° | ⟲ ⟳ buttons | `Q` / `E` |
+| Open a landmark | Click its model, label or list item | — |
+| Close panels | — | `Esc` |
+
+## Project structure
+
+```
+index.html, css/style.css
+js/config.js        settings and quality presets
+js/scene.js         camera, pixel-art post shader, lighting, input
+js/geo-worker.js    worker: tile decoding → 3D geometry, far-LOD impostor raster
+js/tiles.js         tile loading/unloading, LOD switching, materials, trees
+js/models.js        landmark 3D models
+js/traffic.js       road graph, cars, traffic lights
+js/city.js          day/night, frame loop
+js/landmarks.js     landmark texts
+js/ui.js, areas.js, minimap.js, photos.js, data.js, main.js
+lib/                three.js r149, earcut 2.2.4
+data/t/X_Y.js       pre-baked city tiles
+data/               index, landmark placement, districts, minimap
+tools/bake/         data baking scripts (Python 3 + numpy + Pillow)
+```
+
+## Rebaking the data
+
+To refresh the map from OSM, for example once more of New Tashkent is mapped, run:
+
+```
+python tools/bake/fetch_tiles.py raw        # vector tiles: land, roads, water, places
+python tools/bake/fetch_osm.py osm/bld      # all OSM buildings (Overpass)
+python tools/bake/fetch_extra.py osm        # traffic lights, trees, district boundaries
+python tools/bake/bake.py raw osm data      # build data/
+```
+
+Landmark placement is defined in `tools/bake/landmarks_spec.json`.
+
+## Limitations
+
+- Tashkent has no open LoD2 building models, so ordinary houses are generated from their OSM footprints and a set of rules. Where OSM has no height or levels, the height is estimated.
+- New Tashkent is still mostly empty in OSM.
+- Opening hours and prices on the cards change over time and may be out of date.
+
+## Credits and licences
+
+- Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL.
+- Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema).
+- Buildings, traffic lights, trees and boundaries: Overpass API (maps.mail.ru mirror).
+- [three.js](https://threejs.org) (MIT) and [earcut](https://github.com/mapbox/earcut) (ISC).
+- Card photos: Wikimedia Commons and Wikipedia; the author and licence are shown under each photo.
+- Fonts: Inter, Pixelify Sans and Press Start 2P (Google Fonts, OFL).
+- Style reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
+
+All 3D models, shaders and graphics were made from scratch for this project.
