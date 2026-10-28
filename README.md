@@ -1,7 +1,6 @@
 # iso-tash — Tashkent Pixel Map 3D
 
-A living isometric pixel-art map of the whole of Tashkent, including New Tashkent, inspired by [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
-
+A living isometric pixel-art map of the whole of Tashkent
 The city is a real 3D scene (WebGL, three.js). It is rendered at low resolution, and a post-processing shader turns it into pixel art:
 
 - dark outlines on depth edges;
