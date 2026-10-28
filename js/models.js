@@ -31,7 +31,7 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.screen = []; this.show = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; }
     // балка между двумя точками (опоры, растяжки)
     beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
       const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
@@ -186,7 +186,7 @@
       const body = mk(this.parts, MD.mat) || new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)]), MD.mat);
       if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
       return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win,
-        flag: mk(this.flag, MD.flagMat), screen: mk(this.screen, MD.screenMat), show: mk(this.show, MD.showMat) };
+        flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat) };
     }
   }
 
@@ -506,12 +506,10 @@
          totalEmissiveRadiance += led * uNight * (0.55 + 0.35 * step(0.5, fract(vWP2.y / 2.6)));`);
     };
     MD.ledMat.customProgramCacheKey = () => "led";
-    // цвета флага Узбекистана: перелив по кругу (синий → красный → белый → красный → зелёный) и полотнище
+    // цвета флага Узбекистана: перелив по кругу (синий → красный → белый → красный → зелёный)
     const FLAG = `
       vec3 flagC(float i) { i = mod(i, 5.0); return i < 1.0 ? vec3(0.0, 0.62, 0.95) : i < 2.0 ? vec3(1.0, 0.08, 0.12) : i < 3.0 ? vec3(1.0) : i < 4.0 ? vec3(1.0, 0.08, 0.12) : vec3(0.1, 0.85, 0.25); }
-      vec3 flagSeq(float s) { float x = fract(s) * 5.0, i = floor(x); return mix(flagC(i), flagC(i + 1.0), smoothstep(0.55, 1.0, fract(x))); }
-      vec3 flagBands(float t) { return t < 0.32 ? vec3(0.0, 0.6, 0.85) : t < 0.345 ? vec3(0.9, 0.07, 0.12) : t < 0.655 ? vec3(1.0) : t < 0.68 ? vec3(0.9, 0.07, 0.12) : vec3(0.08, 0.7, 0.23); }
-      vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); return v * mix(vec3(1.0), k, s); }`;
+      vec3 flagSeq(float s) { float x = fract(s) * 5.0, i = floor(x); return mix(flagC(i), flagC(i + 1.0), smoothstep(0.55, 1.0, fract(x))); }`;
     // ночная подсветка в локальных координатах модели (vLP)
     const nightFx = (key, body) => {
       const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
@@ -527,26 +525,16 @@
     MD.flagMat = nightFx("flag", `
       float fs = (vLP.x + vLP.z) * 0.005 + vLP.y * 0.007 - uTime * 0.11;
       totalEmissiveRadiance += flagSeq(fs) * uNight * 1.15;`);
-    // LED-экран с развевающимся флагом; цвет вершины = (u, v) экрана
-    MD.screenMat = nightFx("screen", `
-      vec2 uv = vColor.rg;
-      float wv = sin(uv.x * 25.13 - uTime * 2.2) * 0.05 + sin(uv.x * 9.4 - uTime * 1.3) * 0.03;
-      vec3 fc = flagBands(clamp(1.0 - uv.y + wv, 0.0, 1.0)) * (0.82 + 0.18 * sin(uv.x * 25.13 - uTime * 2.2 + 1.2));
-      diffuseColor.rgb = fc * 0.45;
-      totalEmissiveRadiance += fc * (0.35 + 0.75 * uNight);`);
-    // телебашня ночью: золотое мерцание прожекторов → радужные волны вверх по стволу → перелив флага →
-    // бегущие стробы со вспышками; режимы сменяются каждые 12 с с плавным переходом
+    // телебашня ночью (по видео): вся залита тёплым золотом прожекторов (снизу ярче, светлые элементы ярче
+    // синих), по стволу и капсулам случайно мигают холодно-белые огоньки
     MD.showMat = nightFx("show", `
-      float ang = atan(vLP.z, vLP.x), cyc = mod(uTime, 48.0), md = floor(cyc / 12.0), ph = fract(cyc / 12.0);
-      float tw = fract(sin(dot(floor(vec2(ang * 6.0, vLP.y / 3.0)), vec2(12.9898, 78.233))) * 43758.5453);
-      vec3 c0 = vec3(1.0, 0.72, 0.28) * (0.55 + 0.45 * step(0.5, fract(tw * 7.0 + uTime * (0.6 + tw))));
-      vec3 c1 = hsv(fract(vLP.y / 140.0 - uTime * 0.22 + ang * 0.08), 0.85, 1.0);
-      vec3 c2 = flagSeq(vLP.y / 160.0 - uTime * 0.16);
-      float ch = step(0.55, fract(vLP.y / 22.0 - uTime * 1.6)) + step(0.92, fract(uTime * 0.9)) * 2.0;
-      vec3 c3 = mix(vec3(0.35, 0.55, 1.0), vec3(1.0), step(1.5, ch)) * min(ch, 1.0);
-      vec3 cA = md < 0.5 ? c0 : md < 1.5 ? c1 : md < 2.5 ? c2 : c3;
-      vec3 cB = md < 0.5 ? c1 : md < 1.5 ? c2 : md < 2.5 ? c3 : c0;
-      totalEmissiveRadiance += mix(cA, cB, smoothstep(0.88, 1.0, ph)) * uNight * 1.2;`);
+      float ang = atan(vLP.z, vLP.x), lum = dot(vColor.rgb, vec3(0.333));
+      vec3 gold = vec3(1.0, 0.54, 0.12) * (0.18 + 0.95 * lum * lum) * (0.75 + 0.25 * exp(-vLP.y / 120.0)) * (0.94 + 0.06 * sin(uTime * 1.7 + vLP.y * 0.04));
+      vec2 cell = floor(vec2(ang * 7.0, vLP.y / 2.4));
+      float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+      float spark = step(0.55, h) * step(0.88, fract(uTime * (0.35 + h * 0.5) + h * 17.0)) * step(86.0, vLP.y) * step(vLP.y, 300.0);
+      diffuseColor.rgb *= mix(vec3(1.0), vec3(0.55, 0.38, 0.22), uNight);
+      totalEmissiveRadiance += uNight * (gold * 0.95 + vec3(0.8, 0.9, 1.0) * spark * 1.6);`);
     MD.glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
     MD.glowMat.onBeforeCompile = (sh) => { // днём — цвет стекла, ночью — тёплый свет окон
       sh.uniforms.uNight = T.uNight;
@@ -570,7 +558,7 @@
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.screen, parts.show]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show]) if (m) grp.add(m);
       S.scene.add(grp);
       return { grp, parts };
     };

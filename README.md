@@ -20,7 +20,7 @@ Every building, road, park, river and tree comes from OpenStreetMap. The data is
 - **Multi-level roads.** OSM bridges and flyovers rise above the ground on smooth ramps, with deck sides, parapets and pillars. Tunnels dip below ground with walled ramps and portals, and cars drive down into them. Each road class sits at its own height, and markings skip junctions, so roads no longer overlap.
 - **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
 - **Notable residential towers.** U-Tower, Modera Towers, Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram and the experimental Zhemchug (Pearl) house have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
-- **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower runs a light show (golden twinkle, colour waves, flag colours, strobes) and its lower pod has LED screens with a waving flag.
+- **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower is floodlit in warm gold at night, with cool-white lights twinkling along the shaft and pods.
 - **Minimap** (top right), with a frame showing the current view.
 - **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
 - **Guided tour**, a time-of-day switch (auto, day, night, cycle) and quality presets.
