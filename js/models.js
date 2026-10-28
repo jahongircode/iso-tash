@@ -240,6 +240,7 @@
     Z: "11111000010001000100010001000011111", B: "11110100011000111110100011000111110", K: "10001100101010011000101001001010001",
     I: "01110001000010000100001000010001110", S: "01111100001000001110000010000111110", A: "01110100011000111111100011000110001",
     N: "10001110011010110011100011000110001", " ": "00000000000000000000000000000000000" };
+  MD.FONT = FONT;
   M.hotel_uz = (b, o) => {
     const L = o.L || 90, D = 17, H = o.h || 71.5, R = 115, CR = [0.93, 0.89, 0.8], BG = [0.58, 0.52, 0.45];
     const rf = R - D / 2, rb = R + D / 2, phi = Math.asin(L / 2 / rb), N = 28;
@@ -590,6 +591,33 @@
         const leg = new MB(); for (const s of [-1, 1]) { const lg = new THREE.BoxGeometry(0.8, 21, 0.8); lg.translate(0, -10.5, 0); lg.rotateZ(s * 0.3); leg.add(lg, P.grey, 0, 0, s * 1.2); }
         const lm = leg.build("legs").body; lm.position.copy(wm.position); grp.add(lm);
         MD.anim.push((t) => { wm.rotation.z = t * 0.12; });
+      }
+      if (l.id === "friendship" && g.sub && g.sub.flag) { // флаг Узбекистана на флагштоке площади
+        const [fx, fz] = g.local(...g.sub.flag), Lf = 22, Hf = 11, NC = 28;
+        // строки сетки — по границам полос (сверху вниз: синий, красная кайма, белый, красная кайма, зелёный)
+        const T2 = [0, 0.16, 0.318, 0.322, 0.343, 0.347, 0.5, 0.653, 0.657, 0.678, 0.682, 0.84, 1];
+        const band = (t) => (t < 0.32 ? [0.0, 0.6, 0.85] : t < 0.345 ? [0.85, 0.08, 0.12] : t < 0.655 ? [0.97, 0.97, 0.97] : t < 0.68 ? [0.85, 0.08, 0.12] : [0.1, 0.66, 0.24]);
+        const pos = [], col = [], idx = [], U = [];
+        T2.forEach((t, r) => {
+          for (let i = 0; i <= NC; i++) {
+            const u = i / NC, star = r === 1 && i >= 2 && i <= 8;                              // полумесяц и звёзды у древка — светлые точки
+            pos.push(u * Lf, -t * Hf, 0); col.push(...(star && i % 2 ? [0.95, 0.97, 1] : band(t))); U.push(u);
+          }
+          if (r) for (let i = 0; i < NC; i++) { const a = (r - 1) * (NC + 1) + i, b2 = a + NC + 1; idx.push(a, b2, a + 1, a + 1, b2, b2 + 1); }
+        });
+        const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx);
+        const flag = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+        flag.position.set(fx, 62.5, fz + 0.9); flag.rotation.y = -Math.PI / 2; flag.castShadow = true; grp.add(flag);
+        const P0 = Float32Array.from(pos), pa = geo.attributes.position;
+        MD.anim.push((t) => {
+          for (let k = 0; k < U.length; k++) {
+            const u = U[k], y0 = P0[k * 3 + 1];
+            pa.array[k * 3 + 2] = Math.sin(u * 7 - t * 3.4 + y0 * 0.12) * 1.3 * u + Math.sin(u * 13 - t * 5.1) * 0.25 * u;
+            pa.array[k * 3] = u * Lf * (0.97 + 0.03 * Math.cos(u * 7 - t * 3.4));
+            pa.array[k * 3 + 1] = y0 - u * u * 0.8;
+          }
+          pa.needsUpdate = true; geo.computeVertexNormals();
+        });
       }
       if (l.id === "tv_tower") { // мигающий огонь на шпиле
         const lamp = new THREE.Mesh(new THREE.SphereGeometry(1.6, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3020 }));
