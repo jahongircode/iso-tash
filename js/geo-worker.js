@@ -69,7 +69,7 @@ window.TPM_GEO_WORKER = function () {
   }
 
   // лента вдоль линии (митры + квадратные концы)
-  function strip(G, l, w, y, col, ext) {
+  function strip(G, l, w, y, col, ext, H) {
     const n = l.length / 2; if (n < 2) return;
     const hw = w / 2;
     const px = new Float32Array(n), pz = new Float32Array(n);
@@ -88,13 +88,14 @@ window.TPM_GEO_WORKER = function () {
       // длина митры
       let m = 1;
       if (i > 0 && i < n - 1) { const dx = px[i + 1] - px[i], dz = pz[i + 1] - pz[i], l2 = Math.hypot(dx, dz) || 1; const c = nx * (-dz / l2) + nz * (dx / l2); m = Math.min(2.5, 1 / Math.max(0.3, c)); }
-      G.v(px[i] + nx * hw * m, y, pz[i] + nz * hw * m, 0, 1, 0, col[0], col[1], col[2], 255);
-      G.v(px[i] - nx * hw * m, y, pz[i] - nz * hw * m, 0, 1, 0, col[0], col[1], col[2], 255);
+      const yy = y + (H ? H[i] : 0);
+      G.v(px[i] + nx * hw * m, yy, pz[i] + nz * hw * m, 0, 1, 0, col[0], col[1], col[2], 255);
+      G.v(px[i] - nx * hw * m, yy, pz[i] - nz * hw * m, 0, 1, 0, col[0], col[1], col[2], 255);
     }
     for (let i = 0; i < n - 1; i++) { const a = base + i * 2; G.tri(a, a + 2, a + 1); G.tri(a + 1, a + 2, a + 3); }
   }
   // пунктир (разметка)
-  function dashes(G, l, off, w, y, col, dash, gap) {
+  function dashes(G, l, off, w, y, col, dash, gap, H, skip) {
     const n = l.length / 2;
     let acc = 0;
     for (let i = 0; i < n - 1; i++) {
@@ -106,14 +107,134 @@ window.TPM_GEO_WORKER = function () {
         const t1 = Math.min(L, t + dash);
         if (t1 > t) {
           const ax = x0 + ux * t + nx * off, az = z0 + uz * t + nz * off, bx = x0 + ux * t1 + nx * off, bz = z0 + uz * t1 + nz * off;
-          const base = G.vc, hw = w / 2;
-          G.v(ax + nx * hw, y, az + nz * hw, 0, 1, 0, col[0], col[1], col[2], 255); G.v(ax - nx * hw, y, az - nz * hw, 0, 1, 0, col[0], col[1], col[2], 255);
-          G.v(bx + nx * hw, y, bz + nz * hw, 0, 1, 0, col[0], col[1], col[2], 255); G.v(bx - nx * hw, y, bz - nz * hw, 0, 1, 0, col[0], col[1], col[2], 255);
-          G.tri(base, base + 2, base + 1); G.tri(base + 1, base + 2, base + 3);
+          if (!skip || !skip((ax + bx) / 2, (az + bz) / 2)) {
+            const base = G.vc, hw = w / 2, ya = y + (H ? H[i] + (H[i + 1] - H[i]) * t / L : 0), yb = y + (H ? H[i] + (H[i + 1] - H[i]) * t1 / L : 0);
+            G.v(ax + nx * hw, ya, az + nz * hw, 0, 1, 0, col[0], col[1], col[2], 255); G.v(ax - nx * hw, ya, az - nz * hw, 0, 1, 0, col[0], col[1], col[2], 255);
+            G.v(bx + nx * hw, yb, bz + nz * hw, 0, 1, 0, col[0], col[1], col[2], 255); G.v(bx - nx * hw, yb, bz - nz * hw, 0, 1, 0, col[0], col[1], col[2], 255);
+            G.tri(base, base + 2, base + 1); G.tri(base + 1, base + 2, base + 3);
+          }
         }
         t += dash + gap;
       }
       acc = t - L;
+    }
+  }
+
+  // ---------- многоуровневые дороги ----------
+  // Мосты и эстакады поднимаются плавными пандусами от свободных концов (соседние куски
+  // моста и края тайла считаются продолжением), тоннели уходят вниз; высота зависит от
+  // длины всей цепочки моста: мостик через арык — чуть выше земли, путепровод — 6–7 м,
+  // второй ярус развязки (layer ≥ 2) — до 13 м.
+  const sm01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  function profiles(L, T) {
+    const out = new Array(L.length).fill(null), key = (x, z) => Math.round(x * 2) + "," + Math.round(z * 2);
+    const par = new Map(), find = (i) => { while (par.get(i) !== i) { par.set(i, par.get(par.get(i))); i = par.get(i); } return i; };
+    const ends = new Map(), kind = (fl) => (fl & 2 ? 2 : fl & 8 ? 8 : 0);
+    L.forEach(([cls, fl, l], i) => {
+      const k = kind(fl); if (!k || cls >= 13 || cls === 8) return; par.set(i, i);
+      for (const j of [0, l.length - 2]) { const kk = k + ":" + key(l[j], l[j + 1]); if (!ends.has(kk)) ends.set(kk, []); ends.get(kk).push(i); }
+    });
+    for (const list of ends.values()) for (let a = 1; a < list.length; a++) { const ra = find(list[0]), rb = find(list[a]); if (ra !== rb) par.set(ra, rb); }
+    const lenOf = (l) => { let s = 0; for (let i = 2; i < l.length; i += 2) s += Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]); return s; };
+    const comp = new Map(); for (const i of par.keys()) { const r = find(i); comp.set(r, (comp.get(r) || 0) + lenOf(L[i][2])); }
+    const onEdge = (x, z) => x < 0.6 || z < 0.6 || x > T - 0.6 || z > T - 0.6;
+    for (const i of par.keys()) {
+      const [cls, fl, l] = L[i], k = kind(fl), n = l.length / 2, cl = comp.get(find(i));
+      const free = (j) => !onEdge(l[j], l[j + 1]) && (ends.get(k + ":" + key(l[j], l[j + 1])) || []).length < 2;
+      const f0 = free(0), f1 = free(l.length - 2);
+      let Hm, R;
+      if (k === 2) { Hm = cl < 30 ? 0.8 : Math.min(fl & 16 ? 13 : 6.8, 0.9 + cl / 8); R = Math.max(8, Math.min(fl & 16 ? 110 : 75, cl * 0.36)); }
+      else { Hm = -7; R = Math.max(10, Math.min(45, cl * 0.3)); }
+      const cum = new Float32Array(n); for (let j = 1; j < n; j++) cum[j] = cum[j - 1] + Math.hypot(l[j * 2] - l[j * 2 - 2], l[j * 2 + 1] - l[j * 2 - 1]);
+      const tot = cum[n - 1], H = new Float32Array(n);
+      for (let j = 0; j < n; j++) { const d = Math.min(f0 ? cum[j] : 1e9, f1 ? tot - cum[j] : 1e9); H[j] = Hm * sm01(d / R); }
+      out[i] = H;
+    }
+    return out;
+  }
+  // точки перекрёстков (общие вершины разных линий) — там не рисуем разметку
+  function junctions(L) {
+    const seen = new Map(), J = new Map(), key = (x, z) => Math.round(x) + "," + Math.round(z);
+    L.forEach(([cls, fl, l], i) => {
+      if (cls > 7 || fl & 8) return;
+      for (let j = 0; j < l.length; j += 2) {
+        const k = key(l[j], l[j + 1]), o = seen.get(k);
+        if (!o) seen.set(k, { i, x: l[j], z: l[j + 1], r: RW[cls] / 2 + 1.2, multi: false });
+        else if (o.i !== i) { o.multi = true; o.r = Math.max(o.r, RW[cls] / 2 + 1.2); }
+      }
+    });
+    for (const o of seen.values()) if (o.multi) { const c = Math.floor(o.x / 16) + "," + Math.floor(o.z / 16); if (!J.has(c)) J.set(c, []); J.get(c).push(o); }
+    return (x, z) => {
+      const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = J.get((cx + a) + "," + (cz + b)); if (l) for (const o of l) if (Math.hypot(o.x - x, o.z - z) < o.r) return true; }
+      return false;
+    };
+  }
+  // нормали полилинии (для краёв ленты)
+  function edgeNormals(l) {
+    const n = l.length / 2, N = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      let nx = 0, nz = 0;
+      if (i > 0) { const dx = l[i * 2] - l[i * 2 - 2], dz = l[i * 2 + 1] - l[i * 2 - 1], L2 = Math.hypot(dx, dz) || 1; nx += -dz / L2; nz += dx / L2; }
+      if (i < n - 1) { const dx = l[i * 2 + 2] - l[i * 2], dz = l[i * 2 + 3] - l[i * 2 + 1], L2 = Math.hypot(dx, dz) || 1; nx += -dz / L2; nz += dx / L2; }
+      const L3 = Math.hypot(nx, nz) || 1; N[i * 2] = nx / L3; N[i * 2 + 1] = nz / L3;
+    }
+    return N;
+  }
+  const DECK = [170, 166, 158], PARA = [204, 200, 192], PILLAR = [150, 148, 142];
+  // пролётное строение: боковые грани плиты, парапеты, опоры
+  function bridgeDeck(G, l, H, w) {
+    const n = l.length / 2, N = edgeNormals(l), hw = w / 2;
+    let acc = 13;
+    for (let i = 0; i < n - 1; i++) {
+      const h0 = H[i], h1 = H[i + 1]; if (Math.max(h0, h1) < 1.2) continue;
+      const x0 = l[i * 2], z0 = l[i * 2 + 1], x1 = l[i * 2 + 2], z1 = l[i * 2 + 3];
+      for (const s of [1, -1]) {
+        const ax = x0 + N[i * 2] * hw * s, az = z0 + N[i * 2 + 1] * hw * s, bx = x1 + N[i * 2 + 2] * hw * s, bz = z1 + N[i * 2 + 3] * hw * s;
+        face(G, [[ax, h0 + 0.2, az], [bx, h1 + 0.2, bz], [bx, h1 - 0.9, bz], [ax, h0 - 0.9, az]], DECK, 255);
+        face(G, [[ax, h0 + 1.15, az], [bx, h1 + 1.15, bz], [bx, h1 + 0.2, bz], [ax, h0 + 0.2, az]], PARA, 255);
+      }
+      // опоры каждые ~26 м
+      const L2 = Math.hypot(x1 - x0, z1 - z0); if (!L2) continue;
+      const ux = (x1 - x0) / L2, uz = (z1 - z0) / L2;
+      for (let t = acc; t < L2; t += 26) {
+        const h = h0 + (h1 - h0) * t / L2; if (h < 2.6) continue;
+        const cx = x0 + ux * t, cz = z0 + uz * t, vx = -uz, vz = ux, a = 0.8, b = hw * 0.55, top = h - 0.9;
+        const P4 = [[cx + ux * a + vx * b, cz + uz * a + vz * b], [cx - ux * a + vx * b, cz - uz * a + vz * b], [cx - ux * a - vx * b, cz - uz * a - vz * b], [cx + ux * a - vx * b, cz + uz * a - vz * b]];
+        for (let k = 0; k < 4; k++) { const [px, pz] = P4[k], [qx, qz] = P4[(k + 1) % 4]; face(G, [[px, 0, pz], [qx, 0, qz], [qx, top, qz], [px, top, pz]], PILLAR, 255); }
+        face(G, [[cx + vx * (b + 1.2) + ux * 1.2, top, cz + vz * (b + 1.2) + uz * 1.2], [cx + vx * (b + 1.2) - ux * 1.2, top, cz + vz * (b + 1.2) - uz * 1.2], [cx - vx * (b + 1.2) - ux * 1.2, top, cz - vz * (b + 1.2) - uz * 1.2], [cx - vx * (b + 1.2) + ux * 1.2, top, cz - vz * (b + 1.2) + uz * 1.2]], PILLAR, 255);
+      }
+      acc = ((acc - L2) % 26 + 26) % 26;
+    }
+  }
+  // части полилинии, где выполняется условие (с интерполированными точками разреза)
+  function runs(l, H, ok) {
+    const n = l.length / 2, res = []; let cur = null;
+    const push = (x, z, h) => { cur.p.push(x, z); cur.h.push(h); };
+    for (let i = 0; i < n; i++) {
+      const o = ok(H[i]);
+      if (i > 0 && o !== ok(H[i - 1])) { // пересечение порога внутри сегмента
+        let lo = 0, hi = 1; for (let k = 0; k < 12; k++) { const m = (lo + hi) / 2; if (ok(H[i - 1] + (H[i] - H[i - 1]) * m) === ok(H[i - 1])) lo = m; else hi = m; }
+        const t = (lo + hi) / 2, x = l[i * 2 - 2] + (l[i * 2] - l[i * 2 - 2]) * t, z = l[i * 2 - 1] + (l[i * 2 + 1] - l[i * 2 - 1]) * t, h = H[i - 1] + (H[i] - H[i - 1]) * t;
+        if (cur) { push(x, z, h); res.push(cur); cur = null; } else { cur = { p: [], h: [], cut0: true }; push(x, z, h); }
+      }
+      if (o) { if (!cur) cur = { p: [], h: [] }; push(l[i * 2], l[i * 2 + 1], H[i]); }
+    }
+    if (cur) res.push(cur);
+    return res.filter((r) => r.p.length >= 4).map((r) => ({ p: new Float32Array(r.p), h: new Float32Array(r.h), cut0: !!r.cut0 }));
+  }
+  // портал тоннеля поперёк дороги: опоры, ригель, тёмный «зев» и подпорные стенки
+  function tunnelPortal(G, x, z, ux, uz, w) {
+    const vx = -uz, vz = ux, hw = w / 2 + 0.6, D = [40, 40, 44], CW = [178, 174, 166];
+    face(G, [[x - vx * hw, 0, z - vz * hw], [x + vx * hw, 0, z + vz * hw], [x + vx * hw, 4.6, z + vz * hw], [x - vx * hw, 4.6, z - vz * hw]], D, 255);
+    for (const s of [-1, 1]) { const px = x + vx * hw * s, pz = z + vz * hw * s; face(G, [[px - ux * 0.6, 0, pz - uz * 0.6], [px + ux * 0.6, 0, pz + uz * 0.6], [px + ux * 0.6, 5.6, pz + uz * 0.6], [px - ux * 0.6, 5.6, pz - uz * 0.6]], CW, 255); }
+    face(G, [[x - vx * (hw + 0.6) - ux * 0.7, 4.6, z - vz * (hw + 0.6) - uz * 0.7], [x + vx * (hw + 0.6) - ux * 0.7, 4.6, z + vz * (hw + 0.6) - uz * 0.7], [x + vx * (hw + 0.6) - ux * 0.7, 5.8, z + vz * (hw + 0.6) - uz * 0.7], [x - vx * (hw + 0.6) - ux * 0.7, 5.8, z - vz * (hw + 0.6) - uz * 0.7]], CW, 255);
+  }
+  function rampWalls(G, l, w) {
+    const n = l.length / 2, N = edgeNormals(l), hw = w / 2 + 0.5;
+    for (let i = 0; i < n - 1; i++) for (const s of [1, -1]) {
+      const ax = l[i * 2] + N[i * 2] * hw * s, az = l[i * 2 + 1] + N[i * 2 + 1] * hw * s, bx = l[i * 2 + 2] + N[i * 2 + 2] * hw * s, bz = l[i * 2 + 3] + N[i * 2 + 3] * hw * s;
+      face(G, [[ax, 0, az], [bx, 0, bz], [bx, 1.1, bz], [ax, 1.1, az]], [184, 180, 172], 255);
     }
   }
 
@@ -372,12 +493,12 @@ window.TPM_GEO_WORKER = function () {
     const out = { lines: [], trees: null, signals: null, places: [], lamps: null, bcount: 0 };
     const lamps = [];
     // фонари вдоль улиц
-    function lampsAlong(l, cls, fl) {
-      const br = fl & 2 ? 1.1 : 0, off = RW[cls] / 2 + 1.2; let acc = 14;
+    function lampsAlong(l, cls, fl, H) {
+      const off = RW[cls] / 2 + 1.2; let acc = 14;
       for (let i = 0; i + 3 < l.length; i += 2) {
         const dx = l[i + 2] - l[i], dz = l[i + 3] - l[i + 1], Ls = Math.hypot(dx, dz); if (!Ls) continue;
         const ux = dx / Ls, uz = dz / Ls;
-        for (let t = acc; t < Ls; t += 34) { lamps.push(l[i] + ux * t - uz * off, 6.5 + br, l[i + 1] + uz * t + ux * off); if (!(fl & 1)) lamps.push(l[i] + ux * t + uz * off, 6.5 + br, l[i + 1] + uz * t - ux * off); }
+        for (let t = acc; t < Ls; t += 34) { const j = i >> 1, br = H ? H[j] + (H[j + 1] - H[j]) * t / Ls : 0; lamps.push(l[i] + ux * t - uz * off, 6.5 + br, l[i + 1] + uz * t + ux * off); if (!(fl & 1)) lamps.push(l[i] + ux * t + uz * off, 6.5 + br, l[i + 1] + uz * t - ux * off); }
         acc = ((acc - Ls) % 34 + 34) % 34;
       }
     }
@@ -398,36 +519,58 @@ window.TPM_GEO_WORKER = function () {
         const L = [];
         for (let f = 0; f < n; f++) { const cls = u8(), fl = u8(); L.push([cls, fl, pts()]); }
         if (far) {
-          for (const [cls, fl, l] of L) {
-            rL.push([cls, fl, l]);
-            if (cls <= 5) out.lines.push({ cls, fl, p: l });
-            if (cls <= 4) lampsAlong(l, cls, fl);
-          }
+          const PH = profiles(L, T);
+          L.forEach(([cls, fl, l], f) => {
+            if (!(fl & 8)) rL.push([cls, fl, l]);
+            if (cls <= 5) out.lines.push({ cls, fl, p: l, h: PH[f] });
+            if (cls <= 4 && !(fl & 8)) lampsAlong(l, cls, fl, PH[f]);
+          });
           continue;
         }
-        // порядок: тротуары → вода → асфальт → разметка
-        for (const [cls, fl, l] of L) {
-          const br = fl & 2 ? 1.1 : 0;
+        // порядок: тротуары → вода → асфальт → разметка.
+        // У каждого класса своя высота: крупная дорога всегда сверху, без мерцания на стыках.
+        const PH = profiles(L, T), skipJ = junctions(L);
+        const ay = (cls) => (cls === 8 ? 0.12 : cls === 9 || cls === 10 ? 0.15 : 0.2 + (12 - Math.min(cls, 12)) * 0.006);
+        const sideW = (cls) => RW[cls] + (cls <= 4 ? 5 : 2.6);
+        for (let f = 0; f < L.length; f++) {
+          const [cls, fl, l] = L[f], H = PH[f];
           if (cls >= 13) { strip(water, l, RW[cls], 0.065, RC[cls], false); continue; }
-          if (cls <= 5) strip(roads, l, RW[cls] + (cls <= 4 ? 5 : 2.6), 0.14 + br, SIDEWALK, true);
+          if (fl & 8) continue; // тротуары у тоннелей не рисуем
+          if (cls <= 5) strip(roads, l, sideW(cls), 0.13 + (5 - cls) * 0.002, SIDEWALK, true, H);
         }
-        for (const [cls, fl, l] of L) {
+        for (let f = 0; f < L.length; f++) {
+          const [cls, fl, l] = L[f];
           if (cls >= 13) continue;
-          const br = fl & 2 ? 1.1 : 0;
-          const y = (cls === 8 ? 0.12 : cls === 9 || cls === 10 ? 0.15 : 0.2) + br;
-          strip(roads, l, RW[cls], y, RC[cls], cls <= 6);
+          let H = PH[f];
+          if (fl & 8) { // тоннель: видны только въезды, между порталами дорога уходит под землю
+            const RR = runs(l, H, (h) => h > -2.4);
+            for (const r of RR) {
+              strip(roads, r.p, RW[cls], 0.17, RC[cls], false);
+              rampWalls(bld, r.p, RW[cls]);
+              const m = r.p.length;
+              // портал — на том конце, где начинается подземная часть
+              const atStart = r.cut0, i0 = atStart ? 0 : m - 2, i1 = atStart ? 2 : m - 4;
+              const dx = r.p[i0] - r.p[i1], dz = r.p[i0 + 1] - r.p[i1 + 1], L2 = Math.hypot(dx, dz) || 1;
+              if (r.cut0 || r.h[r.h.length - 1] < -2) tunnelPortal(bld, r.p[i0], r.p[i0 + 1], dx / L2, dz / L2, RW[cls]);
+            }
+            if (cls <= 5) out.lines.push({ cls, fl, p: l, h: H });
+            continue;
+          }
+          const y = ay(cls);
+          strip(roads, l, RW[cls], y, RC[cls], cls <= 6, H);
+          if (H && (fl & 2)) bridgeDeck(bld, l, H, cls <= 5 ? sideW(cls) : RW[cls]);
           if (cls === 9 || cls === 10) { // рельсы и шпалы
-            dashes(roads, l, 0, RW[cls] * 0.9, y + 0.01, [96, 80, 66], 0.35, 0.55);
-            dashes(roads, l, 0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0); dashes(roads, l, -0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0);
+            dashes(roads, l, 0, RW[cls] * 0.9, y + 0.01, [96, 80, 66], 0.35, 0.55, H);
+            dashes(roads, l, 0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0, H); dashes(roads, l, -0.72, 0.14, y + 0.02, [60, 58, 58], 1000, 0, H);
           }
-          if (cls <= 4) { // разметка
-            const mk = [232, 228, 214], my = y + 0.015;
-            if (cls <= 2 && !(fl & 1)) { dashes(roads, l, 0.18, 0.16, my, mk, 1000, 0); dashes(roads, l, -0.18, 0.16, my, mk, 1000, 0); }
-            else if (!(fl & 1)) dashes(roads, l, 0, 0.16, my, mk, 3, 4);
-            if (cls <= 2) { const q = RW[cls] / 4; dashes(roads, l, q, 0.14, my, mk, 3, 6); dashes(roads, l, -q, 0.14, my, mk, 3, 6); }
+          if (cls <= 4) { // разметка (не заходит на перекрёстки)
+            const mk = [232, 228, 214], my = y + 0.003;
+            if (cls <= 2 && !(fl & 1)) { dashes(roads, l, 0.18, 0.16, my, mk, 5, 0, H, skipJ); dashes(roads, l, -0.18, 0.16, my, mk, 5, 0, H, skipJ); }
+            else if (!(fl & 1)) dashes(roads, l, 0, 0.16, my, mk, 3, 4, H, skipJ);
+            if (cls <= 2) { const q = RW[cls] / 4; dashes(roads, l, q, 0.14, my, mk, 3, 6, H, skipJ); dashes(roads, l, -q, 0.14, my, mk, 3, 6, H, skipJ); }
           }
-          if (cls <= 5) out.lines.push({ cls, fl, p: l });
-          if (cls <= 4) lampsAlong(l, cls, fl);
+          if (cls <= 5) out.lines.push({ cls, fl, p: l, h: H });
+          if (cls <= 4) lampsAlong(l, cls, fl, H);
         }
       } else if (tag === 3) {
         const n = vr(); out.bcount = n;

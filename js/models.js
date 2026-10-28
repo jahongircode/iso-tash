@@ -31,7 +31,38 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; }
+    // балка между двумя точками (опоры, растяжки)
+    beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
+      const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
+      const g = new THREE.BoxGeometry(w, L, d); g.translate(0, L / 2, 0);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / L, dy / L, dz / L)));
+      g.translate(x0, y0, z0); this[list].push([g.index ? g.toNonIndexed() : g, col]); return this;
+    }
+    // вальмовая крыша над прямоугольником L×W (по оси x — конёк)
+    hip(x, y, z, L, W, h, col, ry = 0) {
+      const k = Math.max(0, (L - W) / 2), a = L / 2, b = W / 2;
+      const v = [[-a, 0, -b], [a, 0, -b], [a, 0, b], [-a, 0, b], [-k, h, 0], [k, h, 0]];
+      const T = [[0, 1, 5], [0, 5, 4], [2, 3, 4], [2, 4, 5], [1, 2, 5], [3, 0, 4]], arr = [];
+      const c = Math.cos(ry), s2 = Math.sin(ry);
+      for (const t of T) for (const i of t) { const [px, py, pz] = v[i]; arr.push(x + px * c + pz * s2, y + py, z - px * s2 + pz * c); }
+      return this.raw(arr, col);
+    }
+    // стены с «настоящими» окнами (как у городских домов: сетка окон, ночью часть светится)
+    winRing(pts, y0, y1, col, id = 7) {
+      let u = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [x0, z0] = pts[i], [x1, z1] = pts[(i + 1) % pts.length], L = Math.hypot(x1 - x0, z1 - z0);
+        this.win.push({ p: [x0, y0, z0, x1, y0, z1, x1, y1, z1, x0, y0, z0, x1, y1, z1, x0, y1, z0], u: [u, 0, u + L, 0, u + L, y1 - y0, u, 0, u + L, y1 - y0, u, y1 - y0], col, id });
+        u += L;
+      }
+      return this;
+    }
+    winBox(x, y, z, sx, sy, sz, col, ry = 0, id = 7, roofCol) {
+      const c = Math.cos(ry), s2 = Math.sin(ry), P2 = [[-sx / 2, -sz / 2], [sx / 2, -sz / 2], [sx / 2, sz / 2], [-sx / 2, sz / 2]].map(([a, b2]) => [x + a * c + b2 * s2, z - a * s2 + b2 * c]);
+      this.winRing(P2, y, y + sy, col, id);
+      return this.fan(P2.map(([px, pz]) => [px - x, pz - z]).map(([px, pz]) => [px, pz]), y + sy, roofCol || [col[0] * 0.8, col[1] * 0.8, col[2] * 0.8], "parts", y + sy, x, z);
+    }
     raw(arr, col, list = "parts") { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3)); this[list].push([g, col]); return this; }
     // лента между двумя замкнутыми контурами (одинаковое число точек)
     loft(A, yA, B, yB, col, list, every = 1, col2) {
@@ -47,7 +78,7 @@
       }
       return this;
     }
-    fan(A, y, col, list, cy = y) { const arr = []; for (let i = 0; i < A.length; i++) { const j = (i + 1) % A.length; arr.push(0, cy, 0, A[i][0], y, A[i][1], A[j][0], y, A[j][1]); } return this.raw(arr, col, list); }
+    fan(A, y, col, list, cy = y, ox = 0, oz = 0) { const arr = []; for (let i = 0; i < A.length; i++) { const j = (i + 1) % A.length; arr.push(ox, cy, oz, A[i][0] + ox, y, A[i][1] + oz, A[j][0] + ox, y, A[j][1] + oz); } return this.raw(arr, col, list); }
     // ступенчатые трибуны от внешнего контура (Ao, yo) к внутреннему (Ai, yi)
     stands(Ao, yo, Ai, yi, rows, colOf) {
       for (let t = 0; t < rows; t++) {
@@ -138,7 +169,23 @@
         const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; m.name = name;
         return m;
       };
-      return { body: mk(this.parts, MD.mat), glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat) };
+      let win = null;
+      if (this.win.length) {
+        let n = 0; for (const w of this.win) n += w.p.length / 3;
+        const pos = new Float32Array(n * 3), col = new Float32Array(n * 4), uv = new Float32Array(n * 2); let o = 0;
+        for (const w of this.win) {
+          pos.set(w.p, o * 3);
+          for (let i = 0; i < w.p.length / 3; i++) { col.set([w.col[0], w.col[1], w.col[2], (w.id % 250) / 255], (o + i) * 4); uv[(o + i) * 2] = w.u[i * 2] * 4; uv[(o + i) * 2 + 1] = w.u[i * 2 + 1] * 10; }
+          o += w.p.length / 3;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 4)); geo.setAttribute("wuv", new THREE.BufferAttribute(uv, 2));
+        geo.computeVertexNormals(); geo.computeBoundingSphere(); geo.computeBoundingBox();
+        win = new THREE.Mesh(geo, T.M.bld); win.castShadow = true; win.receiveShadow = true; win.name = name;
+      }
+      const body = mk(this.parts, MD.mat) || new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)]), MD.mat);
+      if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
+      return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win };
     }
   }
 
@@ -183,41 +230,6 @@
     b.pishtaq(0, Wd * 0.4 + 3, 20, 7, 28, P.sand2, P.turq);
     for (const s of [-1, 1]) b.minaret(s * 16, Wd * 0.4 + 6, 3.2, 50, P.sand, P.turq);
   };
-  M.minor = (b, o) => {
-    const L = o.L || 88, Wd = o.W || 45;
-    b.box(0, 0, 0, L, 0.8, Wd + 8, P.marble);
-    b.box(-L * 0.08, 0.8, 0, L * 0.55, 12, Wd * 0.72, P.marble);
-    b.niches(-L * 0.35, L * 0.19, Wd * 0.36 + 0.05, 3, 6, 4.5, 2.6, 0, [0.55, 0.68, 0.78]); b.niches(-L * 0.35, L * 0.19, -Wd * 0.36 - 0.05, 3, 6, 4.5, 2.6, 0, [0.55, 0.68, 0.78]);
-    b.cyl(-L * 0.08, 12.8, 0, 9.5, 4, P.marble, 20); b.dome(-L * 0.08, 16.8, 0, 9, P.sky, { hk: 1.2, seg: 20 });
-    for (const s of [-1, 1]) { b.cyl(-L * 0.08 + s * 13, 12.8, 0, 3.6, 1.5, P.marble, 12); b.dome(-L * 0.08 + s * 13, 14.3, 0, 3.4, P.sky, { hk: 0.9, seg: 12 }); }
-    b.pishtaq(L * 0.24, 0, 16, 5, 20, P.marble, P.sky, Math.PI / 2);
-    b.minaret(L * 0.38, -Wd * 0.3, 2.8, 48, P.marble, P.sky);
-  };
-  M.tv_tower = (b) => {
-    const H = 375;
-    b.cyl(0, 0, 0, 30, 1.2, P.conc, 24);
-    for (let i = 0; i < 3; i++) { // три опоры
-      const a = i / 3 * Math.PI * 2, L = 72, g = new THREE.BoxGeometry(3.2, L, 3.2);
-      g.translate(0, L / 2, 0); g.rotateZ(-0.36); g.rotateY(-a);
-      b.add(g, P.white, Math.cos(a) * 24, 0, Math.sin(a) * 24);
-    }
-    b.cyl(0, 0, 0, 4.5, 240, P.white, 12, 3.6);
-    for (const y of [40, 80, 160, 200]) b.cyl(0, y, 0, 4.4, 3, P.red, 12);
-    b.cyl(0, 92, 0, 14, 2.5, P.white, 24); b.cyl(0, 94.5, 0, 12.5, 5, P.glass, 24, 12.5, true); b.cyl(0, 99.5, 0, 14.5, 2.5, P.white, 24);
-    b.cyl(0, 102, 0, 11, 2, P.white, 24); b.cyl(0, 104, 0, 10.5, 4, P.glass, 24, 10.5, true); b.cyl(0, 108, 0, 11.5, 2, P.white, 24);
-    b.cyl(0, 240, 0, 2.2, 90, P.white, 10, 1.6);
-    for (let y = 330; y < H - 3; y += 9) b.cyl(0, y, 0, 1.0, 4.5, (Math.floor((y - 330) / 9) % 2) ? P.white : P.red, 8);
-    b.cyl(0, H - 3, 0, 1.4, 1.6, P.red, 8, 1.4, true);
-  };
-  M.temurid = (b, o) => {
-    const R = Math.min(o.L || 73, o.W || 73) * 0.42;
-    b.cyl(0, 0, 0, R + 5, 1.6, P.conc, 32);
-    b.cyl(0, 1.6, 0, R - 1, 15, P.white, 32);
-    b.columns(0, 0, 1.6, R + 0.6, 36, 0.75, 14, P.marble);
-    for (let i = 0; i < 36; i++) { const a = (i + 0.5) / 36 * Math.PI * 2 + Math.PI / 36; b.box(Math.cos(a) * (R - 0.9), 3, Math.sin(a) * (R - 0.9), 2, 10, 0.3, [0.48, 0.58, 0.66], -a + Math.PI / 2, true); }
-    b.cyl(0, 16.6, 0, R + 1.2, 1.8, P.marble, 32);
-    b.dome(0, 18.4, 0, R - 2, P.cobalt, { hk: 0.72, seg: 28, ribs: [0.24, 0.42, 0.74] });
-  };
   M.hotel_uz = (b, o) => {
     const L = o.L || 90, Wd = Math.max(14, (o.W || 36) * 0.45), H = o.h || 71.5;
     b.box(0, 0, 0, L + 10, 6, (o.W || 36) + 6, P.conc);
@@ -233,61 +245,6 @@
       for (let y = 6; y <= H - 2; y += 3.3) b.box(x, y, zc - Wd / 2 - 0.6, segL + 0.4, 0.7, 1.3, P.white, ry);
     }
     b.box(0, H - 2, 0, L, 2.4, Wd + 3, P.white);
-  };
-  M.forums = (b, o) => {
-    const L = o.L || 113, Wd = o.W || 87;
-    b.box(0, 0, 0, L + 16, 1.4, Wd + 16, P.marble);
-    b.box(0, 1.4, 0, L - 6, 22, Wd - 6, [0.74, 0.80, 0.86], 0, true);
-    for (let x = -L / 2 + 2; x <= L / 2 - 2; x += 5.4) { b.cyl(x, 1.4, Wd / 2 - 1, 0.9, 22, P.marble, 8); b.cyl(x, 1.4, -Wd / 2 + 1, 0.9, 22, P.marble, 8); }
-    for (let z = -Wd / 2 + 2; z <= Wd / 2 - 2; z += 5.4) { b.cyl(L / 2 - 1, 1.4, z, 0.9, 22, P.marble, 8); b.cyl(-L / 2 + 1, 1.4, z, 0.9, 22, P.marble, 8); }
-    b.box(0, 23.4, 0, L + 1, 3, Wd + 1, P.marble);
-    b.cyl(0, 26.4, 0, 20, 6, P.marble, 28); b.dome(0, 32.4, 0, 19, P.cobalt, { hk: 0.85, seg: 28, ribs: [0.22, 0.42, 0.76] });
-  };
-  M.navoi_theatre = (b, o) => {
-    const L = o.L || 105, Wd = o.W || 46;
-    b.box(0, 0, 0, L, 15, Wd, P.ochre);
-    b.box(0, 15, 0, L * 0.36, 9, Wd * 0.75, P.sand);
-    b.box(0, 24, 0, L * 0.36 + 1, 1.5, Wd * 0.75 + 1, P.roof);
-    b.box(0, 15, 0, L, 1, Wd, P.roof);
-    // аркада главного фасада
-    for (let x = -L * 0.3; x <= L * 0.3; x += 4.6) b.box(x, 0, Wd / 2 + 2.6, 1.4, 11, 1.4, P.sand);
-    b.box(0, 11, Wd / 2 + 2.6, L * 0.62, 2.2, 5.5, P.sand);
-    b.niches(-L / 2, L / 2, Wd / 2 + 0.05, 4, 6, 5, 2.4, 0, [0.42, 0.32, 0.24]); b.niches(-L / 2, L / 2, -Wd / 2 - 0.05, 4, 6, 5, 2.4, 0, [0.42, 0.32, 0.24]);
-    b.cyl(0, 0, Wd / 2 + 22, 7, 0.8, P.white, 20); b.cyl(0, 0.8, Wd / 2 + 22, 6, 0.3, P.water, 20); b.cyl(0, 0.8, Wd / 2 + 22, 0.8, 4, P.sky, 8);
-  };
-  M.romanov = (b, o) => {
-    const L = o.L || 40, Wd = o.W || 25;
-    b.box(0, 0, 0, L, 10, Wd, P.brick);
-    for (const y of [0, 4.6, 9.2]) b.box(0, y, 0, L + 0.3, 0.8, Wd + 0.3, P.white);
-    b.box(0, 10, 0, L - 4, 3.5, Wd - 4, [0.3, 0.42, 0.36]);
-    for (const s of [-1, 1]) { b.box(s * (L / 2 - 3), 0, Wd / 2 - 3, 6, 15, 6, P.brick); b.cone(s * (L / 2 - 3), 15, Wd / 2 - 3, 4.6, 6, [0.3, 0.46, 0.38], 4); }
-    b.box(0, 0, Wd / 2 + 1.2, 8, 8, 2.4, P.white);
-    b.niches(-L / 2, L / 2, Wd / 2 + 0.05, 2.5, 4, 4.5, 1.6, 0, [0.88, 0.86, 0.8]);
-  };
-  M.mustaqillik = (b, o) => {
-    // арка «Эзгулик»: колонны и аисты
-    const L = o.L || 148;
-    for (let x = -L / 2 + 3; x <= L / 2 - 3; x += 9.2) for (const z of [-2.6, 2.6]) b.box(x, 0, z, 1.6, 13, 1.6, P.marble);
-    b.box(0, 13, 0, L, 1.6, 8.5, P.marble); b.box(0, 14.6, 0, L - 2, 0.8, 7, P.gold);
-    for (let x = -L / 2 + 7.6; x <= L / 2 - 6; x += 9.2) { b.box(x, 15.4, 0, 2.2, 1.2, 0.9, P.white); b.box(x + 1.1, 16.2, 0, 1, 0.6, 0.5, P.white); b.box(x - 0.6, 15.4, 0, 0.9, 0.4, 2.6, P.dark); b.box(x + 1.6, 16.2, 0, 0.7, 0.25, 0.25, P.red); }
-  };
-  M.mustaqillik_mon = (b) => {
-    b.box(0, 0, 0, 22, 1.2, 22, P.marble); b.box(0, 1.2, 0, 14, 1.6, 14, P.grey);
-    b.box(0, 2.8, 0, 6, 16, 6, [0.82, 0.8, 0.76]);
-    b.sphere(0, 23, 0, 4.4, P.gold, 14);
-    b.box(0, 2.8, 9, 3, 2, 3, P.grey); b.cyl(0, 4.8, 9, 0.8, 3.2, P.bronze, 8); b.sphere(0, 8.4, 9, 0.6, P.bronze, 6);
-    for (const [x, z] of [[-24, -24], [24, -24], [-24, 24], [24, 24]]) { b.cyl(x, 0, z, 5, 0.7, P.white, 16); b.cyl(x, 0.7, z, 4.3, 0.2, P.water, 16); b.cyl(x, 0.7, z, 0.5, 3, P.sky, 6); }
-  };
-  M.amir_temur = (b) => {
-    b.cyl(0, 0, 0, 13, 0.5, P.conc, 24); b.box(0, 0.5, 0, 9, 1.4, 9, [0.5, 0.48, 0.46]); b.box(0, 1.9, 0, 6, 7.5, 6, [0.42, 0.4, 0.4]);
-    const B = P.bronze, y = 9.4;
-    b.box(0, y + 2.2, 0, 7.2, 2.4, 2.4, B);                      // корпус коня
-    for (const [x, z] of [[-2.6, -0.8], [-2.6, 0.8], [2.6, -0.8], [2.4, 0.8]]) b.box(x, y, z, 0.6, 2.4, 0.6, B);
-    { const g = new THREE.BoxGeometry(1.4, 3.4, 1.6); g.translate(0, 1.7, 0); g.rotateZ(-0.55); b.add(g, B, 3.2, y + 3.4, 0); }
-    b.box(4.9, y + 5.6, 0, 2.4, 1.2, 1.2, B);                    // голова
-    { const g = new THREE.BoxGeometry(0.5, 2.6, 0.6); g.translate(0, -1.3, 0); g.rotateZ(-0.5); b.add(g, B, -3.6, y + 3.6, 0); }
-    b.box(0, y + 4.4, 0, 1.6, 3.2, 1.4, B); b.sphere(0, y + 8.3, 0, 0.8, B, 8); b.cone(0, y + 8.9, 0, 0.7, 1, B, 6);
-    { const g = new THREE.BoxGeometry(2.8, 0.45, 0.45); g.rotateZ(0.6); b.add(g, B, 1.4, y + 7.4, 0.8); }
   };
   M.courage = (b) => {
     b.box(0, 0, 0, 34, 0.4, 34, [0.7, 0.68, 0.64]);
@@ -425,15 +382,6 @@
       const pk = new THREE.ConeGeometry(w * 0.5, 9, 4, 1, true); pk.rotateY(Math.PI / 4); pk.translate(0, 26 + 4.5, 0); b.add(pk, [0.97, 0.97, 0.99], mx, 0, mz, ang);
     }
   };
-  M.magic_city = (b, o) => {
-    const L = o.L || 72;
-    b.box(0, 0, 0, L * 0.8, 14, 22, [0.95, 0.91, 0.86]);
-    b.niches(-L * 0.4, L * 0.4, 11.05, 3, 7, 4, 2, 0, [0.48, 0.36, 0.58]);
-    const cs = [P.red, P.cobalt, [0.56, 0.34, 0.66], [0.92, 0.55, 0.2]];
-    [[-L * 0.4, -11], [L * 0.4, -11], [-L * 0.4, 11], [L * 0.4, 11]].forEach(([x, z], i) => { b.cyl(x, 0, z, 4.2, 24, [0.97, 0.94, 0.9], 14); b.cone(x, 24, z, 5.2, 12, cs[i], 14); });
-    b.cyl(0, 14, 0, 6.5, 22, [0.98, 0.96, 0.92], 16); b.cone(0, 36, 0, 8, 18, [0.25, 0.62, 0.72], 16);
-    b.cyl(0, 54, 0, 0.3, 4, P.gold, 4);
-  };
   M.navoi_park = (b) => {
     b.cyl(0, 0, 0, 16, 1.8, P.marble, 28); b.cyl(0, 1.8, 0, 12.5, 0.6, P.marble, 28);
     b.columns(0, 0, 2.4, 10, 12, 0.75, 11, P.white);
@@ -479,6 +427,7 @@
     // экскаватор и самосвал
     b.box(30, 0, 40, 6, 2.5, 3.2, P.yellow); b.box(30, 2.5, 40, 3, 2, 2.6, P.dark); b.box(-40, 0, -30, 8, 3, 3, P.red); b.box(-35, 0, -30, 3, 3.5, 3, P.grey);
   };
+  MD.M = M; MD.MB = MB; MD.P = P; MD.se = se; MD.lerpR = lerpR;
   // поворотные краны и колесо обозрения — отдельные анимируемые меши
   function craneParts(x, z, h) {
     const m = new MB();
@@ -489,7 +438,7 @@
   }
 
   // куда обращён главный фасад (портал)
-  const FACE = { kukeldash: [41.32678, 69.23516], hazrati_imam: [41.33696, 69.239], minor: [41.3354, 69.2700] };
+  const FACE = MD.FACE = Object.assign({ kukeldash: [41.32678, 69.23516], hazrati_imam: [41.33696, 69.239], minor: [41.3354, 69.2700] }, MD.FACE || {});
   // ---------------- размещение ----------------
   MD.init = function () {
     MD.mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
@@ -531,7 +480,7 @@
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win]) if (m) grp.add(m);
       S.scene.add(grp);
       l.obj = grp; l.top = parts.body.geometry.boundingBox.max.y; l.radius = parts.body.geometry.boundingSphere.radius;
       MD.list.push({ l, grp, r: parts.body.geometry.boundingSphere.radius });
