@@ -6,7 +6,7 @@
 // =====================================================================
 (function () {
   const S = TPM.scene, T = TPM.tiles;
-  const MD = TPM.models = { list: [], anim: [] };
+  const MD = TPM.models = { list: [], anim: [], decor: [] };
   let LMG = {};
   window.TPM_LM = (g) => { LMG = g; };
 
@@ -31,7 +31,7 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.screen = []; this.show = []; }
     // балка между двумя точками (опоры, растяжки)
     beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
       const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
@@ -185,7 +185,8 @@
       }
       const body = mk(this.parts, MD.mat) || new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)]), MD.mat);
       if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
-      return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win };
+      return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win,
+        flag: mk(this.flag, MD.flagMat), screen: mk(this.screen, MD.screenMat), show: mk(this.show, MD.showMat) };
     }
   }
 
@@ -245,6 +246,7 @@
       for (let y = 6; y <= H - 2; y += 3.3) b.box(x, y, zc - Wd / 2 - 0.6, segL + 0.4, 0.7, 1.3, P.white, ry);
     }
     b.box(0, H - 2, 0, L, 2.4, Wd + 3, P.white);
+    b.box(0, H + 0.4, 0, L + 0.6, 0.6, Wd + 3.6, P.white); b.flag.push(b.parts.pop());  // неоновый венец (перелив флага)
   };
   M.courage = (b) => {
     b.box(0, 0, 0, 34, 0.4, 34, [0.7, 0.68, 0.64]);
@@ -454,34 +456,80 @@
          totalEmissiveRadiance += led * uNight * (0.55 + 0.35 * step(0.5, fract(vWP2.y / 2.6)));`);
     };
     MD.ledMat.customProgramCacheKey = () => "led";
+    // цвета флага Узбекистана: перелив по кругу (синий → красный → белый → красный → зелёный) и полотнище
+    const FLAG = `
+      vec3 flagC(float i) { i = mod(i, 5.0); return i < 1.0 ? vec3(0.0, 0.62, 0.95) : i < 2.0 ? vec3(1.0, 0.08, 0.12) : i < 3.0 ? vec3(1.0) : i < 4.0 ? vec3(1.0, 0.08, 0.12) : vec3(0.1, 0.85, 0.25); }
+      vec3 flagSeq(float s) { float x = fract(s) * 5.0, i = floor(x); return mix(flagC(i), flagC(i + 1.0), smoothstep(0.55, 1.0, fract(x))); }
+      vec3 flagBands(float t) { return t < 0.32 ? vec3(0.0, 0.6, 0.85) : t < 0.345 ? vec3(0.9, 0.07, 0.12) : t < 0.655 ? vec3(1.0) : t < 0.68 ? vec3(0.9, 0.07, 0.12) : vec3(0.08, 0.7, 0.23); }
+      vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); return v * mix(vec3(1.0), k, s); }`;
+    // ночная подсветка в локальных координатах модели (vLP)
+    const nightFx = (key, body) => {
+      const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      m.onBeforeCompile = (sh) => {
+        sh.uniforms.uNight = T.uNight; sh.uniforms.uTime = T.uTime;
+        sh.vertexShader = "varying vec3 vLP;\n" + sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n vLP = transformed;");
+        sh.fragmentShader = "uniform float uNight; uniform float uTime; varying vec3 vLP;\n" + FLAG + "\n" + sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n" + body);
+      };
+      m.customProgramCacheKey = () => key;
+      return m;
+    };
+    // неоновые ленты (Hilton, Tashkent City Mall…): цвета флага бегут по контуру и вверх
+    MD.flagMat = nightFx("flag", `
+      float fs = (vLP.x + vLP.z) * 0.005 + vLP.y * 0.007 - uTime * 0.11;
+      totalEmissiveRadiance += flagSeq(fs) * uNight * 1.15;`);
+    // LED-экран с развевающимся флагом; цвет вершины = (u, v) экрана
+    MD.screenMat = nightFx("screen", `
+      vec2 uv = vColor.rg;
+      float wv = sin(uv.x * 25.13 - uTime * 2.2) * 0.05 + sin(uv.x * 9.4 - uTime * 1.3) * 0.03;
+      vec3 fc = flagBands(clamp(1.0 - uv.y + wv, 0.0, 1.0)) * (0.82 + 0.18 * sin(uv.x * 25.13 - uTime * 2.2 + 1.2));
+      diffuseColor.rgb = fc * 0.45;
+      totalEmissiveRadiance += fc * (0.35 + 0.75 * uNight);`);
+    // телебашня ночью: золотое мерцание прожекторов → радужные волны вверх по стволу → перелив флага →
+    // бегущие стробы со вспышками; режимы сменяются каждые 12 с с плавным переходом
+    MD.showMat = nightFx("show", `
+      float ang = atan(vLP.z, vLP.x), cyc = mod(uTime, 48.0), md = floor(cyc / 12.0), ph = fract(cyc / 12.0);
+      float tw = fract(sin(dot(floor(vec2(ang * 6.0, vLP.y / 3.0)), vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 c0 = vec3(1.0, 0.72, 0.28) * (0.55 + 0.45 * step(0.5, fract(tw * 7.0 + uTime * (0.6 + tw))));
+      vec3 c1 = hsv(fract(vLP.y / 140.0 - uTime * 0.22 + ang * 0.08), 0.85, 1.0);
+      vec3 c2 = flagSeq(vLP.y / 160.0 - uTime * 0.16);
+      float ch = step(0.55, fract(vLP.y / 22.0 - uTime * 1.6)) + step(0.92, fract(uTime * 0.9)) * 2.0;
+      vec3 c3 = mix(vec3(0.35, 0.55, 1.0), vec3(1.0), step(1.5, ch)) * min(ch, 1.0);
+      vec3 cA = md < 0.5 ? c0 : md < 1.5 ? c1 : md < 2.5 ? c2 : c3;
+      vec3 cB = md < 0.5 ? c1 : md < 1.5 ? c2 : md < 2.5 ? c3 : c0;
+      totalEmissiveRadiance += mix(cA, cB, smoothstep(0.88, 1.0, ph)) * uNight * 1.2;`);
     MD.glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
     MD.glowMat.onBeforeCompile = (sh) => { // днём — цвет стекла, ночью — тёплый свет окон
       sh.uniforms.uNight = T.uNight;
       sh.fragmentShader = "uniform float uNight;\n" + sh.fragmentShader.replace("#include <color_fragment>",
         "#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb * 0.85, vec3(1.0, 0.82, 0.5) * (0.75 + 0.25 * diffuseColor.r), uNight);");
     };
-    for (const l of TPM.landmarks) {
-      const g = LMG[l.id]; if (!g) continue;
-      l.mx = g.x; l.mz = g.z;
-      const ll = T.m2ll(g.x, g.z); l.lat = +ll[0].toFixed(6); l.lng = +ll[1].toFixed(6);
-      const fn = M[l.id]; if (!fn) { l.top = 40; continue; }
+    // модель на контуре g: группа в мировых координатах, повёрнутая по длинной оси контура
+    const place = (id, g) => {
       // перевод мировой точки (метры) в локальные координаты модели (ось x — длинная ось контура)
       g.local = (wx, wz) => {
         const dx = wx - g.x, dz = wz - g.z, c = Math.cos(g.ang), s2 = Math.sin(g.ang);
         return [dx * c + dz * s2, -dx * s2 + dz * c];
       };
-      const b = new MB(); fn(b, g);
-      const parts = b.build(l.id);
+      const b = new MB(); M[id](b, g);
+      const parts = b.build(id);
       const grp = new THREE.Group();
       grp.position.set(g.x, 0, g.z); grp.rotation.y = -g.ang;
       // повернуть фасадом (локальная +z) к заданной точке
-      if (FACE[l.id]) {
-        const [fx, fz] = T.ll2m(FACE[l.id][0], FACE[l.id][1]);
+      if (FACE[id]) {
+        const [fx, fz] = T.ll2m(FACE[id][0], FACE[id][1]);
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led, parts.win]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.screen, parts.show]) if (m) grp.add(m);
       S.scene.add(grp);
+      return { grp, parts };
+    };
+    for (const l of TPM.landmarks) {
+      const g = LMG[l.id]; if (!g) continue;
+      l.mx = g.x; l.mz = g.z;
+      const ll = T.m2ll(g.x, g.z); l.lat = +ll[0].toFixed(6); l.lng = +ll[1].toFixed(6);
+      if (!M[l.id]) { l.top = 40; continue; }
+      const { grp, parts } = place(l.id, g);
       l.obj = grp; l.top = parts.body.geometry.boundingBox.max.y; l.radius = parts.body.geometry.boundingSphere.radius;
       MD.list.push({ l, grp, r: parts.body.geometry.boundingSphere.radius });
       if (l.id === "mustaqillik" && g.x2 !== undefined) {
@@ -510,6 +558,13 @@
         lamp.position.set(0, 378, 0); grp.add(lamp);
         MD.anim.push((t) => { lamp.visible = Math.floor(t * 1.2) % 2 === 0; });
       }
+    }
+    // фоновые модели (ЖК, башни) — без карточки и пункта в списке мест
+    const isLm = new Set(TPM.landmarks.map((l) => l.id));
+    for (const id in LMG) {
+      if (isLm.has(id) || !M[id]) continue;
+      const { grp, parts } = place(id, LMG[id]);
+      MD.decor.push({ grp, r: parts.body.geometry.boundingSphere.radius });
     }
   };
   // миниатюры для списка и карточки: каждая модель рендерится отдельно в пиксель-арт
@@ -553,7 +608,7 @@
     return best && best.l;
   };
   MD.near = function (x, z, extra) {
-    for (const it of MD.list) if (Math.hypot(it.grp.position.x - x, it.grp.position.z - z) < it.r * 0.6 + extra) return true;
+    for (const it of MD.list.concat(MD.decor)) if (Math.hypot(it.grp.position.x - x, it.grp.position.z - z) < it.r * 0.6 + extra) return true;
     return false;
   };
 })();
