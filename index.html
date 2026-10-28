@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>Tashkent Pixel Map — живая 3D пиксельная карта Ташкента</title>
+  <meta name="description" content="Интерактивная изометрическая пиксельная карта Ташкента: достопримечательности, живые улицы, светофоры, день и ночь.">
+  <meta name="theme-color" content="#231d18">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="world" aria-label="Пиксельная карта Ташкента"></canvas>
+    <div id="labels"></div>
+  </div>
+
+  <!-- логотип -->
+  <header id="brand" class="px-panel">
+    <div class="logo">
+      <span class="dome"></span>
+      <div>
+        <h1>TASHKENT<small>PIXEL MAP</small></h1>
+        <p>Живая карта Ташкента</p>
+      </div>
+    </div>
+    <div class="brand-btns">
+      <button id="btn-places" class="px-btn gold">☰ Места</button>
+      <button id="btn-tour" class="px-btn">▶ Экскурсия</button>
+    </div>
+  </header>
+
+  <!-- где я: квартал / район -->
+  <section id="where" class="px-panel" aria-live="polite">
+    <div id="where-name">Ташкент</div>
+    <div id="where-district"></div>
+    <div id="where-city">Ташкент</div>
+  </section>
+
+  <!-- мини-карта -->
+  <section id="minimap" class="px-panel">
+    <canvas id="mm" width="124" height="78" aria-label="Мини-карта Ташкента"></canvas>
+    <span class="mm-title">Ташкент</span>
+  </section>
+
+  <!-- список мест -->
+  <aside id="places" class="px-panel">
+    <div class="pl-head">
+      <h2>Куда сходить</h2>
+      <button id="places-close" class="x" aria-label="Закрыть">✕</button>
+    </div>
+    <input id="search" type="search" placeholder="Поиск: базар, мечеть, парк…" autocomplete="off">
+    <div id="cats"></div>
+    <div id="list"></div>
+  </aside>
+
+  <!-- карточка места -->
+  <article id="card" class="px-panel" aria-live="polite">
+    <button id="card-close" class="x" aria-label="Закрыть">✕</button>
+    <figure id="card-photo" hidden><img alt="" decoding="async"><figcaption></figcaption></figure>
+    <div id="card-art"></div>
+    <div class="card-head">
+      <div id="card-icon"></div>
+      <div>
+        <span id="card-cat" class="cat"></span>
+        <h2 id="card-title"></h2>
+        <div id="card-uz"></div>
+      </div>
+    </div>
+    <p id="card-desc"></p>
+    <div id="card-facts"></div>
+    <div class="tip"><b>Совет</b><span id="card-tip"></span></div>
+    <div class="card-actions">
+      <a id="card-gmaps" class="px-btn gold" target="_blank" rel="noopener">Google Maps ↗</a>
+      <a id="card-route" class="px-btn" target="_blank" rel="noopener">Маршрут ↗</a>
+    </div>
+    <div class="card-nav">
+      <button id="card-prev" class="px-btn">◀ Пред.</button>
+      <button id="card-next" class="px-btn">След. ▶</button>
+    </div>
+    <p class="note">Часы работы и цены могут меняться — уточняйте перед визитом.</p>
+  </article>
+
+  <!-- инструменты -->
+  <div id="tools">
+    <button id="btn-settings" class="px-btn icon" title="Настройки">⚙</button>
+    <div class="tool-list px-panel">
+      <button id="btn-time" class="tool"><span>Время</span><b>Авто</b></button>
+      <button id="btn-anim" class="tool"><span>Анимация</span><b>Вкл</b></button>
+      <button id="btn-q" class="tool"><span>Качество</span><b>Авто</b></button>
+    </div>
+  </div>
+  <div id="zoom">
+    <button id="zin" class="px-btn icon" aria-label="Приблизить" title="Приблизить">+</button>
+    <button id="zout" class="px-btn icon" aria-label="Отдалить" title="Отдалить">−</button>
+    <button id="rotl" class="px-btn icon" aria-label="Повернуть влево" title="Повернуть (Q)">⟲</button>
+    <button id="rotr" class="px-btn icon" aria-label="Повернуть вправо" title="Повернуть (E)">⟳</button>
+  </div>
+  <div id="compass" title="Север — вверх-влево (изометрическая проекция)">
+    <svg viewBox="0 0 40 40" width="40" height="40" shape-rendering="crispEdges" aria-hidden="true">
+      <rect x="0" y="0" width="40" height="40" fill="#241d18"/>
+      <rect x="2" y="2" width="36" height="36" fill="none" stroke="#4b3d31" stroke-width="2"/>
+      <polygon points="8,12 22,20 18,24" fill="#d2553f"/>
+      <polygon points="32,28 18,24 22,20" fill="#f3e7cf"/>
+      <text x="6" y="11" font-family="Press Start 2P, monospace" font-size="7" fill="#ffcf4a">С</text>
+    </svg>
+  </div>
+
+  <footer id="hud">
+    <div id="clock">--:--</div>
+    <div id="stats"></div>
+    <div id="status" style="display:none"></div>
+  </footer>
+  <div id="attr">Данные © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></div>
+  <div id="toast"></div>
+
+  <noscript><p class="nojs">Для работы карты включите JavaScript.</p></noscript>
+  <p id="nogl" class="nojs" hidden>Браузер не поддерживает WebGL — обновите браузер или включите аппаратное ускорение.</p>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/earcut-src.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/landmarks.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/geo-worker.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/tiles.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/traffic.js"></script>
+  <script src="js/city.js"></script>
+  <script src="js/areas.js"></script>
+  <script src="js/minimap.js"></script>
+  <script src="js/photos.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="data/index.js"></script>
+  <script src="data/lm.js"></script>
+  <script src="data/areas.js"></script>
+  <script src="data/minimap.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
