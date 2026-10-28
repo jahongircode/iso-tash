@@ -231,22 +231,72 @@
     b.pishtaq(0, Wd * 0.4 + 3, 20, 7, 28, P.sand2, P.turq);
     for (const s of [-1, 1]) b.minaret(s * 16, Wd * 0.4 + 6, 3.2, 50, P.sand, P.turq);
   };
+  // ---------- гостиница «Узбекистан» (1974): тонкая пластина, изогнутая дугой (вогнутый фасад к скверу),
+  //            сплошная кремовая решётка-панджара из глубоких ячеек, розово-красный пояс под верхним этажом,
+  //            глухие торцы с вертикальными швами, стеклянный вестибюль с белым фризом, круглый козырёк входа,
+  //            на крыше — объёмные золотые буквы HOTEL UZBEKISTAN ----------
+  const FONT = { H: "10001100011000111111100011000110001", O: "01110100011000110001100011000101110", T: "11111001000010000100001000010000100",
+    E: "11111100001000011110100001000011111", L: "10000100001000010000100001000011111", U: "10001100011000110001100011000101110",
+    Z: "11111000010001000100010001000011111", B: "11110100011000111110100011000111110", K: "10001100101010011000101001001010001",
+    I: "01110001000010000100001000010001110", S: "01111100001000001110000010000111110", A: "01110100011000111111100011000110001",
+    N: "10001110011010110011100011000110001", " ": "00000000000000000000000000000000000" };
   M.hotel_uz = (b, o) => {
-    const L = o.L || 90, Wd = Math.max(14, (o.W || 36) * 0.45), H = o.h || 71.5;
-    b.box(0, 0, 0, L + 10, 6, (o.W || 36) + 6, P.conc);
-    // слегка вогнутый фасад: 7 секций по дуге
-    const n = 7, segL = L / n;
-    for (let i = 0; i < n; i++) {
-      const t = (i - (n - 1) / 2) / ((n - 1) / 2), x = t * (L / 2 - segL / 2), zc = -t * t * 6;
-      const ry = Math.atan(t * 12 / L * 2);
-      b.box(x, 6, zc, segL + 0.4, H - 8, Wd, [0.30, 0.34, 0.40], ry, true);           // остеклённое «ядро» (ночью светится)
-      for (let k = 0; k <= 4; k++) b.box(x + (k / 4 - 0.5) * segL, 6, zc + Wd / 2 + 0.6, 0.9, H - 8, 1.2, P.white, ry); // вертикальные рёбра решётки
-      for (let y = 6; y <= H - 2; y += 3.3) b.box(x, y, zc + Wd / 2 + 0.6, segL + 0.4, 0.7, 1.3, P.white, ry); // горизонтальные пояса
-      for (let k = 0; k <= 4; k++) b.box(x + (k / 4 - 0.5) * segL, 6, zc - Wd / 2 - 0.6, 0.9, H - 8, 1.2, P.white, ry);
-      for (let y = 6; y <= H - 2; y += 3.3) b.box(x, y, zc - Wd / 2 - 0.6, segL + 0.4, 0.7, 1.3, P.white, ry);
+    const L = o.L || 90, D = 17, H = o.h || 71.5, R = 115, CR = [0.93, 0.89, 0.8], BG = [0.58, 0.52, 0.45];
+    const rf = R - D / 2, rb = R + D / 2, phi = Math.asin(L / 2 / rb), N = 28;
+    const at = (r, a) => [r * Math.sin(a), R - r * Math.cos(a)];                                   // центр дуги — перед фасадом (+z)
+    const arc = (r) => { const p = []; for (let i = 0; i <= N; i++) p.push(at(r, -phi + 2 * phi * i / N)); return p; };
+    const rib = (A, yA, B2, yB, col, list = "parts") => {                                             // лента между двумя открытыми линиями
+      const arr = [];
+      for (let i = 0; i + 1 < A.length; i++) arr.push(A[i][0], yA, A[i][1], A[i + 1][0], yA, A[i + 1][1], B2[i + 1][0], yB, B2[i + 1][1], A[i][0], yA, A[i][1], B2[i + 1][0], yB, B2[i + 1][1], B2[i][0], yB, B2[i][1]);
+      b.raw(arr, col, list);
+    };
+    const F = arc(rf), Bk = arc(rb), ring = F.concat(Bk.slice().reverse()), y0 = 8, yS = H - 7.2, yT = H - 1.4;
+    // стилобат, лестница и вестибюль
+    b.box(0, 0, 2, L + 18, 1.2, D + 26, [0.72, 0.66, 0.6]);
+    for (let k = 0; k < 4; k++) b.box(0, 0, D / 2 + 13 + k * 0.9, 34, 1.2 - k * 0.3, 0.9, [0.78, 0.74, 0.7]);
+    rib(arc(rf + 2.5), 1.2, arc(rf + 2.5), 6.6, [0.3, 0.38, 0.44], "glow"); rib(arc(rb - 2.5), 1.2, arc(rb - 2.5), 6.6, [0.3, 0.38, 0.44], "glow");
+    rib(arc(rf - 0.3), 6.4, arc(rf - 0.3), y0, P.white); rib(arc(rb + 0.3), 6.4, arc(rb + 0.3), y0, P.white);
+    for (let i = 2; i < N - 1; i += 3) { const [x, z] = at(rf + 1, -phi + 2 * phi * i / N); b.box(x, 1.2, z, 0.9, 5.4, 0.9, CR); }
+    // корпус: стена с окнами за решёткой
+    b.winRing(ring, y0, yT, BG, 74);
+    // решётка-панджара: полочки на каждом этаже и частые рёбра (спереди и сзади)
+    for (const [r, s] of [[rf, -1], [rb, 1]]) {
+      const out = arc(r + s * 1.1), inn = arc(r);
+      for (let y = y0, k = 0; y <= yS + 0.1; y += 1.825, k++) { rib(inn, y, out, y, CR); rib(out, y, out, y + (k % 2 ? 0.45 : 0.85), CR); }
+      const len = 2 * phi * r, n = Math.round(len / 1.9);
+      for (let k = 0; k <= n; k++) {
+        const a = -phi + 2 * phi * k / n, [x, z] = at(r + s * 0.55, a);
+        b.box(x, y0, z, k % 2 ? 0.3 : 0.45, yS - y0, 1.1, CR, -a);
+      }
+      rib(arc(r + s * 1.15), yS, arc(r + s * 1.15), yS + 1.3, [0.86, 0.43, 0.42]);                   // розово-красный пояс
+      rib(arc(r + s * 0.4), yT, arc(r + s * 0.4), H, P.white);                                        // карниз
     }
-    b.box(0, H - 2, 0, L, 2.4, Wd + 3, P.white);
-    b.box(0, H + 0.4, 0, L + 0.6, 0.6, Wd + 3.6, P.white); b.flag.push(b.parts.pop());  // неоновый венец (перелив флага)
+    // глухие торцы с вертикальными швами
+    for (const s of [-1, 1]) {
+      const a = s * phi, [fx, fz] = at(rf, a), [bx, bz] = at(rb, a), tx = Math.cos(a) * s * 0.2, tz = Math.sin(a) * s * 0.2;
+      b.raw([fx + tx, y0 - 1.6, fz + tz, bx + tx, y0 - 1.6, bz + tz, bx + tx, H, bz + tz, fx + tx, y0 - 1.6, fz + tz, bx + tx, H, bz + tz, fx + tx, H, fz + tz], [0.86, 0.8, 0.7]);
+      for (let k = 1; k < 6; k++) { const t = k / 6, x = fx + (bx - fx) * t + tx * 1.6, z = fz + (bz - fz) * t + tz * 1.6; b.box(x, y0, z, 0.25, H - y0 - 1, 0.25, [0.72, 0.66, 0.58], -a); }
+    }
+    // кровля
+    const tri = THREE.ShapeUtils.triangulateShape(ring.map((v) => new THREE.Vector2(v[0], v[1])), []), arr = [];
+    for (const t of tri) for (const i of t) arr.push(ring[i][0], H, ring[i][1]);
+    b.raw(arr, [0.62, 0.62, 0.62]);
+    b.box(0, H, 0, 14, 3, 7, [0.7, 0.7, 0.7]);
+    // круглый козырёк главного входа
+    const [ex, ez] = at(rf - 9, 0);
+    b.cyl(ex, 5.6, ez, 9.5, 0.9, P.white, 24); b.cyl(ex, 5.4, ez, 9.8, 0.3, [0.85, 0.8, 0.7], 24);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.6; b.cyl(ex + Math.cos(a) * 5.5, 1.2, ez + Math.sin(a) * 5.5, 0.35, 4.4, P.white, 8); }
+    // золотые буквы HOTEL UZBEKISTAN на крыше по дуге фасада (ночью подсвечены)
+    const txt = "HOTEL UZBEKISTAN", px = 0.85, rs = rf + 1.8, cols = txt.length * 6 - 1, GOLD = [0.95, 0.74, 0.28];
+    for (let ci = 0; ci < txt.length; ci++) {
+      const g = FONT[txt[ci]];
+      for (let gx = 0; gx < 5; gx++) for (let gy = 0; gy < 7; gy++) {
+        if (g[gy * 5 + gx] !== "1") continue;
+        const a = ((ci * 6 + gx) - cols / 2) * px / rs, [x, z] = at(rs, a);
+        b.box(x, H + 1.6 + (6 - gy) * px, z, px, px, 0.35, GOLD, -a, true);
+      }
+    }
+    for (let k = -4; k <= 4; k++) { const a = k * cols * px / 8 / rs, [x, z] = at(rs + 0.6, a); b.box(x, H, z, 0.3, 1.6 + 7 * px, 0.3, [0.4, 0.4, 0.42], -a); }
   };
   M.courage = (b) => {
     b.box(0, 0, 0, 34, 0.4, 34, [0.7, 0.68, 0.64]);
@@ -440,7 +490,7 @@
   }
 
   // куда обращён главный фасад (портал)
-  const FACE = MD.FACE = Object.assign({ kukeldash: [41.32678, 69.23516], hazrati_imam: [41.33696, 69.239], minor: [41.3354, 69.2700] }, MD.FACE || {});
+  const FACE = MD.FACE = Object.assign({ kukeldash: [41.32678, 69.23516], hazrati_imam: [41.33696, 69.239], minor: [41.3354, 69.2700], hotel_uz: [41.31117, 69.27975] }, MD.FACE || {});
   // ---------------- размещение ----------------
   MD.init = function () {
     MD.mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
