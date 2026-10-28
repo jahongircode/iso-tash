@@ -14,8 +14,11 @@ Every building, road, park, river and tree comes from OpenStreetMap. The data is
 
 - **The whole city.** About 390,000 OSM buildings with heights, windows and roof shapes (hipped and gabled roofs in the mahallas, domes on mosques). Roads have sidewalks and lane markings, and there are rails, canals, parks and about 3 million trees whose colours change with the season.
 - **A living world.** Cars brake at about 2,000 real traffic lights from OSM. Street lamps and windows light up at night, the Ferris wheel turns, and construction cranes rotate.
-- **23 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, the TV Tower, Independence Square, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
+- **27 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, NestOne, Hilton Tashkent City, Tashkent City Mall, the TV Tower, Romanov Palace, Magic City, Independence Square, Minor Mosque, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
 - **Stadiums matched against photos.** Pakhtakor has its sunken blue-and-yellow bowl, light-blue track and four lattice floodlight masts. Humo Arena has a flared media façade that glows violet at night. Milliy has its crown of white membrane "petals". All other OSM stadiums are drawn as stepped bowls with marked pitches.
+- **Detailed landmark models matched against photos.** NestOne is four stepped volumes around a core with a spire and orange stripes, and its edges glow at night. The TV Tower has three curved fin legs, a lattice shaft, two observation pods and a red-and-white antenna. Minor Mosque has white marble, turquoise friezes, a blue dome and two 56 m minarets. Romanov Palace, Magic City, Independence Square, Hilton and Tashkent City Mall were rebuilt the same way.
+- **Multi-level roads.** OSM bridges and flyovers rise above the ground on smooth ramps, with deck sides, parapets and pillars. Tunnels dip below ground with walled ramps and portals, and cars drive down into them. Each road class sits at its own height, and markings skip junctions, so roads no longer overlap.
+- **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
 - **Minimap** (top right), with a frame showing the current view.
 - **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
 - **Guided tour**, a time-of-day switch (auto, day, night, cycle) and quality presets.
@@ -66,7 +69,8 @@ js/config.js        settings and quality presets
 js/scene.js         camera, pixel-art post shader, lighting, input
 js/geo-worker.js    worker: tile decoding → 3D geometry, far-LOD impostor raster
 js/tiles.js         tile loading/unloading, LOD switching, materials, trees
-js/models.js        landmark 3D models
+js/models.js        landmark model builder, stadiums
+js/models-detail.js detailed landmark models
 js/traffic.js       road graph, cars, traffic lights
 js/city.js          day/night, frame loop
 js/landmarks.js     landmark texts
@@ -102,6 +106,7 @@ Landmark placement is defined in `tools/bake/landmarks_spec.json`.
 - Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema).
 - Buildings, traffic lights, trees and boundaries: Overpass API (maps.mail.ru mirror).
 - [three.js](https://threejs.org) (MIT) and [earcut](https://github.com/mapbox/earcut) (ISC).
+- Model references: photos on Wikimedia Commons and Wikipedia (used only as references; they are not shipped).
 - Card photos: Wikimedia Commons and Wikipedia; the author and licence are shown under each photo.
 - Fonts: Inter, Pixelify Sans and Press Start 2P (Google Fonts, OFL).
 - Style reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.

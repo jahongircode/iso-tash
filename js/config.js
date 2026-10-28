@@ -20,9 +20,9 @@ TPM.config = {
   quality: {
     // shadowMpp — дальше тени выключаются; farTiles/farRes — лимит и разрешение тайлов дальнего плана;
     // tallH — с какой высоты дом остаётся 3D на дальнем плане
-    low:  { label: "Эконом",  px: 3, fps: 30, cars: 70,  shadows: 0,    shadowMpp: 0,   maxTiles: 10, treeMpp: 1.9, farTiles: 30, farRes: 256, tallH: 16 },
-    mid:  { label: "Норма",   px: 2, fps: 40, cars: 180, shadows: 1024, shadowMpp: 1.8, maxTiles: 16, treeMpp: 3.0, farTiles: 48, farRes: 512, tallH: 12 },
-    high: { label: "Максимум", px: 2, fps: 60, cars: 320, shadows: 2048, shadowMpp: 2.6, maxTiles: 24, treeMpp: 3.0, farTiles: 70, farRes: 512, tallH: 9 },
+    low:  { label: "Эконом",  px: 3, fps: 30, cars: 70,  pt: 8,  shadows: 0,    shadowMpp: 0,   maxTiles: 10, treeMpp: 1.9, farTiles: 30, farRes: 256, tallH: 16 },
+    mid:  { label: "Норма",   px: 2, fps: 40, cars: 180, pt: 18, shadows: 1024, shadowMpp: 1.8, maxTiles: 16, treeMpp: 3.0, farTiles: 48, farRes: 512, tallH: 12 },
+    high: { label: "Максимум", px: 2, fps: 60, cars: 320, pt: 30, shadows: 2048, shadowMpp: 2.6, maxTiles: 24, treeMpp: 3.0, farTiles: 70, farRes: 512, tallH: 9 },
   },
   signal: { green: 11, yellow: 2.5, allRed: 1.5 },
   cycleSeconds: 300,

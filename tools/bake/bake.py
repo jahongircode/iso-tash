@@ -278,6 +278,7 @@ def resolve_landmarks(outl):
         if not o: print("landmark not found:", sp["id"]); continue
         if sp.get("pt2"): x2, z2 = m_of(*sp["pt2"]); o["x2"] = round(x2, 2); o["z2"] = round(z2, 2)
         if sp.get("entrance"): ex, ez = m_of(*sp["entrance"]); o["ex"] = round(ex, 2); o["ez"] = round(ez, 2)
+        if sp.get("sub"): o["sub"] = {k: [round(v, 2) for v in m_of(*ll)] for k, ll in sp["sub"].items()}  # опорные точки частей модели
         la, lo = sp.get("pt") or (None, None)
         for hid in sp.get("hide", []): hide.add(hid)  # здания OSM, которые заменяет модель
         geo[sp["id"]] = o
@@ -389,12 +390,18 @@ def main():
         for typ, p, g in (L.get("transportation") or {"features": []})["features"]:
             if typ != 2: continue
             c = RD.get(p.get("class"))
-            if c is None or p.get("brunnel") == "tunnel": continue
+            if c is None: continue
+            tun = p.get("brunnel") == "tunnel"
+            if tun and c > 6: continue  # подземные ж/д и метро не рисуем; автомобильные тоннели — да (флаг 8)
             if c == 9 and p.get("subclass") in ("subway", "funicular"): continue
             if c == 9 and p.get("subclass") in ("tram", "light_rail"): c = 10
             ow = p.get("oneway"); fl = 0
             if ow in (1, "1"): fl |= 1
             if p.get("brunnel") == "bridge": fl |= 2
+            if tun: fl |= 8
+            try: lay = int(p.get("layer") or 0)
+            except (TypeError, ValueError): lay = 0
+            if lay >= 2 and fl & 2: fl |= 16  # второй ярус развязки
             if p.get("ramp"): fl |= 4
             for l in g:
                 pts = [(px * k, py * k) for px, py in l]
