@@ -19,6 +19,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.dirname(__file__))
 import mvt
+from palette import roof_color, wall_color
 
 RAW, OSM, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 Z = 14
@@ -38,6 +39,9 @@ LC = {"grass": 3, "wood": 4, "farmland": 5, "sand": 6, "rock": 6, "ice": 6, "wet
 RD = {"motorway": 0, "trunk": 1, "primary": 2, "secondary": 3, "tertiary": 4, "minor": 5, "service": 6, "track": 7,
       "path": 8, "rail": 9, "transit": 10, "busway": 6}
 WW = {"river": 13, "canal": 14, "stream": 15, "drain": 15, "ditch": 15}
+
+# ошибки разметки OSM: стопки building:part без min_height, которых в городе нет (lat, lng, радиус м)
+BOGUS_PARTS = [(41.31918, 69.25564, 15)]  # «обелиск» 172 м к северу от Tashkent City
 ROAD_W = {0: 24, 1: 22, 2: 18, 3: 14, 4: 11, 5: 7.5, 6: 4.5, 7: 3, 8: 2.5, 9: 4, 10: 3, 11: 45, 12: 20, 13: 22, 14: 9, 15: 3}
 
 # ---------------- двоичная запись ----------------
@@ -151,15 +155,6 @@ KIND = {"house": 1, "detached": 1, "semidetached_house": 1, "terrace": 1, "bunga
         "mosque": 5, "school": 6, "university": 6, "college": 6, "hospital": 6, "kindergarten": 6, "public": 6, "government": 6,
         "civic": 6, "train_station": 6, "stadium": 6, "sports_hall": 6, "minaret": 7, "tower": 7, "church": 8, "cathedral": 8}
 ROOF = {"flat": 0, "gabled": 1, "hipped": 2, "pyramidal": 3, "dome": 4, "onion": 5, "skillion": 6, "half-hipped": 2, "mansard": 2}
-PAL_WALL = {0: [(226, 220, 206), (214, 204, 182), (206, 200, 190), (196, 186, 166)],
-            1: [(232, 226, 212), (218, 204, 176), (204, 182, 146), (182, 124, 94), (226, 216, 194), (210, 196, 170)],
-            2: [(224, 218, 206), (208, 204, 196), (216, 202, 178), (198, 200, 200), (228, 222, 208), (190, 180, 164)],
-            3: [(196, 208, 216), (172, 188, 200), (222, 216, 206), (152, 172, 188)],
-            4: [(178, 174, 166), (162, 160, 154), (192, 186, 174)], 5: [(214, 192, 152)], 6: [(228, 216, 190), (214, 198, 164), (220, 210, 196)],
-            7: [(220, 200, 160)], 8: [(230, 224, 214)], 9: [(170, 166, 158), (186, 180, 170)]}
-PAL_ROOF_PITCH = [(118, 140, 138), (150, 150, 146), (128, 76, 62), (92, 122, 142), (172, 172, 162), (104, 116, 92), (150, 90, 70)]
-PAL_ROOF_FLAT = [(150, 146, 140), (132, 130, 126), (168, 162, 152), (122, 120, 116), (142, 138, 128)]
-def rgb(t): return (t[0] << 16) | (t[1] << 8) | t[2]
 
 def rings_from_rel(mem):
     segs = [m["g"] for m in mem if m["r"] in ("outer", "")]
@@ -233,12 +228,9 @@ def bld_props(t, a_m2, hsh):
     if btype == "stadium" and a_m2 > 4000 and t.get("roof:shape") in (None, "flat", "none") and t.get("covered") != "yes":
         roof = 7; h = min(max(h if (t.get("height") or t.get("building:levels")) else 12.0, 8.0), 30.0)
     wall = col(t.get("building:colour"))
-    if wall < 0: wall = rgb(PAL_WALL.get(kind, PAL_WALL[0])[hsh % len(PAL_WALL.get(kind, PAL_WALL[0]))])
+    if wall < 0: wall = wall_color(kind, h, a_m2, hsh)
     rc = col(t.get("roof:colour"))
-    if rc < 0:
-        if roof in (4, 5): rc = rgb((54, 166, 186)) if hsh % 3 else rgb((60, 120, 190))
-        elif roof: rc = rgb(PAL_ROOF_PITCH[(hsh >> 4) % len(PAL_ROOF_PITCH)])
-        else: rc = rgb((176, 176, 170)) if kind == 4 else rgb(PAL_ROOF_FLAT[(hsh >> 4) % len(PAL_ROOF_FLAT)])
+    if rc < 0: rc = roof_color(kind, roof, h, a_m2, hsh)
     return kind, h, minh, roof, wall, rc
 
 # ---------------- достопримечательности ----------------
@@ -293,6 +285,10 @@ def main():
     os.makedirs(os.path.join(OUT, "t"), exist_ok=True)
     print("loading buildings…", flush=True)
     outl, parts = load_buildings()
+    def bogus(r):
+        la = sum(p[0] for p in r[:-1]) / (len(r) - 1); lo = sum(p[1] for p in r[:-1]) / (len(r) - 1)
+        return any(math.hypot((la - bl) * 111320, (lo - bo) * 111320 * math.cos(math.radians(bl))) < br for bl, bo, br in BOGUS_PARTS)
+    parts = [p for p in parts if not bogus(p[0])]
     print(len(outl), "outlines", len(parts), "parts", flush=True)
     extra = json.load(open(os.path.join(OSM, "extra.json"))) if os.path.exists(os.path.join(OSM, "extra.json")) else {}
     lm_geo, hide_ids, lm_polys = resolve_landmarks(outl)

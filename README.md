@@ -94,6 +94,12 @@ python tools/bake/bake.py raw osm data      # build data/
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.
 
+Default wall and roof colours (used when OSM has no `building:colour` / `roof:colour`) live in `tools/bake/palette.py`. Roof colours were sampled from satellite imagery of the old-city mahallas, Chilanzar panel blocks and the centre. To apply a changed palette to the already baked tiles without re-downloading OSM, run:
+
+```
+python tools/bake/recolor.py data
+```
+
 ## Limitations
 
 - Tashkent has no open LoD2 building models, so ordinary houses are generated from their OSM footprints and a set of rules. Where OSM has no height or levels, the height is estimated.
