@@ -5,7 +5,7 @@
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
 (function () {
-  const MD = TPM.models, M = MD.M, MB = MD.MB, P = MD.P, se = MD.se;
+  const MD = TPM.models, M = MD.M, P = MD.P, se = MD.se;
   const k3 = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
   const to = (b, list) => b[list].push(b.parts.pop());
 
@@ -243,18 +243,5 @@
       b.box(cx + s * (A - 5), yt + 2, cz + B - 0.9, 8, H - yt, 0.2, [0.3, 0.36, 0.44], 0, true);
     }
     b.cyl(cx + A - 5, H + 4, cz, 0.3, 8, [0.8, 0.8, 0.82], 6);
-  };
-
-  // LED-экран-кольцо (для телебашни): цвет вершины = (u, v) — их читает MD.screenMat
-  MB.prototype.screenRing = function (cx, y, cz, r, h, seg = 32, rep = 3) {
-    const pos = [], col = [];
-    for (let i = 0; i < seg; i++) {
-      const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2, u0 = i / seg * rep, u1 = (i + 1) / seg * rep;
-      const P0 = [cx + Math.cos(a0) * r, cz + Math.sin(a0) * r], P1 = [cx + Math.cos(a1) * r, cz + Math.sin(a1) * r];
-      pos.push(P0[0], y, P0[1], P1[0], y, P1[1], P1[0], y + h, P1[1], P0[0], y, P0[1], P1[0], y + h, P1[1], P0[0], y + h, P0[1]);
-      col.push(u0, 0, 0, u1, 0, 0, u1, 1, 0, u0, 0, 0, u1, 1, 0, u0, 1, 0);
-    }
-    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    this.screen.push([g, null]); return this;
   };
 })();
