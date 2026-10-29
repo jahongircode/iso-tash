@@ -20,6 +20,7 @@ Every building, road, park, river and tree comes from OpenStreetMap. The data is
 - **Detailed landmark models matched against photos.** NestOne is four stepped volumes around a core with a spire and orange stripes, and its edges glow at night. The TV Tower has three curved fin legs, a lattice shaft, two observation pods and a red-and-white antenna. Minor Mosque has white marble, turquoise friezes, a blue dome and two 56 m minarets. Romanov Palace, Magic City, Independence Square, Hilton and Tashkent City Mall were rebuilt the same way.
 - **Multi-level roads.** OSM bridges and flyovers rise above the ground on smooth ramps, with deck sides, parapets and pillars. Tunnels dip below ground with walled ramps and portals, and cars drive down into them. Each road class sits at its own height, and markings skip junctions, so roads no longer overlap. Bridges and flyovers are solid 3D structures: a thick deck with a girder underneath, concrete parapets, hammerhead piers, and retaining walls where the ramps meet the ground. The elevated metro runs on a box-girder viaduct, and tracks lie on a ballast bed. Tunnel approach walls rise as the road goes down.
 - **Railways and metro.** Where the metro comes up to cross a canal (by the TV Tower, at the Ankhor and at the Salar), it runs in a covered concrete gallery with a skylight, and enters the ground through a portal under a grassy mound. Dead-end sidings and depot tracks end in red-and-white buffer stops.
+- **Sports grounds.** About 1,450 football pitches between apartment blocks, tennis, basketball and volleyball courts from OSM, with the right surface (artificial turf, clay, hard court), markings, goals, nets, hoops and chain-link fences. Courts checked against satellite imagery are corrected in `tools/bake/pitches_extra.json` (for example the clay courts of the Yunusabad complex under the TV Tower).
 - **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
 - **Notable residential towers.** U-Tower, Modera Towers, Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram, the experimental Zhemchug (Pearl) house the National Bank (NBU) tower and Tashkent International Airport (terminal, control tower and parked Uzbekistan Airways airliners) have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
 - **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower is floodlit in warm gold at night, with cool-white lights twinkling along the shaft and pods.
@@ -96,6 +97,8 @@ python tools/bake/fetch_osm.py osm/bld      # all OSM buildings (Overpass)
 python tools/bake/fetch_extra.py osm        # traffic lights, trees, district boundaries
 python tools/bake/bake.py raw osm data      # build data/
 python tools/bake/seams.py data             # bridge/tunnel heights across tile edges
+python tools/bake/pitches.py fetch osm/pitches.json   # pitches and courts (Overpass)
+python tools/bake/pitches.py bake osm/pitches.json data
 ```
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.

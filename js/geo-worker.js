@@ -370,6 +370,88 @@ window.TPM_GEO_WORKER = function () {
     for (const s of [1, -1]) face(G, [[tx + vx * hw * s, h - 0.1, tz + vz * hw * s], [ex + vx * w2 * s, 0.02, ez + vz * w2 * s], [tx + vx * (hw + 3) * s, 0.02, tz + vz * (hw + 3) * s]], [92, 114, 64], 255);
   }
   // тупиковый упор: бетонный блок и красно-белый брус поперёк пути
+  // ---------- спортплощадки (футбол, теннис, баскетбол, волейбол) ----------
+  // sp: 0 футбол, 1 теннис, 2 баскетбол, 3 волейбол, 4 мультиспорт, 5 прочее;
+  // sf: 0 трава, 1 искусственный газон, 2 грунт («клей»), 3 хард/асфальт, 4 песок/земля, 255 — не указано
+  const SPORT_COL = {
+    turf: [70, 150, 74], grass: [96, 146, 70], clay: [186, 96, 62], hardB: [52, 100, 164], hardG: [70, 128, 86], asph: [96, 98, 104], sand: [196, 176, 132], rub: [176, 76, 64],
+  };
+  function courtColors(sp, sf) {
+    let base, inner;
+    if (sp === 1) { if (sf === 2) { base = SPORT_COL.clay; inner = SPORT_COL.clay; } else if (sf === 0 || sf === 1) { base = SPORT_COL.turf; inner = SPORT_COL.turf; } else { base = SPORT_COL.hardG; inner = SPORT_COL.hardB; } }
+    else if (sp === 0) { base = sf === 0 ? SPORT_COL.grass : sf === 3 ? SPORT_COL.asph : sf === 4 ? SPORT_COL.sand : SPORT_COL.turf; inner = base; }
+    else if (sp === 3 && sf === 4) { base = inner = SPORT_COL.sand; }
+    else if (sp === 2 || sp === 3 || sp === 4) { base = sf === 1 || sf === 0 ? SPORT_COL.turf : SPORT_COL.hardG; inner = sf === 1 || sf === 0 ? SPORT_COL.turf : sp === 2 ? SPORT_COL.rub : SPORT_COL.hardB; }
+    else { base = inner = sf === 3 ? SPORT_COL.asph : SPORT_COL.turf; }
+    const key = "court" + base.join("_");
+    if (!GCOL[key]) GCOL[key] = base;
+    return { base, inner, key };
+  }
+  const LINE = [236, 236, 228], FENCE = [44, 70, 54], POST = [200, 202, 204];
+  function court(Gg, Gb, fp, sp, C) {
+    const o = obb(fp); if (!o || o.L < 6 || o.Wd < 4) { polyFill(Gg, [fp], 0.066, C.base, 0); return; }
+    polyFill(Gg, [fp], 0.066, C.base, 0);
+    const R = (a0, a1, b0, b1, y, col) => { // прямоугольник в осях площадки: a — вдоль, b — поперёк
+      const P = (a, b) => [o.cx + o.ux * a + o.vx * b, y, o.cz + o.uz * a + o.vz * b];
+      face(Gg, [P(a0, b0), P(a1, b0), P(a1, b1), P(a0, b1)], col, 255);
+    };
+    const ring = (ca, cb, r, w, y, col, from = 0, to = Math.PI * 2, n = 18) => { for (let k = 0; k < n; k++) { const t0 = from + (to - from) * k / n, t1 = from + (to - from) * (k + 1) / n; const P = (t, rr) => [o.cx + o.ux * (ca + Math.cos(t) * rr) + o.vx * (cb + Math.sin(t) * rr), y, o.cz + o.uz * (ca + Math.cos(t) * rr) + o.vz * (cb + Math.sin(t) * rr)]; face(Gg, [P(t0, r - w / 2), P(t1, r - w / 2), P(t1, r + w / 2), P(t0, r + w / 2)], col, 255); } };
+    const frame = (A, B, w, y, col) => { R(-A, A, -B, -B + w, y, col); R(-A, A, B - w, B, y, col); R(-A, -A + w, -B, B, y, col); R(A - w, A, -B, B, y, col); };
+    const P3 = (a, b) => [o.cx + o.ux * a + o.vx * b, o.cz + o.uz * a + o.vz * b];
+    const post = (a, b, h, col = POST, s = 0.09) => { const [x, z] = P3(a, b); for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const nx = o.ux * dx + o.vx * dz, nz = o.uz * dx + o.vz * dz, tx = -nz, tz = nx; face(Gb, [[x + nx * s - tx * s, 0, z + nz * s - tz * s], [x + nx * s + tx * s, 0, z + nz * s + tz * s], [x + nx * s + tx * s, h, z + nz * s + tz * s], [x + nx * s - tx * s, h, z + nz * s - tz * s]], col, 255); } };
+    const bar = (a0, b0, a1, b1, y0, y1, col) => { const [x0, z0] = P3(a0, b0), [x1, z1] = P3(a1, b1); face(Gb, [[x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0]], col, 255); };
+    const HL = o.L / 2, HW = o.Wd / 2, yl = 0.072;
+    if (sp === 1) { // теннис: один или несколько кортов рядом (по ширине контура)
+      const k = Math.max(1, Math.round(o.Wd / 17)), cw = o.Wd / k, s = Math.min(1, (o.L - 3) / 23.77, (cw - 2) / 10.97);
+      const A = 11.885 * s, B = 5.485 * s, Bs = 4.115 * s, Sv = 6.4 * s;
+      for (let i = 0; i < k; i++) {
+        const cb = -HW + cw * (i + 0.5), Rb = (a0, a1, b0, b1, col) => R(a0, a1, cb + b0, cb + b1, yl, col);
+        Rb(-A, A, -B, B, C.inner);
+        const w = 0.1;
+        Rb(-A, A, -B, -B + w, LINE); Rb(-A, A, B - w, B, LINE); Rb(-A, A, -Bs, -Bs + w, LINE); Rb(-A, A, Bs - w, Bs, LINE);
+        Rb(-A, -A + w * 1.5, -B, B, LINE); Rb(A - w * 1.5, A, -B, B, LINE); Rb(-Sv, -Sv + w, -Bs, Bs, LINE); Rb(Sv - w, Sv, -Bs, Bs, LINE); Rb(-Sv, Sv, -w / 2, w / 2, LINE);
+        // сетка
+        post(0, cb - B - 0.6, 1.07, [60, 60, 64]); post(0, cb + B + 0.6, 1.07, [60, 60, 64]);
+        bar(0, cb - B - 0.6, 0, cb + B + 0.6, 0.15, 0.95, [36, 38, 40]); bar(0, cb - B - 0.6, 0, cb + B + 0.6, 0.95, 1.07, LINE);
+        if (i) R(-HL + 0.5, HL - 0.5, -HW + cw * i - 0.15, -HW + cw * i + 0.15, yl, LINE);
+      }
+    } else if (sp === 0) { // футбол
+      const w = o.L > 60 ? 0.15 : 0.12, ia = HL - 1, ib = HW - 1;
+      frame(ia, ib, w, yl, LINE); R(-w / 2, w / 2, -ib, ib, yl, LINE);
+      ring(0, 0, Math.min(9.15, ib * 0.35), w, yl, LINE);
+      const pd = Math.min(16.5, ia * 0.3), pw = Math.min(20.16, ib * 0.6), gw = Math.min(3.66, ib * 0.22), gh = o.L > 60 ? 2.44 : 2.0;
+      for (const s of [-1, 1]) {
+        R(s * ia - s * pd - w / 2, s * ia - s * pd + w / 2, -pw, pw, yl, LINE); R(Math.min(s * ia, s * (ia - pd)), Math.max(s * ia, s * (ia - pd)), -pw, -pw + w, yl, LINE); R(Math.min(s * ia, s * (ia - pd)), Math.max(s * ia, s * (ia - pd)), pw - w, pw, yl, LINE);
+        // ворота
+        post(s * ia, -gw, gh, [244, 244, 240]); post(s * ia, gw, gh, [244, 244, 240]); bar(s * ia, -gw, s * ia, gw, gh - 0.12, gh, [244, 244, 240]);
+        bar(s * (ia + 1.2), -gw, s * (ia + 1.2), gw, 0, gh * 0.8, [190, 196, 196]);
+      }
+    } else if (sp === 2 || sp === 3 || sp === 4) { // баскетбол, волейбол, мультиспорт
+      const sB = sp === 3 ? Math.min(1, (o.L - 2) / 18, (o.Wd - 2) / 9) : Math.min(1, (o.L - 2) / 28, (o.Wd - 2) / 15);
+      const A = (sp === 3 ? 9 : 14) * sB, B = (sp === 3 ? 4.5 : 7.5) * sB, w = 0.1;
+      R(-A, A, -B, B, yl, C.inner); frame(A, B, w, yl + 0.002, LINE); R(-w / 2, w / 2, -B, B, yl + 0.002, LINE);
+      if (sp === 3) { post(0, -B - 0.8, 2.5, [70, 70, 74]); post(0, B + 0.8, 2.5, [70, 70, 74]); bar(0, -B - 0.8, 0, B + 0.8, 1.6, 2.43, [40, 42, 44]); }
+      else {
+        ring(0, 0, 1.8 * sB, w, yl + 0.002, LINE);
+        for (const s of [-1, 1]) {
+          ring(s * A, 0, 6.75 * sB, w, yl + 0.002, LINE, s > 0 ? Math.PI / 2 : -Math.PI / 2, s > 0 ? Math.PI * 1.5 : Math.PI / 2, 12);
+          post(s * (A + 0.6), 0, 3.4, [70, 70, 74], 0.08);
+          bar(s * (A - 0.4), -0.9, s * (A - 0.4), 0.9, 2.9, 3.95, [244, 244, 240]);
+        }
+      }
+    } else frame(HL - 0.8, HW - 0.8, 0.12, yl, LINE);
+    // ограждение: сетка-рабица на столбах (небольшие площадки и все корты)
+    if (sp !== 0 || o.L * o.Wd < 3000) {
+      const hF = sp === 1 ? 3.6 : 3.0, n = fp.length / 2;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, x0 = fp[i * 2], z0 = fp[i * 2 + 1], x1 = fp[j * 2], z1 = fp[j * 2 + 1], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 0.5) continue;
+        const m = Math.max(1, Math.round(Le / 3.2));
+        for (let k = 0; k < m; k++) { const t = k / m, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; face(Gb, [[x - 0.06, 0, z], [x + 0.06, 0, z], [x + 0.06, hF, z], [x - 0.06, hF, z]], FENCE, 255); face(Gb, [[x, 0, z - 0.06], [x, 0, z + 0.06], [x, hF, z + 0.06], [x, hF, z - 0.06]], FENCE, 255); }
+        face(Gb, [[x0, hF - 0.12, z0], [x1, hF - 0.12, z1], [x1, hF, z1], [x0, hF, z0]], FENCE, 255);
+        face(Gb, [[x0, 1.15, z0], [x1, 1.15, z1], [x1, 1.25, z1], [x0, 1.25, z0]], FENCE, 255);
+      }
+    }
+  }
   function bufferStop(G, x, z, ux, uz) {
     const vx = -uz, vz = ux;
     const blk = (a0, a1, b, y0, y1, col) => {
@@ -674,7 +756,7 @@ window.TPM_GEO_WORKER = function () {
     let treesRaw = null;
     // базовая плита тайла
     { const c = GCOL.base, b = ground.vc; ground.v(0, 0, 0, 0, 1, 0, c[0], c[1], c[2], 255); ground.v(T, 0, 0, 0, 1, 0, c[0], c[1], c[2], 255); ground.v(T, 0, T, 0, 1, 0, c[0], c[1], c[2], 255); ground.v(0, 0, T, 0, 1, 0, c[0], c[1], c[2], 255); ground.tri(b, b + 2, b + 1); ground.tri(b, b + 3, b + 2); }
-    const out = { lines: [], trees: null, signals: null, places: [], lamps: null, bcount: 0 };
+    const out = { lines: [], trees: null, signals: null, places: [], lamps: null, bcount: 0 }, courts = [];
     const lamps = [];
     // фонари вдоль улиц
     function lampsAlong(l, cls, fl, H) {
@@ -808,7 +890,28 @@ window.TPM_GEO_WORKER = function () {
       } else if (tag === 6) {
         const n = vr();
         for (let i = 0; i < n; i++) { const c = u8(), x = sv() / 10, z = sv() / 10, nm = str(), lt = str(); out.places.push({ c, x, z, n: nm, lt }); }
+      } else if (tag === 8) { // спортплощадки: вид спорта, покрытие, контур
+        const n = vr();
+        for (let i = 0; i < n; i++) {
+          const sp = u8(), sf = u8(), fp = pts(), C = courtColors(sp, sf);
+          courts.push(fp);
+          if (far) { rA.push([C.key, [fp], 0]); continue; }
+          court(ground, bld, fp, sp, C);
+        }
       } else break;
+    }
+    // деревья не растут на спортплощадках
+    if (courts.length) {
+      const bb = courts.map((fp) => { let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (let i = 0; i < fp.length; i += 2) { x0 = Math.min(x0, fp[i]); x1 = Math.max(x1, fp[i]); z0 = Math.min(z0, fp[i + 1]); z1 = Math.max(z1, fp[i + 1]); } return [x0 - 1, z0 - 1, x1 + 1, z1 + 1]; });
+      // крона до ~4,5 м: дерево у самого края тоже нависало бы над кортом
+      const nearEdge = (fp, x, z, r) => { for (let i = 0, j = fp.length - 2; i < fp.length; j = i, i += 2) { const ax = fp[j], az = fp[j + 1], dx = fp[i] - ax, dz = fp[i + 1] - az, q = dx * dx + dz * dz, t = q ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / q)) : 0; if (Math.hypot(x - ax - dx * t, z - az - dz * t) < r) return true; } return false; };
+      const inside = (fp, x, z) => { let c = false; for (let i = 0, j = fp.length - 2; i < fp.length; j = i, i += 2) { const xi = fp[i], zi = fp[i + 1], xj = fp[j], zj = fp[j + 1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+      const keep = (tr) => {
+        if (!tr) return tr; const o = [];
+        for (let i = 0; i < tr.length; i += 3) { const x = tr[i], z = tr[i + 1]; let hit = false; for (let k = 0; k < courts.length && !hit; k++) { const b = bb[k]; if (x > b[0] - 4.5 && x < b[2] + 4.5 && z > b[1] - 4.5 && z < b[3] + 4.5 && (inside(courts[k], x, z) || nearEdge(courts[k], x, z, 4.5))) hit = true; } if (!hit) o.push(tr[i], tr[i + 1], tr[i + 2]); }
+        return new Float32Array(o);
+      };
+      out.trees = keep(out.trees); treesRaw = keep(treesRaw);
     }
     out.ground = ground.pack(); out.roads = roads.pack(); out.water = water.pack(); out.bld = bld.pack();
     out.lamps = new Float32Array(lamps);
