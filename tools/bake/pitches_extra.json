@@ -1,0 +1,15 @@
+{
+  "_comment": "Уточнения спортплощадок по спутниковым снимкам (Esri World Imagery). override — теги для площадок OSM по id, add — площадки, которых нет в OSM (элементы в формате Overpass с geometry).",
+  "override": {
+    "_tv_tower": "Теннисные корты СК «Юнусабад» под телебашней: три грунтовых (красных) и хард",
+    "1317964121": {"sport": "tennis", "surface": "clay"},
+    "1317964119": {"sport": "tennis", "surface": "clay"},
+    "151563251": {"sport": "tennis", "surface": "clay"},
+    "1317964120": {"sport": "tennis", "surface": "hard"},
+    "1317964122": {"sport": "tennis", "surface": "hard"},
+    "1317964123": {"sport": "tennis", "surface": "hard"},
+    "151563254": {"sport": "soccer", "surface": "artificial_turf"},
+    "1317964115": {"sport": "soccer", "surface": "artificial_turf"}
+  },
+  "add": []
+}
