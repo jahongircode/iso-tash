@@ -274,6 +274,10 @@ def resolve_landmarks(outl):
                 q = obb_m([m_of(la, lo) for la, lo in pt["p"]]); q["m"] = sp.get("part_clear", 1.5); polys.append(q)
         if not o: print("landmark not found:", sp["id"]); continue
         if sp.get("pt2"): x2, z2 = m_of(*sp["pt2"]); o["x2"] = round(x2, 2); o["z2"] = round(z2, 2)
+        if sp.get("extra_parts"):  # дополнительные корпуса той же модели (напр. вторая башня курантов)
+            o["parts"] = [{"h": pt["h"], "p": [[round(v, 1) for v in m_of(la, lo)] for la, lo in pt["p"]]} for pt in sp["extra_parts"]]
+            for pt in sp["extra_parts"]:
+                q = obb_m([m_of(la, lo) for la, lo in pt["p"]]); q["m"] = sp.get("part_clear", 1.5); polys.append(q)
         if sp.get("entrance"): ex, ez = m_of(*sp["entrance"]); o["ex"] = round(ex, 2); o["ez"] = round(ez, 2)
         if sp.get("sub"): o["sub"] = {k: [round(v, 2) for v in m_of(*ll)] for k, ll in sp["sub"].items()}  # опорные точки частей модели
         la, lo = sp.get("pt") or (None, None)
