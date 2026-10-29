@@ -335,23 +335,50 @@
   };
 
   // ---------------- Ташкентские куранты ----------------
-  M.chimes = (b, o) => {
-    const L = Math.max(14, o.L || 21), W = Math.max(8, (o.W || 20) * 0.5), BRN = [0.52, 0.36, 0.25], WH = [0.95, 0.94, 0.9];
-    b.box(0, 0, -2, L, 7, W, BRN); b.box(0, 7, -2, L + 0.6, 0.8, W + 0.6, WH);
-    for (let x = -L / 2 + 2; x <= L / 2 - 2; x += 3) archWin(b, x, 1.2, -2 + W / 2 + 0.06, 1.4, 3.8, [0.26, 0.30, 0.34]);
-    const T = 6.6;
-    b.box(0, 0, 2, T, 27, T, BRN);
-    for (const yy of [7.8, 18.6]) b.box(0, yy, 2, T + 0.7, 0.7, T + 0.7, WH);
-    b.box(0, 9, 2 + T / 2 + 0.05, 1.5, 8.5, 0.2, WH); arch(b, 0, 17.5, 2 + T / 2 + 0.05, 0.75, 0.2, WH);
+  // Две одинаковые башни из песочного кирпича по обе стороны улицы, у каждой — павильон с арочными
+  // окнами. Башня: белые пояса, часы на четыре стороны, высокое арочное окно с решёткой, фонарь
+  // с арками (ночью светится изнутри), белый карниз, шатёр со шпилем. Первая башня — по контуру OSM
+  // курантов, вторая — по своим контурам (o.parts: башня и павильон).
+  const SAND = [0.8, 0.69, 0.52], CWH = [0.95, 0.94, 0.9];
+  function chimeTower(b, cx, cz, T) {
+    b.box(cx, 0, cz, T, 27, T, SAND);
+    for (const yy of [7.8, 18.6]) b.box(cx, yy, cz, T + 0.7, 0.7, T + 0.7, CWH);
     for (let i = 0; i < 4; i++) {
-      const a = i * Math.PI / 2, nx = Math.sin(a), nz = Math.cos(a), d = T / 2 + 0.08;
-      const g = new THREE.CylinderGeometry(1.9, 1.9, 0.15, 16); g.rotateX(Math.PI / 2); g.rotateY(a); b.add(g, WH, nx * d, 22.4, 2 + nz * d, 0, true);
-      b.beam(nx * (d + 0.12), 22.4, 2 + nz * (d + 0.12), nx * (d + 0.12) + Math.cos(a) * 0.1, 23.6, 2 + nz * (d + 0.12) - Math.sin(a) * 0.1, 0.12, P.dark);
-      b.beam(nx * (d + 0.12), 22.4, 2 + nz * (d + 0.12), nx * (d + 0.12) + Math.cos(a) * 1.1, 22.6, 2 + nz * (d + 0.12) - Math.sin(a) * 1.1, 0.12, P.dark);
+      const a = i * Math.PI / 2, nx = Math.sin(a), nz = Math.cos(a), d = T / 2 + 0.08, px = cx + nx * d, pz = cz + nz * d;
+      b.box(px, 9, pz, 1.5, 8.5, 0.2, CWH, a); arch(b, px, 17.5, pz, 0.75, 0.2, CWH, a);                  // арочное окно
+      b.box(px + nx * 0.06, 9.3, pz + nz * 0.06, 1.0, 7.9, 0.1, [0.36, 0.34, 0.3], a, true);
+      const g = new THREE.CylinderGeometry(1.9, 1.9, 0.15, 16); g.rotateX(Math.PI / 2); g.rotateY(a); b.add(g, CWH, px, 22.4, pz, 0, true); // циферблат
+      const q = d + 0.12;
+      b.beam(cx + nx * q, 22.4, cz + nz * q, cx + nx * q + Math.cos(a) * 0.1, 23.6, cz + nz * q - Math.sin(a) * 0.1, 0.12, P.dark);
+      b.beam(cx + nx * q, 22.4, cz + nz * q, cx + nx * q + Math.cos(a) * 1.1, 22.6, cz + nz * q - Math.sin(a) * 1.1, 0.12, P.dark);
     }
-    b.box(0, 27, 2, T + 1.2, 0.8, T + 1.2, WH);
-    for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) b.box(x * (T / 2 - 0.3), 27.8, 2 + z * (T / 2 - 0.3), 0.7, 3.4, 0.7, WH);
-    b.box(0, 31.2, 2, T + 1.4, 0.9, T + 1.4, WH); b.hip(0, 32.1, 2, T + 0.8, T + 0.8, 2.6, [0.62, 0.64, 0.66]); b.cone(0, 34.6, 2, 0.25, 2.2, P.gold, 6);
+    b.box(cx, 27, cz, T + 1.2, 0.8, T + 1.2, CWH);
+    for (const x of [-1, 0, 1]) for (const z of [-1, 0, 1]) if (x || z) b.box(cx + x * (T / 2 - 0.3), 27.8, cz + z * (T / 2 - 0.3), 0.6, 3.4, 0.6, CWH);
+    b.box(cx, 27.8, cz, T - 1.4, 3.4, T - 1.4, [0.95, 0.85, 0.6], 0, true);                              // фонарь светится изнутри
+    b.box(cx, 31.2, cz, T + 1.4, 0.9, T + 1.4, CWH); b.hip(cx, 32.1, cz, T + 0.8, T + 0.8, 2.6, [0.62, 0.64, 0.66]); b.cone(cx, 34.6, cz, 0.25, 2.2, P.gold, 6);
+  }
+  M.chimes = (b, o) => {
+    const L = Math.max(14, o.L || 21), W = Math.max(8, (o.W || 20) * 0.5);
+    b.box(0, 0, -2, L, 7, W, SAND); b.box(0, 7, -2, L + 0.6, 0.8, W + 0.6, CWH);
+    for (let x = -L / 2 + 2; x <= L / 2 - 2; x += 3) archWin(b, x, 1.2, -2 + W / 2 + 0.06, 1.4, 3.8, [0.26, 0.30, 0.34]);
+    chimeTower(b, 0, 2, 6.6);
+    // вторые куранты на другой стороне улицы
+    const Q = (o.parts || []).map((p) => ({ h: p.h, p: o.local ? p.p.map(([x, z]) => o.local(x, z)) : p.p }));
+    const tw = Q.find((q) => q.h > 10), pav = Q.find((q) => q.h <= 10);
+    if (pav) {
+      const p = pav.p; let A = 0; for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; A += p[i][0] * p[j][1] - p[j][0] * p[i][1]; }
+      const sg = A > 0 ? 1 : -1;
+      b.loft(p, 0, p, 7, SAND); b.loft(p, 7, p, 7.8, CWH);
+      const tri = THREE.ShapeUtils.triangulateShape(p.map((v) => new THREE.Vector2(v[0], v[1])), []), arr = [];
+      for (const t of tri) for (const i of t) arr.push(p[i][0], 7.8, p[i][1]);
+      b.raw(arr, [0.6, 0.6, 0.6]);
+      for (let i = 0; i < p.length; i++) {
+        const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 4) continue;
+        const nx = sg * (z1 - z0) / Le, nz = -sg * (x1 - x0) / Le, ry = Math.atan2(nx, nz), n = Math.floor((Le - 1) / 3);
+        for (let k = 0; k < n; k++) { const t = (k + 0.5) / n; archWin(b, x0 + (x1 - x0) * t + nx * 0.06, 1.2, z0 + (z1 - z0) * t + nz * 0.06, 1.4, 3.8, [0.26, 0.30, 0.34], ry); }
+      }
+    }
+    if (tw) { const cx = tw.p.reduce((s, v) => s + v[0], 0) / tw.p.length, cz = tw.p.reduce((s, v) => s + v[1], 0) / tw.p.length; chimeTower(b, cx, cz, 6.6); }
   };
 
   // ---------------- Nest One (Tashkent City) ----------------

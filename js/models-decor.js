@@ -1,7 +1,8 @@
 // =====================================================================
 //  Детальные модели заметных ЖК и башен (без карточек — это фон города):
 //  U-Tower, Modera Towers, Mirabad Avenue, «Казахстан», NRG Oybek,
-//  Xon Saroy Sayram, экспериментальный дом «Жемчуг», башня Национального банка (НБУ).
+//  Xon Saroy Sayram, экспериментальный дом «Жемчуг», башня Национального банка (НБУ),
+//  аэропорт Ташкента с самолётами Uzbekistan Airways.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
 (function () {
@@ -243,6 +244,160 @@
       b.box(cx + s * (A - 5), yt + 2, cz + B - 0.9, 8, H - yt, 0.2, [0.3, 0.36, 0.44], 0, true);
     }
     b.cyl(cx + A - 5, H + 4, cz, 0.3, 8, [0.8, 0.8, 0.82], 6);
+  };
+
+  // объёмные буквы вдоль отрезка p0→p1 (центр — середина), лицом по нормали n (наружу)
+  function sign(b, txt, cx, y, cz, nx, nz, px, col, list = "glow", d = 0.3) {
+    const rx = nz, rz = -nx, cols = txt.length * 6 - 1, ry = Math.atan2(nx, nz);
+    for (let ci = 0; ci < txt.length; ci++) {
+      const g = MD.FONT[txt[ci]]; if (!g) continue;
+      for (let gx = 0; gx < 5; gx++) for (let gy = 0; gy < 7; gy++) {
+        if (g[gy * 5 + gx] !== "1") continue;
+        const u = ((ci * 6 + gx) - cols / 2) * px;
+        b.box(cx + rx * u, y + (6 - gy) * px, cz + rz * u, px, px, d, col, ry); if (list !== "parts") to(b, list);
+      }
+    }
+  }
+
+  // ---------------- самолёт Uzbekistan Airways (Boeing 767/787) ----------------
+  // Белый фюзеляж с голубым верхом и зелёным низом, голубой киль с жёлтым кругом и зелёной
+  // эмблемой, голубые мотогондолы, надпись UZBEKISTAN. (X, Z) — центр, a — куда смотрит нос.
+  const TRIM = [0.3, 0.3, 0.32], PB = [0.42, 0.68, 0.9], PG = [0.24, 0.62, 0.3], PW = [0.96, 0.96, 0.95], PGR = [0.78, 0.8, 0.83], PNV = [0.12, 0.16, 0.32];
+  function plane(b, X, Z, a) {
+    const c = Math.cos(a), s = Math.sin(a), T = (px, py, pz) => [X + px * c - pz * s, py, Z + px * s + pz * c];
+    const tris = new Map(), tri = (col, ...P) => { let l = tris.get(col); if (!l) tris.set(col, l = []); for (const p of P) l.push(...T(...p)); };
+    const quad = (col, A, B2, C2, D) => tri(col, A, B2, C2, A, C2, D);
+    // фюзеляж: сечения [x, радиус, высота оси]
+    const ST = [[27.6, 0.25, 4.0], [26.6, 1.3, 4.2], [25, 2.15, 4.45], [22.5, 2.6, 4.6], [-14, 2.6, 4.6], [-19, 2.15, 4.9], [-24, 1.25, 5.4], [-27.6, 0.35, 5.9]];
+    const N = 12, ring = (st) => Array.from({ length: N }, (_, k) => { const t = k / N * Math.PI * 2; return [st[0], st[2] + st[1] * Math.cos(t), st[1] * Math.sin(t)]; });
+    const colAt = (k) => { const t = ((k + 0.5) / N) * 360; const d = Math.min(t, 360 - t); return d < 32 ? PB : d > 128 ? PG : PW; };
+    for (let i = 0; i + 1 < ST.length; i++) { const A = ring(ST[i]), B2 = ring(ST[i + 1]); for (let k = 0; k < N; k++) { const j = (k + 1) % N; quad(i === 0 ? PW : colAt(k), A[k], A[j], B2[j], B2[k]); } }
+    // крылья (стреловидные, с поперечным V), стабилизаторы, киль
+    for (const sd of [-1, 1]) {
+      quad(PGR, [7, 3.4, sd * 2.4], [-3.5, 3.4, sd * 2.4], [-13.8, 4.6, sd * 23.8], [-11.3, 4.6, sd * 23.8]);
+      quad(PGR, [-20.5, 5.4, sd * 1.2], [-25.2, 5.4, sd * 1.2], [-28.4, 5.9, sd * 9.2], [-26.6, 5.9, sd * 9.2]);
+      // мотогондола под крылом
+      const g = new THREE.CylinderGeometry(1.45, 1.25, 5.4, 10); g.rotateZ(Math.PI / 2);
+      const pos = g.attributes.position; for (let i = 0; i < pos.count; i++) { const [wx, wy, wz] = T(pos.getX(i) + 4.6, pos.getY(i) + 2.25, pos.getZ(i) + sd * 8.6); pos.setXYZ(i, wx, wy, wz); }
+      b.parts.push([g.toNonIndexed(), [0.3, 0.55, 0.88]]);
+      quad(PGR, [5.5, 3.1, sd * 8.6], [2.5, 3.1, sd * 8.6], [1.5, 3.7, sd * 8.6], [4.5, 3.7, sd * 8.6]);
+      tri(PNV, [7.32, 2.25, sd * 8.6 - 1.2], [7.32, 2.25, sd * 8.6 + 1.2], [7.32, 3.4, sd * 8.6]);
+      // шасси
+      quad(TRIM, [1, 0, sd * 2.6], [-1.5, 0, sd * 2.6], [-1.5, 2.2, sd * 2.6], [1, 2.2, sd * 2.6]);
+    }
+    quad(TRIM, [23.2, 0, 0], [22.4, 0, 0], [22.4, 2.2, 0], [23.2, 2.2, 0]);
+    const fin = [[-19.5, 7.2], [-26.4, 7.2], [-28.2, 16.2], [-24.8, 16.2]].map(([x, y]) => [x, y, 0]);
+    quad(PB, ...fin);
+    // эмблема на киле: жёлтый круг, зелёный знак
+    for (const sd of [-1, 1]) {
+      const C0 = [-24.6, 11.6], R = 2.1, M2 = 14;
+      for (let k = 0; k < M2; k++) { const a0 = k / M2 * Math.PI * 2, a1 = (k + 1) / M2 * Math.PI * 2; tri([0.98, 0.8, 0.15], [C0[0], C0[1], sd * 0.12], [C0[0] + Math.cos(a0) * R, C0[1] + Math.sin(a0) * R, sd * 0.12], [C0[0] + Math.cos(a1) * R, C0[1] + Math.sin(a1) * R, sd * 0.12]); }
+      quad([0.2, 0.6, 0.3], [-23.4, 11, sd * 0.16], [-25.8, 11, sd * 0.16], [-25.6, 12.2, sd * 0.16], [-23.6, 12.2, sd * 0.16]);
+      // кабина пилотов
+      quad(PNV, [25.6, 4.9, sd * 1.15], [24.6, 5.25, sd * 1.75], [24.6, 4.75, sd * 2.0], [25.6, 4.45, sd * 1.4]);
+    }
+    for (const [col, arr] of tris) b.raw(arr, col);
+    // надпись UZBEKISTAN на обоих бортах
+    for (const sd of [-1, 1]) { const [px, , pz] = T(13, 0, sd * 2.66), n = [-s * sd, c * sd]; sign(b, "UZBEKISTAN", px, 4.1, pz, n[0], n[1], 0.3, PNV, "parts", 0.08); }
+  }
+
+  // ---------------- Международный аэропорт Ташкента (терминал 2) ----------------
+  // По фото и контурам OSM: со стороны города — изогнутый белый навес на высоких колоннах над
+  // стеклянной галереей и надпись TASHKENT INTERNATIONAL AIRPORT; к перрону — белый фасад с синими
+  // лентами остекления и порталами-пештаками, на крыше вторая надпись; диспетчерская вышка с
+  // расширяющимся кверху стволом и синей кабиной. На перроне — самолёты Uzbekistan Airways.
+  M.airport = (b, o) => {
+    const Q = localParts(o), WT = [0.92, 0.93, 0.94], WT2 = [0.84, 0.86, 0.88], GL = [0.16, 0.32, 0.62], FR = [0.18, 0.36, 0.78], ROOF = [0.6, 0.62, 0.64], BLUE = [0.1, 0.3, 0.8];
+    const sub = o.sub || {}, L = (k) => (sub[k] && o.local ? o.local(...sub[k]) : null);
+    const ap = (() => { const p = L("p1"); if (!p) return [-1, 0]; const d = Math.hypot(p[0], p[1]); return [p[0] / d, p[1] / d]; })();  // направление на перрон
+    const sgnA = (p) => { let A = 0; for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; A += p[i][0] * p[j][1] - p[j][0] * p[i][1]; } return A > 0 ? 1 : -1; };
+    for (const q of Q) {
+      const p = q.p, sg = sgnA(p);
+      if (q.mh >= 10) { // навес на колоннах
+        const top = offset(p, 0.4);
+        b.loft(top, q.mh, top, q.h, WT); cap(b, top, q.h, ROOF); cap(b, top, q.mh, WT2);
+        for (let i = 0; i < p.length; i++) {
+          const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], Le = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(Le / 12));
+          const nx = sg * (z1 - z0) / Le, nz = -sg * (x1 - x0) / Le;
+          for (let k = 0; k <= n; k++) { const t = k / n; b.cyl(x0 + (x1 - x0) * t - nx * 2, 0, z0 + (z1 - z0) * t - nz * 2, 0.75, q.mh, WT, 8); }
+        }
+        continue;
+      }
+      if (q.h <= 6.5 && Q.some((r) => r !== q && r.mh >= 10 && Math.abs(r.cx - q.cx) < 1 && Math.abs(r.cz - q.cz) < 1)) { // стеклянная галерея под навесом
+        const gp = offset(p, -2.5), gr = gp.slice().reverse(); b.loft(gp, 0, gp, q.h, GL, "glow"); b.loft(gr, 0, gr, q.h, GL, "glow"); band(b, offset(p, -2.5), 0.4, q.h - 0.1, 1.1, WT);
+        pilasters(b, offset(p, -2.5), 0, q.h, 3, 0.25, 0.3, FR);
+        continue;
+      }
+      if (q.h === 18 && q.A < 120) { // основание вышки — сама вышка ниже
+        b.loft(p, 0, p, 8, WT); cap(b, p, 8, ROOF); continue;
+      }
+      // корпус: белые стены, синие ленты остекления, парапет
+      b.loft(p, q.mh, p, q.h, WT); cap(b, p, q.h + 0.01, ROOF); band(b, p, 0.25, q.h, 0.7, WT2);
+      if (q.h >= 9) {
+        const r = offset(p, 0.12), rr = r.slice().reverse(), glass = (y0, y1) => { b.loft(r, y0, r, y1, GL, "glow"); b.loft(rr, y0, rr, y1, GL, "glow"); };
+        glass(Math.max(q.mh, 1) + 0.5, Math.max(q.mh, 1) + 3.6);
+        if (q.h >= 12) glass(6.4, Math.min(q.h - 2.6, 10.8));
+        pilasters(b, offset(p, 0.15), Math.max(q.mh, 1) + 0.5, Math.min(q.h - 2.6, 10.8), 3.2, 0.22, 0.25, FR);
+      }
+      // порталы-пештаки на фасадах к перрону
+      if (q.h >= 12) for (let i = 0; i < p.length; i++) {
+        const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 40) continue;
+        const nx = sg * (z1 - z0) / Le, nz = -sg * (x1 - x0) / Le; if (nx * ap[0] + nz * ap[1] < 0.5) continue;
+        const ry = Math.atan2(nx, nz), n = Math.floor(Le / 42);
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n, cx = x0 + (x1 - x0) * t + nx * 0.9, cz = z0 + (z1 - z0) * t + nz * 0.9;
+          b.box(cx, 0, cz, 11, q.h + 1.2, 1.8, WT, ry);
+          const gx = cx + nx * 0.95, gz = cz + nz * 0.95;
+          b.box(gx, 0.4, gz, 5.2, q.h - 5, 0.12, GL, ry, true);
+          const tri2 = new THREE.CylinderGeometry(0.01, 3.7, 2.6, 4, 1); tri2.rotateY(Math.PI / 4); tri2.scale(1, 1, 0.05); tri2.translate(0, q.h - 4.6 + 1.3, 0);
+          b.add(tri2, GL, gx, 0, gz, ry, true);
+          for (const sx of [-1, 1]) b.box(gx + nz * sx * 3.6, 0, gz - nx * sx * 3.6, 0.5, q.h - 1.4, 0.12, PNV, ry);
+          b.box(gx, q.h - 1.6, gz, 7.7, 0.5, 0.12, PNV, ry);
+        }
+      }
+    }
+    // надписи TASHKENT INTERNATIONAL AIRPORT: на самом длинном фасаде к перрону и к городу, ровно по линии
+    // фасада и по его центру, на решётчатой раме за кромкой крыши; размер букв подогнан под длину фасада
+    const TXT = "TASHKENT INTERNATIONAL AIRPORT", cols = TXT.length * 6 - 1;
+    const edges = [];
+    for (const q of Q) {
+      if (q.h < 12) continue;
+      const p = q.p, sg = sgnA(p);
+      for (let i = 0; i < p.length; i++) {
+        const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 40) continue;
+        const nx = sg * (z1 - z0) / Le, nz = -sg * (x1 - x0) / Le;
+        edges.push({ Le, x: (x0 + x1) / 2, z: (z0 + z1) / 2, nx, nz, y: q.h, d: nx * ap[0] + nz * ap[1] });
+      }
+    }
+    for (const side of [1, -1]) {
+      const e = edges.filter((e) => e.d * side > 0.6).reduce((m, e) => (!m || e.Le > m.Le ? e : m), null); if (!e) continue;
+      const px = Math.min(0.6, e.Le * 0.8 / cols), cx = e.x - e.nx * 1.4, cz = e.z - e.nz * 1.4, ry = Math.atan2(e.nx, e.nz), y = e.y + 1.2;
+      b.box(cx - e.nx * 0.5, e.y, cz - e.nz * 0.5, cols * px + 2, 1.2, 0.3, [0.72, 0.74, 0.78], ry);                       // рама
+      for (let k = -4; k <= 4; k++) { const u = k * cols * px / 8; b.box(cx - e.nx * 0.5 + e.nz * u, y, cz - e.nz * 0.5 - e.nx * u, 0.2, 7 * px, 0.2, [0.72, 0.74, 0.78], ry); }
+      sign(b, TXT, cx, y, cz, e.nx, e.nz, px, BLUE);
+    }
+    // диспетчерская вышка
+    const tw = L("tower");
+    if (tw) {
+      const [tx, tz] = tw;
+      b.cyl(tx, 8, tz, 3.0, 26, WT, 8, 3.6);
+      for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2; b.box(tx + Math.cos(a) * 3.35, 10, tz + Math.sin(a) * 3.35, 0.45, 22, 0.2, PNV, -a + Math.PI / 2); }
+      for (const y of [14, 22]) b.cyl(tx, y, tz, 3.5, 0.6, WT2, 8, 3.7);
+      b.cyl(tx, 34, tz, 3.7, 4.5, WT, 8, 5.4);
+      b.cyl(tx, 38.5, tz, 5.4, 0.7, WT2, 8);
+      b.cyl(tx, 39.2, tz, 5.0, 3.6, [0.2, 0.36, 0.62], 8, 5.6, true);
+      b.cyl(tx, 42.8, tz, 6.0, 1.0, [0.12, 0.22, 0.5], 8, 5.6);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; b.cyl(tx + Math.cos(a) * 3.2, 43.8, tz + Math.sin(a) * 3.2, 0.08, 2.8, [0.85, 0.85, 0.88], 4); }
+      b.cyl(tx, 43.8, tz, 0.1, 5.5, [0.85, 0.85, 0.88], 4);
+      b.box(tx + 0.9, 48.2, tz, 1.8, 0.4, 0.06, [0.1, 0.55, 0.85]); b.box(tx + 0.9, 47.8, tz, 1.8, 0.4, 0.06, [0.97, 0.97, 0.97]); b.box(tx + 0.9, 47.4, tz, 1.8, 0.4, 0.06, [0.15, 0.65, 0.3]);
+    }
+    // самолёты на перроне: носом к терминалу
+    // самолёты на стоянках вдоль перрона, носом к терминалу (на запад)
+    for (let i = 1; i <= 8; i++) {
+      const w = sub["p" + i]; if (!w || !o.local) continue;
+      const a0 = o.local(w[0], w[1]), a1 = o.local(w[0] - 10, w[1]);
+      plane(b, a0[0], a0[1], Math.atan2(a1[1] - a0[1], a1[0] - a0[0]));
+    }
   };
 
   // ---------------- башня Национального банка (НБУ, 1997) ----------------
