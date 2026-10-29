@@ -2,7 +2,8 @@
 //  Детальные модели заметных ЖК и башен (без карточек — это фон города):
 //  U-Tower, Modera Towers, Mirabad Avenue, «Казахстан», NRG Oybek,
 //  Xon Saroy Sayram, экспериментальный дом «Жемчуг», башня Национального банка (НБУ),
-//  аэропорт Ташкента с самолётами Uzbekistan Airways.
+//  аэропорт Ташкента с самолётами Uzbekistan Airways, Piramit Tower, Ассоциация банков, Международный
+//  бизнес-центр, Законодательная палата Олий Мажлиса, башни SQB, BoMI, Asaka Bank и Aloqa Bank.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
 (function () {
@@ -208,43 +209,251 @@
     b.box((X0 + X1) / 2, PH + 0.4, Z1 + 1.5, 16, 1.4, 0.2, [1, 0.95, 0.85], 0, true);               // вывеска MODERA TOWERS
   };
 
+  // ориентированный прямоугольник корпуса (по самому выгодному ребру): центр, оси, размеры
+  function frame(q) {
+    let best = null;
+    for (let i = 0; i < q.p.length; i++) {
+      const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.5) continue;
+      const ux = (x1 - x0) / L, uz = (z1 - z0) / L;
+      let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+      for (const [x, z] of q.p) { const a = x * ux + z * uz, c = -x * uz + z * ux; a0 = Math.min(a0, a); a1 = Math.max(a1, a); b0 = Math.min(b0, c); b1 = Math.max(b1, c); }
+      if (!best || (a1 - a0) * (b1 - b0) < best.ar) best = { ar: (a1 - a0) * (b1 - b0), ux, uz, a0, a1, b0, b1 };
+    }
+    let { ux, uz, a0, a1, b0, b1 } = best;
+    if (b1 - b0 > a1 - a0) { const t = ux; ux = -uz; uz = t; [a0, a1, b0, b1] = [b0, b1, -a1, -a0]; }
+    const ca = (a0 + a1) / 2, cb = (b0 + b1) / 2;
+    return { cx: ca * ux - cb * uz, cz: ca * uz + cb * ux, ux, uz, vx: -uz, vz: ux, L: a1 - a0, W: b1 - b0, ry: Math.atan2(-uz, ux) };
+  }
+  // точка в осях корпуса
+  const FP = (f, a, c) => [f.cx + f.ux * a + f.vx * c, f.cz + f.uz * a + f.vz * c];
+  // контур «стадион» (прямоугольник со скруглёнными торцами) в осях корпуса
+  function stadium(f, A, R, n = 10) {
+    const pts = [], h = Math.max(0, A - R);
+    for (let k = 0; k <= n; k++) { const t = -Math.PI / 2 + Math.PI * k / n; pts.push(FP(f, h + Math.cos(t) * R, Math.sin(t) * R)); }
+    for (let k = 0; k <= n; k++) { const t = Math.PI / 2 + Math.PI * k / n; pts.push(FP(f, -h + Math.cos(t) * R, Math.sin(t) * R)); }
+    return pts;
+  }
+  const twoSided = (b, r, y0, y1, col, list) => { b.loft(r, y0, r, y1, col, list); const rr = r.slice().reverse(); b.loft(rr, y0, rr, y1, col, list); };
+
   // ---------------- NRG U-Tower ----------------
-  // 30 этажей: скруглённая в плане башня с белыми волнистыми лентами балконов и тёмным остеклением,
-  // наверху — U-образный вырез (два «рога»), у подножия — белые решётчатые арки-своды;
-  // ночью ленты подсвечены.
+  // По фото: тонкая пластина со скруглёнными торцами (около 30 этажей), по всей высоте — тонкие белые
+  // ленты балконов с плавной волной и тёмное стекло между ними; верх — неглубокая «U»: торцы выше середины;
+  // стилобат опоясан белыми решётчатыми стрельчатыми арками. Ночью ленты балконов светятся разными цветами.
   M.u_tower = (b, o) => {
     const Q = localParts(o), tw = Q.reduce((a, q) => (q.h > a.h ? q : a)), pod = Q.find((q) => q !== tw);
-    const W = [0.96, 0.96, 0.97];
-    if (pod) {                                                                                    // стилобат и арки
-      b.loft(pod.p, 0, pod.p, pod.h - 1, [0.3, 0.36, 0.42], "glow"); band(b, pod.p, 0.4, pod.h - 1, 1, W); cap(b, pod.p, pod.h, [0.5, 0.62, 0.42]);
-      for (let i = 0; i < pod.p.length; i++) {
-        const [x0, z0] = pod.p[i], [x1, z1] = pod.p[(i + 1) % pod.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 8) continue;
-        const nx = (z1 - z0) / L, nz = -(x1 - x0) / L, ry = Math.atan2(-(z1 - z0), x1 - x0), n = Math.floor(L / 7);
-        for (let k = 0; k < n; k++) {
-          const t = (k + 0.5) / n, x = x0 + (x1 - x0) * t + nx * 3.5, z = z0 + (z1 - z0) * t + nz * 3.5;
-          for (const s of [-0.5, 0, 0.5]) { const g = new THREE.TorusGeometry(3.3, 0.16, 4, 12, Math.PI); g.rotateY(ry + s); b.add(g, W, x, pod.h - 3.3, z); }
+    const W = [0.97, 0.97, 0.98], GL = [0.2, 0.27, 0.36];
+    const f = frame(tw), A = f.L / 2, R = Math.min(f.W / 2, 11), y0 = pod ? Math.min(pod.h, 9) : 0, H = Math.max(tw.h, 104), fl = 3.3;
+    if (pod) {
+      b.loft(pod.p, 0, pod.p, pod.h - 1, [0.28, 0.34, 0.4], "glow"); band(b, pod.p, 0.4, pod.h - 1, 1, W); cap(b, pod.p, pod.h, [0.5, 0.62, 0.42]);
+      // стрельчатые решётчатые арки: пересекающиеся дуги вокруг стилобата
+      const ring = offset(pod.p, 3.2);
+      for (let i = 0; i < ring.length; i++) {
+        const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % ring.length], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 6) continue;
+        const n = Math.max(1, Math.round(Le / 6)), ry = Math.atan2(-(z1 - z0), x1 - x0);
+        for (let k = 0; k <= n; k++) {
+          const t = k / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+          b.cyl(x, 0, z, 0.22, 2.5, W, 6);
+          for (const s of [-1, 1]) { // стрельчатая арка из двух дуг
+            const g = new THREE.TorusGeometry(Le / n * 0.75, 0.14, 4, 10, Math.PI / 2); g.rotateZ(s > 0 ? 0 : Math.PI / 2); g.translate(-s * Le / n * 0.25, 0, 0);
+            g.rotateY(ry); b.add(g, W, x + (x1 - x0) / Le * s * Le / n / 2, 2.5, z + (z1 - z0) / Le * s * Le / n / 2);
+          }
         }
       }
     }
-    const A = (tw.x1 - tw.x0) / 2, B = (tw.z1 - tw.z0) / 2, cx = (tw.x0 + tw.x1) / 2, cz = (tw.z0 + tw.z1) / 2, N = 40;
-    const y0 = pod ? pod.h : 0, H = Math.max(tw.h, 104), floors = Math.floor((H - 8 - y0) / 3.3);
-    const core = se(A - 1.4, B - 1.4, 3.2, N).map(([x, z]) => [x + cx, z + cz]);
+    const core = stadium(f, A - 1.2, R - 1.2, 8), floors = Math.floor((H - 4 - y0) / fl), hornH = 3 * fl;
     for (let k = 0; k < floors; k++) {
-      const y = y0 + k * 3.3;
-      b.loft(core, y, core, y + 3.3, k % 2 ? [0.2, 0.26, 0.34] : [0.22, 0.29, 0.38], "glow");
-      const slab = se(A, B, 3.2, N, 0).map(([x, z], i) => { const w = 1 + 0.035 * Math.sin(i / N * Math.PI * 6 + k * 0.5); return [x * w + cx, z * w + cz]; });
-      b.loft(slab, y + 2.9, slab, y + 3.3, W); b.fan(slab.map(([x, z]) => [x - cx, z - cz]), y + 3.3, W, "parts", y + 3.3, cx, cz);
-      if (k % 3 === 0) b.loft(slab, y + 2.75, slab, y + 2.9, [0.6, 1, 0.8], "led");
+      const y = y0 + k * fl, top = k >= floors - 3;   // верхние три этажа — только торцы («U»)
+      const w = (i, n) => 1 + 0.03 * Math.sin(i / n * Math.PI * 4 + k * 0.45);
+      const slab = stadium(f, A, R, 8).map(([x, z], i, arr) => { const k2 = w(i, arr.length); return [f.cx + (x - f.cx) * k2, f.cz + (z - f.cz) * k2]; });
+      if (top) {
+        for (const s of [-1, 1]) { // торцевая часть: полукруг + немного прямого участка
+          const part = stadium(f, A, R, 8).filter(([x, z]) => s * ((x - f.cx) * f.ux + (z - f.cz) * f.uz) > A - R - 4);
+          if (part.length > 2) { twoSided(b, part.map(([x, z]) => [f.cx + (x - f.cx) * 0.94, f.cz + (z - f.cz) * 0.94]), y, y + fl, GL, "glow"); b.loft(part, y + fl - 0.35, part, y + fl, W); }
+        }
+        continue;
+      }
+      twoSided(b, core, y, y + fl - 0.35, k % 2 ? GL : k3(GL, 1.08), "glow");
+      b.loft(slab, y + fl - 0.35, slab, y + fl, W, k % 4 === 0 ? "led" : "parts");
+      b.fan(slab.map(([x, z]) => [x - f.cx, z - f.cz]), y + fl, W, "parts", y + fl, f.cx, f.cz);
     }
-    // «U»: средняя часть ниже, края-«рога» выше
-    const yt = y0 + floors * 3.3;
-    b.loft(core, yt, core, yt + 2, W); b.fan(core.map(([x, z]) => [x - cx, z - cz]), yt + 2, [0.55, 0.56, 0.6], "parts", yt + 2, cx, cz);
-    for (const s of [-1, 1]) {
-      b.box(cx + s * (A - 5), yt, cz, 10, H - yt + 4, B * 2 - 2, W);
-      b.box(cx + s * (A - 5), yt + 2, cz + B - 0.9, 8, H - yt, 0.2, [0.3, 0.36, 0.44], 0, true);
-    }
-    b.cyl(cx + A - 5, H + 4, cz, 0.3, 8, [0.8, 0.8, 0.82], 6);
+    b.fan(core.map(([x, z]) => [x - f.cx, z - f.cz]), y0 + (floors - 3) * fl + 0.1, [0.62, 0.64, 0.66], "parts", y0 + (floors - 3) * fl + 0.1, f.cx, f.cz);
+    const [ax, az] = FP(f, A - R * 0.6, 0); b.cyl(ax, y0 + floors * fl, az, 0.25, 7, [0.8, 0.8, 0.82], 6);
   };
+
+  // ---------------- Piramit Tower (185 м, 52 этажа) ----------------
+  // По фото: стройная башня из синего стекла со скруглёнными углами, по всему фасаду — белая диагональная
+  // сетка-«ромбы» (диагрид), верх срезан наклонно; у подножия — торговый центр Piramit Mall.
+  // Ночью диагрид светится тёплым белым.
+  M.piramit = (b, o) => {
+    const Q = localParts(o), tw = Q.reduce((a, q) => (q.A > a.A && q.h > 100 ? q : a), Q[0]), crown = Q.find((q) => q.h > tw.h), mall = Q.find((q) => q.h < 40);
+    const GL = [0.2, 0.34, 0.62], WH = [0.95, 0.96, 0.97];
+    if (mall) block(b, mall.p, 0, mall.h, { wall: [0.78, 0.8, 0.84], frame: [0.95, 0.95, 0.96], trim: [0.96, 0.96, 0.97], base: [0.22, 0.3, 0.4], roof: [0.58, 0.6, 0.62], win: 90, pil: 4, every: 2 });
+    const f = frame(tw), H = tw.h, y0 = mall ? Math.min(mall.h, 20) : 0;
+    const ring = stadium(f, f.L / 2, f.W / 2 * 0.55, 6);              // скруглённые углы
+    const per = []; let P = 0; for (let i = 0; i < ring.length; i++) { per.push(P); const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % ring.length]; P += Math.hypot(x1 - x0, z1 - z0); }
+    const at = (u, out = 0.25) => { u = ((u % P) + P) % P; let i = 0; while (i + 1 < ring.length && per[i + 1] <= u) i++; const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % ring.length], L = Math.hypot(x1 - x0, z1 - z0) || 1, t = (u - per[i]) / L; return [x0 + (x1 - x0) * t + (z1 - z0) / L * out, z0 + (z1 - z0) * t - (x1 - x0) / L * out]; };
+    // наклонный верх: высота по длинной оси от H-10 до H
+    const topAt = (x, z) => H - 10 + 10 * (((x - f.cx) * f.ux + (z - f.cz) * f.uz) / f.L + 0.5);
+    b.winRing(ring, y0, H - 10, GL, 91);
+    const arr = []; for (let i = 0; i < ring.length; i++) { const j = (i + 1) % ring.length, [x0, z0] = ring[i], [x1, z1] = ring[j]; arr.push(x0, H - 10, z0, x1, H - 10, z1, x1, topAt(x1, z1), z1, x0, H - 10, z0, x1, topAt(x1, z1), z1, x0, topAt(x0, z0), z0); }
+    b.raw(arr, GL, "glow"); const rev = []; for (let i = 0; i < arr.length; i += 9) rev.push(...arr.slice(i, i + 3), ...arr.slice(i + 6, i + 9), ...arr.slice(i + 3, i + 6)); b.raw(rev, GL, "glow");
+    const tri = THREE.ShapeUtils.triangulateShape(ring.map((v) => new THREE.Vector2(v[0], v[1])), []), roof = [];
+    for (const t of tri) for (const i of t) roof.push(ring[i][0], topAt(...ring[i]), ring[i][1]);
+    b.raw(roof, [0.55, 0.6, 0.68]);
+    // диагрид
+    const cols = Math.round(P / 9), du = P / cols, rows = Math.round((H - y0) / 13), dy = (H - y0) / rows;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const u0 = c * du, ya = y0 + r * dy, yb = ya + dy;
+      for (const [ua, ub] of [[u0, u0 + du], [u0 + du, u0]]) {
+        const [x0, z0] = at(ua), [x1, z1] = at(ub), y1 = Math.min(yb, topAt(x1, z1)); if (ya >= y1) continue;
+        b.beam(x0, ya, z0, x1, y1, z1, 0.45, WH, "glow", 0.3);
+      }
+    }
+    for (let r = 0; r <= rows; r++) { const y = y0 + r * dy; if (y < H - 10) band(b, ring, 0.3, y - 0.25, 0.5, WH, "glow"); }
+    sign(b, "PIRAMIT", ...(() => { const [x, z] = FP(f, 0, f.W / 2 * 0.56 + 0.5); return [x, H - 22, z, f.vx, f.vz]; })(), 0.9, [0.95, 0.85, 0.5]);
+    if (crown) { const c2 = frame(crown); b.cyl(c2.cx, H, c2.cz, 0.3, 14, [0.85, 0.85, 0.88], 6); }
+  };
+
+  // ---------------- Ассоциация банков Узбекистана ----------------
+  // По фото: серебристо-синяя стеклянная башня, в центре — круглый стеклянный ствол, поднимающийся выше
+  // корпуса и увенчанный «маяком» с металлическим кольцом и шпилем; по бокам ступенчатые стеклянные крылья
+  // с белыми рёбрами; у входа — павильон с круглым шатром.
+  M.uba = (b, o) => {
+    const Q = localParts(o), GL = [0.42, 0.55, 0.66], GL2 = [0.3, 0.42, 0.56], SV = [0.86, 0.88, 0.9], WH = [0.95, 0.95, 0.96];
+    const roundish = (q) => q.p.length >= 14 && Math.abs((q.x1 - q.x0) - (q.z1 - q.z0)) < 3;
+    for (const q of Q.slice().sort((a, b2) => a.h - b2.h)) {
+      if (roundish(q) && q.h >= 60) { // центральный круглый ствол и «маяк»
+        const r = (q.x1 - q.x0) / 2, c = [q.cx, q.cz], top = q.h;
+        if (q.h < 70) {
+          b.winRing(se(r, r, 2, 20).map(([x, z]) => [x + c[0], z + c[1]]), 0, top - 4, GL2, 92);
+          for (let y = 4; y < top - 4; y += 6.6) b.cyl(c[0], y, c[1], r + 0.2, 0.5, SV, 20);
+          b.cyl(c[0], top - 4, c[1], r + 0.4, 4, SV, 20);
+        } else {
+          b.cyl(c[0], 60, c[1], r, top - 66, GL2, 16, r, true);
+          b.cyl(c[0], top - 6, c[1], r + 1.2, 1.2, SV, 16); b.cyl(c[0], top - 4.8, c[1], r + 0.2, 3.2, [0.5, 0.7, 0.9], 16, r + 0.2, true);
+          b.cyl(c[0], top - 1.6, c[1], r + 1.6, 0.8, SV, 16); b.dome(c[0], top - 0.8, c[1], r + 0.4, SV, { hk: 0.5, seg: 16, tip: false });
+          b.cyl(c[0], top - 0.8 + (r + 0.4) * 0.5, c[1], 0.35, 12, SV, 6, 0.08);
+        }
+        continue;
+      }
+      if (roundish(q)) { // павильон с шатром
+        const r = (q.x1 - q.x0) / 2;
+        b.cyl(q.cx, 0, q.cz, r, q.h - 3, GL, 16, r, true); b.cyl(q.cx, q.h - 3, q.cz, r + 0.6, 0.6, SV, 16);
+        b.cone(q.cx, q.h - 2.4, q.cz, r + 1, 3.2, [0.36, 0.44, 0.56], 16); continue;
+      }
+      // корпус и крылья: стекло с белыми рёбрами, ступенчатые верха
+      b.winRing(q.p, 0, q.h - 1.2, q.h > 30 ? GL : GL2, 93);
+      pilasters(b, q.p, 0, q.h - 1.2, 3.6, 0.35, 0.4, SV);
+      for (let y = 3.6; y < q.h - 2; y += 3.6 * (q.h > 30 ? 3 : 1)) band(b, q.p, 0.3, y, 0.35, SV);
+      band(b, q.p, 0.4, q.h - 1.2, 1.2, WH); cap(b, q.p, q.h, [0.6, 0.62, 0.64]);
+      if (q.h > 30) { const r = offset(q.p, -2.5); b.loft(r, q.h, r, q.h + 3, GL, "glow"); cap(b, r, q.h + 3, SV); }
+    }
+  };
+
+  // ---------------- Международный бизнес-центр (у НБУ) ----------------
+  // По фото: изогнутые фасады из синего стекла между светлыми каменными пилонами, по стеклу —
+  // ступенчатые тёмные полосы «лесенкой»; узкие корпуса — белые пилоны с прорезями окон.
+  M.ibc = (b, o) => {
+    const Q = localParts(o), GL = [0.17, 0.33, 0.62], ST = [0.9, 0.88, 0.84], DK = [0.08, 0.12, 0.22];
+    for (const q of Q) {
+      const thin = Math.min(q.x1 - q.x0, q.z1 - q.z0) < 12;
+      if (thin) { b.winRing(q.p, 0, q.h, ST, 94); cap(b, q.p, q.h + 0.01, [0.66, 0.66, 0.66]); band(b, q.p, 0.3, q.h, 1, ST); continue; }
+      twoSided(b, offset(q.p, 0.05), 0, q.h - 1.5, GL, "glow");
+      for (let y = 3.3; y < q.h - 2; y += 3.3) band(b, q.p, 0.12, y, 0.18, [0.32, 0.48, 0.72]);
+      band(b, q.p, 0.25, q.h - 1.5, 1.5, ST); cap(b, q.p, q.h, [0.6, 0.62, 0.66]);
+      // ступенчатые тёмные полосы на длинных фасадах
+      let A = 0; for (let i = 0; i < q.p.length; i++) { const j = (i + 1) % q.p.length; A += q.p[i][0] * q.p[j][1] - q.p[j][0] * q.p[i][1]; }
+      const sg = A > 0 ? 1 : -1;
+      for (let i = 0; i < q.p.length; i++) {
+        const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], Le = Math.hypot(x1 - x0, z1 - z0); if (Le < 14) continue;
+        const nx = sg * (z1 - z0) / Le, nz = -sg * (x1 - x0) / Le, ry = Math.atan2(nx, nz), steps = Math.floor(Le / 5);
+        for (let k = 0; k < steps; k++) {
+          const t = (k + 0.5) / steps, x = x0 + (x1 - x0) * t + nx * 0.3, z = z0 + (z1 - z0) * t + nz * 0.3, y = q.h * 0.7 - k * 3.3;
+          if (y < 6) break;
+          b.box(x, y, z, Le / steps + 0.1, 0.6, 0.2, DK, ry);
+        }
+      }
+    }
+  };
+
+  // ---------------- Законодательная палата Олий Мажлиса ----------------
+  // По фото: белое квадратное здание с колоннадой из тонких высоких белых колонн с золотыми капителями,
+  // за ними — золотисто-коричневое остекление; широкий белый аттик с орнаментом и гербом, в центре крыши —
+  // низкий голубой купол на барабане, флаг Узбекистана; перед зданием — фонтан.
+  M.oliy_majlis = (b, o) => {
+    const Q = localParts(o), core = Q.find((q) => q.mh === 0) || Q[0], slab = Q.find((q) => q.mh > 0 && q.h < 22), dome = Q.find((q) => q.p.length > 10);
+    const WH = [0.95, 0.94, 0.91], GOLD = [0.86, 0.68, 0.32], GL = [0.48, 0.38, 0.22], GR = [0.82, 0.8, 0.76];
+    const f = frame(slab || core), A = (slab ? f.L : core.x1 - core.x0) / 2, B = (slab ? f.W : core.z1 - core.z0) / 2, H1 = slab ? slab.mh : 16, H2 = slab ? slab.h : 20;
+    const rect = (a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)];
+    // стилобат со ступенями
+    for (let k = 0; k < 3; k++) { const r = rect(A + 6 - k * 1.4, B + 6 - k * 1.4); b.loft(r, k * 0.5, r, (k + 1) * 0.5, GR); cap(b, r, (k + 1) * 0.5, k3(GR, 1.05)); }
+    // остеклённый объём за колоннадой
+    const inner = rect(A - 4, B - 4); twoSided(b, inner, 1.5, H1, GL, "glow"); pilasters(b, inner, 1.5, H1, 2.4, 0.25, 0.25, k3(GL, 0.7));
+    // колоннада по периметру
+    const ring = rect(A - 0.8, B - 0.8);
+    for (let i = 0; i < 4; i++) {
+      const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % 4], Le = Math.hypot(x1 - x0, z1 - z0), n = Math.round(Le / 4.6);
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+        b.cyl(x, 1.5, z, 0.42, H1 - 3, WH, 8, 0.5); b.cyl(x, H1 - 1.5, z, 0.9, 1.5, GOLD, 8, 0.45);
+      }
+    }
+    // аттик с орнаментом
+    const att = rect(A, B); b.loft(att, H1, att, H2, WH); cap(b, att, H2, [0.7, 0.7, 0.7]);
+    band(b, att, 0.15, H1 + (H2 - H1) * 0.45, 0.6, GOLD);
+    for (const s of [-1, 1]) { const [x, z] = FP(f, 0, s * (B + 0.2)); b.cyl(x, H1 + 0.6, z, 1.4, 0.2, GOLD, 12); }
+    // барабан и купол
+    const R = dome ? (dome.x1 - dome.x0) / 2 * 0.62 : 12, [dx, dz] = dome ? [dome.cx, dome.cz] : FP(f, 0, 0);
+    b.cyl(dx, H2, dz, R + 3, 1, WH, 24); b.cyl(dx, H2 + 1, dz, R, 3.4, WH, 24);
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; b.box(dx + Math.cos(a) * (R + 0.05), H2 + 1.6, dz + Math.sin(a) * (R + 0.05), 1.4, 2, 0.15, [0.3, 0.4, 0.5], -a + Math.PI / 2, true); }
+    b.dome(dx, H2 + 4.4, dz, R, [0.45, 0.68, 0.86], { hk: 0.42, seg: 24, ribs: [0.4, 0.62, 0.8], tip: false });
+    b.cyl(dx, H2 + 4.4 + R * 0.42, dz, 0.12, 7, [0.85, 0.85, 0.88], 6);
+    b.box(dx + 1.1, H2 + 9.8 + R * 0.42, dz, 2.2, 0.5, 0.05, [0.1, 0.55, 0.85]); b.box(dx + 1.1, H2 + 9.3 + R * 0.42, dz, 2.2, 0.5, 0.05, [0.97, 0.97, 0.97]); b.box(dx + 1.1, H2 + 8.8 + R * 0.42, dz, 2.2, 0.5, 0.05, [0.15, 0.65, 0.3]);
+    // фонтан перед главным фасадом
+    const [fx, fz] = FP(f, 0, B + 24); b.cyl(fx, 0, fz, 9, 0.6, GR, 20); b.cyl(fx, 0.55, fz, 8.4, 0.1, [0.3, 0.5, 0.62], 20); b.cyl(fx, 0.6, fz, 0.4, 3.5, [0.8, 0.9, 1], 6);
+  };
+
+  // ---------------- небоскрёбы делового района Tashkent City ----------------
+  // SQB — круглая стеклянная башня с белыми вертикальными рёбрами и светящейся короной под куполом;
+  // BoMI — тонкая пластина тёмного стекла с открытой рамой-короной; Asaka Bank — тёмно-зелёное стекло
+  // с белыми поясами и ступенчатым верхом; Aloqa Bank — светло-голубое стекло с белыми ламелями
+  // и уступами наверху. На верхах — логотипы-надписи.
+  function tcTower(b, o, kind) {
+    const q = localParts(o)[0], f = frame(q), H = q.h, sig = (txt, px, y, side = 1) => { const [x, z] = FP(f, 0, side * (f.W / 2 + 0.6)); sign(b, txt, x, y, z, f.vx * side, f.vz * side, px, [0.95, 0.95, 0.97]); };
+    if (kind === "sqb") {
+      const R = Math.min(f.L, f.W) / 2, GL = [0.32, 0.46, 0.6];
+      b.winRing(se(R - 0.4, R - 0.4, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), 0, H - 8, GL, 95);
+      for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; b.box(f.cx + Math.cos(a) * R, 6, f.cz + Math.sin(a) * R, 0.5, H - 14, 0.9, [0.92, 0.93, 0.95], -a + Math.PI / 2); }
+      for (let y = 6; y < H - 8; y += 13.2) b.cyl(f.cx, y, f.cz, R + 0.3, 0.5, [0.92, 0.93, 0.95], 28);
+      b.cyl(f.cx, 0, f.cz, R + 3, 6, [0.24, 0.3, 0.36], 28, R + 3, true); b.cyl(f.cx, 6, f.cz, R + 3.4, 0.8, [0.9, 0.9, 0.92], 28);
+      b.cyl(f.cx, H - 8, f.cz, R - 1.5, 6, [0.5, 0.75, 0.95], 28, R - 1, true); b.loft(se(R - 1, R - 1, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), H - 8, se(R - 1, R - 1, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), H - 2, [0.6, 0.85, 1], "led");
+      b.dome(f.cx, H - 2, f.cz, R - 1, [0.86, 0.88, 0.9], { hk: 0.35, seg: 28, tip: false }); b.cyl(f.cx, H - 2 + (R - 1) * 0.35, f.cz, 0.4, 16, [0.85, 0.86, 0.9], 6, 0.1);
+      return;
+    }
+    const A = f.L / 2, B = f.W / 2, rect = (a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)];
+    const st = { bomi: { gl: [0.12, 0.2, 0.32], fin: [0.55, 0.62, 0.7], top: 14, setb: 0 }, asaka: { gl: [0.12, 0.3, 0.3], fin: [0.9, 0.92, 0.9], top: 10, setb: 2 }, aloqa: { gl: [0.42, 0.6, 0.78], fin: [0.96, 0.97, 0.98], top: 8, setb: 2 } }[kind];
+    b.loft(rect(A + 4, B + 4), 0, rect(A + 4, B + 4), 7, [0.24, 0.3, 0.36], "glow"); cap(b, rect(A + 4, B + 4), 7, [0.6, 0.62, 0.64]); band(b, rect(A + 4, B + 4), 0.2, 6.6, 0.8, st.fin);
+    let hTop = H - st.top;
+    b.winRing(rect(A, B), 7, hTop, st.gl, 96 + kind.length);
+    if (kind === "asaka") for (let y = 10.3; y < hTop; y += 3.3) band(b, rect(A, B), 0.15, y, 0.3, st.fin);
+    else pilasters(b, rect(A, B), 7, hTop, kind === "aloqa" ? 1.6 : 2.2, 0.3, 0.4, st.fin);
+    if (kind === "bomi") { // открытая рама-корона
+      for (const [a, c] of [[-A, -B], [A, -B], [A, B], [-A, B]]) { const [x, z] = FP(f, a * 0.98, c * 0.9); b.box(x, hTop, z, 1, st.top, 1, st.fin, f.ry); }
+      for (const y of [hTop + st.top * 0.5, H - 0.8]) band(b, rect(A, B * 0.9), 0.1, y, 0.8, st.fin);
+      cap(b, rect(A - 0.5, B * 0.85), hTop, [0.5, 0.52, 0.56]);
+      for (let k = -2; k <= 2; k++) { const [x, z] = FP(f, k * A / 3, 0); b.box(x, hTop, z, 0.4, st.top * 0.9, f.W * 0.8, [0.75, 0.85, 1], f.ry, true); }
+    } else { // уступы
+      let a = A, c = B, y = hTop;
+      for (let k = 0; k < 2; k++) { a -= st.setb * (k + 1); c -= st.setb * 0.6; const r = rect(a, c); b.winRing(r, y, y + st.top / 2, st.gl, 97 + k); band(b, r, 0.2, y + st.top / 2 - 0.6, 0.6, st.fin); y += st.top / 2; }
+      cap(b, rect(a, c), y, [0.55, 0.56, 0.6]);
+      for (const s of [-1, 1]) sig(kind === "asaka" ? "ASAKA BANK" : "ALOQA BANK", Math.min(0.6, f.L * 0.8 / 59), hTop - 7, s);
+    }
+    band(b, rect(A, B), 0.25, hTop, 0.8, st.fin);
+  }
+  M.tc_sqb = (b, o) => tcTower(b, o, "sqb");
+  M.tc_bomi = (b, o) => tcTower(b, o, "bomi");
+  M.tc_asaka = (b, o) => tcTower(b, o, "asaka");
+  M.tc_aloqa = (b, o) => tcTower(b, o, "aloqa");
 
   // объёмные буквы вдоль отрезка p0→p1 (центр — середина), лицом по нормали n (наружу)
   function sign(b, txt, cx, y, cz, nx, nz, px, col, list = "glow", d = 0.3) {
