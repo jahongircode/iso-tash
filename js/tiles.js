@@ -151,6 +151,23 @@
     spring: [[0.46, 0.62, 0.3], [0.52, 0.66, 0.32], [0.9, 0.76, 0.8], [0.95, 0.9, 0.88]],
   }[T.season];
   const CONIFER = [0.2, 0.38, 0.24];
+  // породы дендрария (ботанический сад): байт вида 85..161 = 85 + вид * 7 + размер.
+  // c — хвойная форма (конус), h — высота, w — ширина кроны к высоте, y — сплющенность, col — цвет по сезону
+  const ev = (c) => ({ summer: c, autumn: c, winter: c, spring: c });
+  const SPECIES = [
+    { name: "pine", h: [11, 7], w: 0.26, col: ev([0.2, 0.34, 0.22]), evg: 1 },
+    { name: "spruce", c: 1, h: [9, 9], w: 0.8, col: ev([0.15, 0.31, 0.27]), evg: 1 },
+    { name: "metasequoia", c: 1, h: [15, 9], w: 0.55, col: { summer: [0.38, 0.56, 0.3], autumn: [0.76, 0.4, 0.18], winter: [0.5, 0.36, 0.26], spring: [0.5, 0.7, 0.36] } },
+    { name: "cypress", c: 1, h: [6, 6], w: 0.42, col: ev([0.16, 0.29, 0.2]), evg: 1 },
+    { name: "willow", h: [8, 5], w: 0.5, y: 0.86, col: { summer: [0.58, 0.68, 0.32], autumn: [0.78, 0.75, 0.36], winter: [0.62, 0.58, 0.38], spring: [0.66, 0.8, 0.4] } },
+    { name: "sakura", h: [4.5, 2.5], w: 0.48, y: 0.9, col: { summer: [0.34, 0.5, 0.24], autumn: [0.86, 0.4, 0.26], winter: [0.42, 0.34, 0.32], spring: [0.98, 0.74, 0.84] } },
+    { name: "shrub", h: [1.8, 1.4], w: 0.6, y: 0.8, col: { summer: [0.26, 0.44, 0.24], autumn: [0.52, 0.36, 0.22], winter: [0.3, 0.36, 0.24], spring: [0.88, 0.42, 0.68] }, evg: 1 },
+    { name: "chinar", h: [15, 6], w: 0.33, col: { summer: [0.4, 0.56, 0.26], autumn: [0.8, 0.62, 0.26], winter: [0.55, 0.5, 0.42], spring: [0.5, 0.66, 0.3] } },
+    { name: "birch", h: [10, 5], w: 0.22, col: { summer: [0.48, 0.64, 0.3], autumn: [0.96, 0.84, 0.3], winter: [0.72, 0.68, 0.64], spring: [0.6, 0.76, 0.36] } },
+    { name: "maple", h: [7, 5], w: 0.34, col: { summer: [0.32, 0.5, 0.22], autumn: [0.86, 0.22, 0.14], winter: [0.45, 0.36, 0.3], spring: [0.48, 0.64, 0.3] } },
+    { name: "oak", h: [11, 6], w: 0.38, col: { summer: [0.3, 0.46, 0.2], autumn: [0.64, 0.45, 0.18], winter: [0.46, 0.38, 0.3], spring: [0.42, 0.58, 0.26] } },
+  ];
+  const species = (r) => { const u = Math.round(r * 85) - 85; return u >= 0 && u < SPECIES.length * 7 ? [SPECIES[Math.floor(u / 7)], (u % 7) / 6] : null; };
   // одиночные деревья (меньше двух соседей в радиусе 9 м) — отдельная группа: вблизи видны,
   // а на среднем плане скрываются, иначе вдоль улиц и в промзонах остаётся россыпь цветных точек
   function makeTrees(tr, ox, oz) {
@@ -159,7 +176,7 @@
     for (let i = 0; i < n; i++) {
       const x = tr[i * 3], z = tr[i * 3 + 1], gx = Math.floor(x / G), gz = Math.floor(z / G); let cnt = 0;
       for (let a = -1; a <= 1 && cnt < 2; a++) for (let b = -1; b <= 1 && cnt < 2; b++) { const l = grid.get((gx + a) + "," + (gz + b)); if (l) for (const j of l) if (j !== i && Math.hypot(tr[j * 3] - x, tr[j * 3 + 1] - z) < G && ++cnt >= 2) break; }
-      iso[i] = cnt < 2 ? 1 : 0;
+      iso[i] = cnt < 2 && !species(tr[i * 3 + 2]) ? 1 : 0; // породы дендрария посажены нарочно — не прячем
     }
     const dense = [], lone = [];
     for (let i = 0; i < n; i++) (iso[i] ? lone : dense).push(i);
@@ -169,18 +186,24 @@
     const n = ids.length;
     let nb = 0, nc = 0;
     const kinds = new Uint8Array(n);
-    for (let k = 0; k < n; k++) { const r = tr[ids[k] * 3 + 2]; const c = r < 1 && ((r * 7919) % 1) < 0.1 ? 1 : 0; kinds[k] = c; c ? nc++ : nb++; }
+    for (let k = 0; k < n; k++) { const r = tr[ids[k] * 3 + 2], sp = species(r); const c = sp ? (sp[0].c ? 1 : 0) : r < 1 && ((r * 7919) % 1) < 0.1 ? 1 : 0; kinds[k] = c; c ? nc++ : nb++; }
     const mb = new THREE.InstancedMesh(treeGeo, M.tree, Math.max(1, nb)), mc = new THREE.InstancedMesh(coneGeo, M.tree, Math.max(1, nc));
     mb.count = nb; mc.count = nc;
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
     let ib = 0, ic = 0;
     const winter = T.season === "winter";
     for (let k = 0; k < n; k++) {
-      const i = ids[k], r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2;
+      const i = ids[k], r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2, sp = species(r);
       const hgt = poplar ? 13 + f * 8 : 6 + f * 7.5;
       p.set(tr[i * 3], 0.1, tr[i * 3 + 1]);
       q.setFromAxisAngle(up, f * 6.28);
-      if (kinds[k]) {
+      if (sp) { // порода дендрария: своя форма и цвет по сезону
+        const [S, sf] = sp, h2 = S.h[0] + sf * S.h[1], vr = ((tr[i * 3] * 12.9898 + tr[i * 3 + 1] * 78.233) % 1 + 1) % 1;
+        q.setFromAxisAngle(up, vr * 6.28);
+        const bare = winter && !S.evg ? 0.75 : 1, cc = S.col[T.season], kk = 0.92 + vr * 0.16;
+        if (S.c) { s.set(h2 / 3.4 * S.w, h2 / 2.7, h2 / 3.4 * S.w); m.compose(p, q, s); mc.setMatrixAt(ic, m); c.setRGB(cc[0] * kk, cc[1] * kk, cc[2] * kk); mc.setColorAt(ic++, c); }
+        else { s.set(h2 * S.w * bare, h2 / 2.55 * (S.y || 1), h2 * S.w * bare); m.compose(p, q, s); mb.setMatrixAt(ib, m); c.setRGB(cc[0] * kk, cc[1] * kk, cc[2] * kk); mb.setColorAt(ib++, c); }
+      } else if (kinds[k]) {
         s.set(hgt / 3.4, hgt / 2.7, hgt / 3.4);
         m.compose(p, q, s); mc.setMatrixAt(ic, m); c.setRGB(CONIFER[0] * (0.9 + f * 0.2), CONIFER[1] * (0.9 + f * 0.2), CONIFER[2]); mc.setColorAt(ic++, c);
       } else {

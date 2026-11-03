@@ -3,7 +3,8 @@
 //  U-Tower, Modera Towers, Mirabad Avenue, «Казахстан», NRG Oybek,
 //  Xon Saroy Sayram, экспериментальный дом «Жемчуг», башня Национального банка (НБУ),
 //  аэропорт Ташкента с самолётами Uzbekistan Airways, Piramit Tower, Ассоциация банков, Международный
-//  бизнес-центр, Законодательная палата Олий Мажлиса, башни SQB, BoMI, Asaka Bank и Aloqa Bank.
+//  бизнес-центр, Законодательная палата Олий Мажлиса, башни SQB, BoMI, Asaka Bank и Aloqa Bank;
+//  ботанический сад им. Русанова: оранжерея и теплица, эстрада с амфитеатром, мостик, вход, клумбы.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
 (function () {
@@ -668,5 +669,174 @@
     for (const sgn of [-1, 1]) { const w = new THREE.BoxGeometry(1.6, 0.25, 5); w.rotateX(sgn * 0.5); w.translate(0, 0, sgn * 2.3); b.add(w, GOLD, cx, H + 17.2, cz, ry); }
     // соседний низкий стеклянный корпус
     if (annex) { b.winRing(annex.p, 0, annex.h - 1.2, GL, 81); band(b, annex.p, 0.4, annex.h - 1.2, 1.2, WS); cap(b, annex.p, annex.h, [0.6, 0.62, 0.66]); }
+  };
+
+  // ---------------- Ботанический сад им. Русанова ----------------
+  // Главный вход с запада — портал с надписью BOTANIKA BOG'I и цветниками, рядом клумба «Луковица»;
+  // на севере — оранжерея (стеклянный корпус в белом каркасе, сводчатые крылья, купол над центром)
+  // и блочная теплица из параллельных двускатных секций; в центре — летняя эстрада-«ракушка»
+  // с амфитеатром, пруд с горбатым мостиком и беседкой; окаменелое дерево на постаменте.
+  const GHG = [0.6, 0.78, 0.76], WF = [0.95, 0.96, 0.95], STONE = [0.86, 0.8, 0.66];
+  const both = (b, arr, col, list) => { const r = []; for (let i = 0; i < arr.length; i += 9) r.push(arr[i], arr[i + 1], arr[i + 2], arr[i + 6], arr[i + 7], arr[i + 8], arr[i + 3], arr[i + 4], arr[i + 5]); b.raw(arr, col, list); b.raw(r, col, list); };
+  // стеклянный свод вдоль оси корпуса f от a0 до a1, полуширина c, основание y, подъём hv; рёбра каркаса через ~3 м
+  function vault(b, f, a0, a1, c, y, hv, N = 8) {
+    const prof = []; for (let k = 0; k <= N; k++) { const t = -1 + 2 * k / N; prof.push([t * c, y + hv * Math.sqrt(Math.max(0, 1 - t * t))]); }
+    const sh = [], gab = [];
+    for (let k = 0; k < N; k++) {
+      const [c0, y0] = prof[k], [c1, y1] = prof[k + 1], p00 = FP(f, a0, c0), p01 = FP(f, a0, c1), p10 = FP(f, a1, c0), p11 = FP(f, a1, c1);
+      sh.push(p00[0], y0, p00[1], p10[0], y0, p10[1], p11[0], y1, p11[1], p00[0], y0, p00[1], p11[0], y1, p11[1], p01[0], y1, p01[1]);
+      for (const a of [a0, a1]) { const m = FP(f, a, 0), q0 = FP(f, a, c0), q1 = FP(f, a, c1); gab.push(m[0], y, m[1], q0[0], y0, q0[1], q1[0], y1, q1[1]); }
+    }
+    both(b, sh, GHG, "glow"); both(b, gab, GHG, "glow");
+    const n = Math.max(1, Math.round((a1 - a0) / 3));
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + (a1 - a0) * i / n;
+      for (let k = 0; k < N; k++) { const [c0, y0] = prof[k], [c1, y1] = prof[k + 1], p = FP(f, a, c0), q = FP(f, a, c1); b.beam(p[0], y0 + 0.05, p[1], q[0], y1 + 0.05, q[1], 0.18, WF); }
+    }
+    const r0 = FP(f, a0, 0), r1 = FP(f, a1, 0); b.beam(r0[0], y + hv + 0.08, r0[1], r1[0], y + hv + 0.08, r1[1], 0.3, WF);
+  }
+  M.botanic_gh = (b, o) => {
+    const Q = localParts(o), or = Q.reduce((a, q) => (q.h > a.h ? q : a)), gh = Q.find((q) => q !== or);
+    // оранжерея: цоколь, стеклянные стены в белом каркасе, сводчатые крылья и купольный павильон
+    const f = frame(or), A = f.L / 2, B = f.W / 2;
+    b.loft(or.p, 0, or.p, 0.9, [0.8, 0.78, 0.72]); cap(b, or.p, 0.9, [0.7, 0.68, 0.62]);
+    twoSided(b, or.p, 0.9, 5.4, GHG, "glow"); pilasters(b, or.p, 0.9, 5.4, 2.2, 0.2, 0.22, WF); band(b, or.p, 0.12, 5.4, 0.5, WF); band(b, or.p, 0.12, 2.8, 0.18, WF);
+    cap(b, offset(or.p, -0.4), 5.85, [0.82, 0.84, 0.82]);
+    const cB = Math.min(B - 1.6, 8);
+    vault(b, f, -A + 1.5, -7.5, cB, 5.9, 4.2); vault(b, f, 7.5, A - 1.5, cB, 5.9, 4.2);
+    b.cyl(f.cx, 5.9, f.cz, 7.6, 0.5, WF, 16);
+    b.cyl(f.cx, 6.4, f.cz, 7, 3.4, GHG, 16, 7, true); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; b.box(f.cx + Math.cos(a) * 7.05, 6.4, f.cz + Math.sin(a) * 7.05, 0.22, 3.4, 0.22, WF, -a); }
+    b.cyl(f.cx, 9.8, f.cz, 7.4, 0.4, WF, 16);
+    b.dome(f.cx, 10.2, f.cz, 7, GHG, { hk: 0.62, seg: 16, ribs: WF, tip: false }); b.glow.push(b.parts.pop());
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; b.beam(f.cx + Math.cos(a) * 7, 10.2, f.cz + Math.sin(a) * 7, f.cx + Math.cos(a) * 3.2, 14, f.cz + Math.sin(a) * 3.2, 0.2, WF); }
+    b.cyl(f.cx, 14.1, f.cz, 1.3, 1.4, WF, 8); b.cone(f.cx, 15.5, f.cz, 1.6, 1.6, [0.3, 0.55, 0.45], 8); b.cyl(f.cx, 17, f.cz, 0.08, 1.6, [0.85, 0.7, 0.3], 4);
+    // пальмы у входа в оранжерею
+    for (const s of [-1, 1]) {
+      const [px, pz] = FP(f, s * 5, B + 3.5);
+      b.cyl(px, 0, pz, 0.28, 5.5, [0.5, 0.4, 0.3], 6, 0.2);
+      for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2; b.beam(px, 5.5, pz, px + Math.cos(a) * 2.6, 4.6, pz + Math.sin(a) * 2.6, 0.5, [0.32, 0.52, 0.26], "parts", 0.12); }
+    }
+    if (!gh) return;
+    // блочная теплица: параллельные двускатные стеклянные секции
+    const g = frame(gh), GA = g.L / 2, GB = g.W / 2, n = Math.max(3, Math.round(g.W / 8.5)), bw = g.W / n, Hs = 3.4, Hr = Hs + bw * 0.38;
+    const rect = [FP(g, -GA, -GB), FP(g, GA, -GB), FP(g, GA, GB), FP(g, -GA, GB)];
+    b.loft(rect, 0, rect, 0.5, [0.78, 0.76, 0.7]); twoSided(b, rect, 0.5, Hs, GHG, "glow"); pilasters(b, rect, 0.5, Hs, 2.4, 0.16, 0.18, WF);
+    for (let i = 0; i < n; i++) {
+      const c0 = -GB + i * bw, cm = c0 + bw / 2, c1 = c0 + bw, s = [];
+      const P0 = (a, c, y) => { const [x, z] = FP(g, a, c); return [x, y, z]; };
+      for (const [ca, cb] of [[c0, cm], [cm, c1]]) {
+        const ya = ca === cm ? Hr : Hs, yb = cb === cm ? Hr : Hs;
+        s.push(...P0(-GA, ca, ya), ...P0(GA, ca, ya), ...P0(GA, cb, yb), ...P0(-GA, ca, ya), ...P0(GA, cb, yb), ...P0(-GA, cb, yb));
+      }
+      for (const a of [-GA, GA]) s.push(...P0(a, c0, Hs), ...P0(a, cm, Hr), ...P0(a, c1, Hs));
+      both(b, s, GHG, "glow");
+      const r0 = FP(g, -GA, cm), r1 = FP(g, GA, cm); b.beam(r0[0], Hr, r0[1], r1[0], Hr, r1[1], 0.25, WF);
+      const e0 = FP(g, -GA, c1), e1 = FP(g, GA, c1); b.beam(e0[0], Hs, e0[1], e1[0], Hs, e1[1], 0.3, [0.7, 0.72, 0.72]);
+      for (let a = -GA; a <= GA + 0.01; a += 3) { const p = FP(g, a, c0), q = FP(g, a, cm), r = FP(g, a, c1); b.beam(p[0], Hs, p[1], q[0], Hr, q[1], 0.12, WF); b.beam(q[0], Hr, q[1], r[0], Hs, r[1], 0.12, WF); }
+    }
+    const [kx, kz] = FP(g, GA + 4, -GB + 3); b.box(kx, 0, kz, 5, 3.2, 4, [0.86, 0.84, 0.78], g.ry); b.box(kx, 3.2, kz, 5.4, 0.3, 4.4, [0.5, 0.5, 0.52], g.ry); b.cyl(kx + 1.5, 3.2, kz, 0.35, 6, [0.62, 0.58, 0.55], 8);
+  };
+
+  // летняя эстрада: сцена с белой «ракушкой», амфитеатр полукругом; пруд с мостиком и беседкой
+  M.botanic_stage = (b, o) => {
+    const [st, sd] = localParts(o), dx0 = sd.cx - st.cx, dz0 = sd.cz - st.cz, dl = Math.hypot(dx0, dz0), ux = dx0 / dl, uz = dz0 / dl, vx = -uz, vz = ux;
+    // центр полукруга — передний край сцены
+    let ext = 0; for (const [x, z] of st.p) ext = Math.max(ext, (x - st.cx) * ux + (z - st.cz) * uz);
+    const C = [st.cx + ux * ext * 0.6, st.cz + uz * ext * 0.6];
+    let r0 = 1e9, r1 = 0, a0 = 1e9, a1 = -1e9;
+    for (const [x, z] of sd.p) { const px = x - C[0], pz = z - C[1], r = Math.hypot(px, pz), a = Math.atan2(px * vx + pz * vz, px * ux + pz * uz); r0 = Math.min(r0, r); r1 = Math.max(r1, r); a0 = Math.min(a0, a); a1 = Math.max(a1, a); }
+    r0 = Math.max(5, r0 - 1); const rows = 11, NS = 18, at = (r, a) => [C[0] + (ux * Math.cos(a) + vx * Math.sin(a)) * r, C[1] + (uz * Math.cos(a) + vz * Math.sin(a)) * r];
+    const arcP = (r) => { const p = []; for (let k = 0; k <= NS; k++) p.push(at(r, a0 + (a1 - a0) * k / NS)); return p; };
+    const strip = (A2, yA, B2, yB, col) => { const arr = []; for (let k = 0; k < NS; k++) arr.push(A2[k][0], yA, A2[k][1], A2[k + 1][0], yA, A2[k + 1][1], B2[k + 1][0], yB, B2[k + 1][1], A2[k][0], yA, A2[k][1], B2[k + 1][0], yB, B2[k + 1][1], B2[k][0], yB, B2[k][1]); both(b, arr, col); };
+    for (let t = 0; t < rows; t++) {
+      const ra = r0 + (r1 - r0) * t / rows, rb = r0 + (r1 - r0) * (t + 1) / rows, y = 0.15 + t * 0.48;
+      strip(arcP(ra), y, arcP(ra), y + 0.48, [0.62, 0.6, 0.56]);
+      strip(arcP(ra), y + 0.48, arcP(rb), y + 0.48, t % 2 ? [0.74, 0.56, 0.38] : [0.8, 0.78, 0.74]);
+    }
+    const top = 0.15 + rows * 0.48; strip(arcP(r1), 0, arcP(r1), top + 1, [0.86, 0.82, 0.74]);
+    for (const a of [a0, a1]) { const p = at(r0, a), q = at(r1, a); b.beam(p[0], 0, p[1], q[0], 0, q[1], 1.2, [0.82, 0.78, 0.7], "parts", 0.6); }
+    for (let k = 1; k < 4; k++) { const a = a0 + (a1 - a0) * k / 4, p = at(r0, a), q = at(r1, a); b.beam(p[0], 0.2, p[1], q[0], top, q[1], 1.1, [0.9, 0.88, 0.84], "parts", 0.12); } // проходы
+    // сцена и «ракушка»
+    b.loft(st.p, 0, st.p, 1.2, [0.72, 0.7, 0.66]); cap(b, st.p, 1.2, [0.62, 0.48, 0.34]);
+    const Bk = [st.cx - ux * ext * 0.25, st.cz - uz * ext * 0.25], Rs = Math.min(11, Math.max(6, dl * 0.4)), NA = 14, NE = 6, sh = [];
+    const SP = (ph, ps) => { const h = Math.cos(ps) * Rs, dx = -ux * Math.cos(ph) + vx * Math.sin(ph), dz = -uz * Math.cos(ph) + vz * Math.sin(ph); return [Bk[0] + dx * h, 1.2 + Math.sin(ps) * Rs * 0.9, Bk[1] + dz * h]; };
+    for (let i = 0; i < NA; i++) for (let j = 0; j < NE; j++) {
+      const p0 = -Math.PI / 2 + Math.PI * i / NA, p1 = -Math.PI / 2 + Math.PI * (i + 1) / NA, e0 = Math.PI / 2 * j / NE, e1 = Math.PI / 2 * (j + 1) / NE;
+      sh.push(...SP(p0, e0), ...SP(p1, e0), ...SP(p1, e1), ...SP(p0, e0), ...SP(p1, e1), ...SP(p0, e1));
+    }
+    both(b, sh, [0.96, 0.96, 0.95]);
+    for (let j = 0; j < NE; j++) for (const s of [-1, 1]) { const p = SP(s * Math.PI / 2, Math.PI / 2 * j / NE), q = SP(s * Math.PI / 2, Math.PI / 2 * (j + 1) / NE); b.beam(p[0], p[1], p[2], q[0], q[1], q[2], 0.5, [0.86, 0.84, 0.8]); }
+    for (let i = 0; i <= 6; i++) { const ph = -Math.PI / 2 + Math.PI * i / 6, p = SP(ph, 0.02); b.cyl(p[0], 1.2, p[2], 0.12, 2.6, [1, 0.85, 0.55], 6, 0.12, true); } // софиты
+    // мостик через пруд: горбатый настил с перилами
+    const sb = o.sub || {};
+    if (sb.b0 && sb.b1) {
+      const [x0, z0] = o.local(...sb.b0), [x1, z1] = o.local(...sb.b1), L = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(-(z1 - z0), x1 - x0), nx = -(z1 - z0) / L, nz = (x1 - x0) / L, N = 12;
+      const Y = (t) => 0.4 + Math.sin(t * Math.PI) * 1.8, W2 = [0.56, 0.38, 0.24];
+      for (let k = 0; k < N; k++) {
+        const t0 = k / N, t1 = (k + 1) / N, xa = x0 + (x1 - x0) * t0, za = z0 + (z1 - z0) * t0, xb = x0 + (x1 - x0) * t1, zb = z0 + (z1 - z0) * t1;
+        b.beam(xa, Y(t0), za, xb, Y(t1), zb, 2.6, W2, "parts", 0.25);
+        for (const s of [-1, 1]) b.beam(xa + nx * s * 1.25, Y(t0) + 1, za + nz * s * 1.25, xb + nx * s * 1.25, Y(t1) + 1, zb + nz * s * 1.25, 0.12, [0.9, 0.3, 0.2]);
+        for (const s of [-1, 1]) b.box(xa + nx * s * 1.25, Y(t0), za + nz * s * 1.25, 0.14, 1, 0.14, [0.9, 0.3, 0.2], ry);
+      }
+    }
+    // беседка: шестигранная, на колоннах, с шатровой крышей
+    if (sb.gz) {
+      const [gx, gz] = o.local(...sb.gz);
+      b.cyl(gx, 0, gz, 3.6, 0.45, [0.8, 0.76, 0.68], 6);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; b.cyl(gx + Math.cos(a) * 3, 0.45, gz + Math.sin(a) * 3, 0.16, 2.8, [0.95, 0.94, 0.9], 6); }
+      b.cyl(gx, 3.2, gz, 3.9, 0.35, [0.62, 0.42, 0.26], 6); b.cone(gx, 3.55, gz, 4.2, 2.4, [0.24, 0.5, 0.46], 6); b.cyl(gx, 5.9, gz, 0.1, 0.9, [0.85, 0.7, 0.3], 4);
+    }
+  };
+
+  // главный вход: портал на дорожке, ограда, цветники; клумба-«Луковица»
+  M.botanic_gate = (b, o) => {
+    const sb = o.sub || {}, bulb = localParts(o)[0];
+    if (bulb) { // цветы концентрическими полосами от центра луковицы, перья листьев — зелёные
+      const p = bulb.p, inside = (x, z) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > z) !== (p[j][1] > z) && x < (p[j][0] - p[i][0]) * (z - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c; return c; };
+      let mx = 0, mz = 0, n = 0;
+      for (let x = bulb.x0; x < bulb.x1; x += 1) for (let z = bulb.z0; z < bulb.z1; z += 1) if (inside(x, z)) {
+        let near = 1e9; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const ax = p[j][0], az = p[j][1], ex = p[i][0] - ax, ez = p[i][1] - az, q = ex * ex + ez * ez, t = q ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / q)) : 0; near = Math.min(near, Math.hypot(x - ax - ex * t, z - az - ez * t)); }
+        if (near > 5) { mx += x; mz += z; n++; }
+      }
+      mx /= n || 1; mz /= n || 1;
+      const FL = [[0.96, 0.82, 0.2], [0.88, 0.2, 0.18], [0.62, 0.3, 0.7], [0.96, 0.62, 0.74], [0.97, 0.96, 0.92]];
+      b.loft(p, 0, p, 0.35, [0.22, 0.42, 0.2]);
+      for (let x = bulb.x0 + 0.5; x < bulb.x1; x += 1) for (let z = bulb.z0 + 0.5; z < bulb.z1; z += 1) {
+        if (!inside(x, z)) continue;
+        const d = Math.hypot(x - mx, z - mz), leaf = d > 14, col = leaf ? [0.3, 0.56, 0.24] : FL[Math.floor(d / 2.8) % FL.length], h = leaf ? 0.45 : 0.3 + ((x * 7 + z * 13) % 3) * 0.05;
+        b.box(x, 0, z, 1, h, 1, col);
+      }
+    }
+    if (!sb.gate) return;
+    const [gx, gz] = o.local(...sb.gate), [g2x, g2z] = sb.gate2 ? o.local(...sb.gate2) : [gx + 1, gz], tl = Math.hypot(g2x - gx, g2z - gz), tx = (g2x - gx) / tl, tz = (g2z - gz) / tl, nx = -tz, nz = tx;
+    const ry = Math.atan2(-nz, nx), Pt = (t, n) => [gx + tx * t + nx * n, gz + tz * t + nz * n], TILE = [0.16, 0.46, 0.72], GRN = [0.24, 0.5, 0.42];
+    // пилоны и арка
+    for (const s of [-1, 1]) {
+      const [x, z] = Pt(0, s * 5.2); b.box(x, 0, z, 2.2, 7.2, 2.2, STONE, ry); b.box(x, 7.2, z, 2.6, 0.5, 2.6, TILE, ry); b.box(x, 7.7, z, 1.8, 0.9, 1.8, STONE, ry); b.cone(x, 8.6, z, 1.1, 1.6, GRN, 8);
+      for (const t of [-1.12, 1.12]) { const [px, pz] = Pt(t, s * 5.2); b.box(px, 1, pz, 1.2, 4.5, 0.12, TILE, ry); }
+      const [y1x, y1z] = Pt(0, s * 10.5); b.box(y1x, 0, y1z, 1.6, 4.6, 1.6, STONE, ry); b.box(y1x, 4.6, y1z, 1.9, 0.4, 1.9, TILE, ry); b.cone(y1x, 5, y1z, 0.8, 1.1, GRN, 8);
+      for (let k = 0; k < 9; k++) { const [fx, fz] = Pt(0, s * (12 + k * 2.4)); b.box(fx, 0, fz, 0.35, 2.2, 0.35, [0.25, 0.3, 0.28], ry); }
+      const [f0x, f0z] = Pt(0, s * 11.3), [f1x, f1z] = Pt(0, s * 33); for (const y of [0.4, 1.3, 2.05]) b.beam(f0x, y, f0z, f1x, y, f1z, 0.08, [0.25, 0.3, 0.28]);
+    }
+    const [lx, lz] = Pt(0, 0); b.box(lx, 6, lz, 12.6, 1.6, 1.4, STONE, ry); b.box(lx, 7.6, lz, 13, 0.35, 1.8, TILE, ry);
+    for (let k = 0; k < 10; k++) { const a = Math.PI * k / 9, [ax, az] = Pt(0, Math.cos(a) * 4.1); b.box(ax, 3.9 + Math.sin(a) * 2.1, az, 0.9, 0.5, 1.3, STONE, ry); }
+    for (const s of [-1, 1]) { const [sx, sz] = Pt(s * 0.75, 0); sign(b, "BOTANIKA BOG'I", sx, 6.25, sz, tx * s, tz * s, 0.14, [0.98, 0.86, 0.4]); }
+    // касса у входа
+    const [kx, kz] = Pt(-1.5, 8.8); b.box(kx, 0, kz, 3, 2.8, 5.4, [0.94, 0.92, 0.86], ry); b.box(kx, 2.8, kz, 3.6, 0.3, 6, GRN, ry);
+    // цветники вдоль дорожки за воротами
+    const FC = [[0.9, 0.22, 0.2], [0.96, 0.8, 0.22], [0.66, 0.32, 0.72], [0.96, 0.96, 0.94]];
+    for (let i = 0; i < 3; i++) for (const s of [-1, 1]) {
+      const [cx, cz] = Pt(12 + i * 13, s * 6.5);
+      b.cyl(cx, 0, cz, 3.4, 0.35, [0.62, 0.6, 0.56], 16);
+      for (let r = 0; r < 4; r++) b.cyl(cx, 0.35, cz, 3 - r * 0.75, 0.22 + r * 0.06, FC[(r + i) % 4], 16);
+    }
+  };
+
+  // окаменелое дерево (70 млн лет) на каменном постаменте
+  M.botanic_relic = (b) => {
+    b.box(0, 0, 0, 8, 0.5, 3, [0.7, 0.68, 0.64]); b.box(0, 0.5, 0, 7.4, 0.25, 2.5, [0.62, 0.6, 0.56]);
+    const seg = [[-2.6, 0.75, 0.8, 2.4, [0.5, 0.42, 0.36]], [0.1, 0.7, 0.7, 2.6, [0.56, 0.48, 0.4]], [2.6, 0.62, 0.58, 2, [0.48, 0.4, 0.34]]];
+    for (const [x, r, rr, len, col] of seg) { const g = new THREE.CylinderGeometry(rr, r, len, 8); g.rotateZ(Math.PI / 2); g.translate(0, 0.75 + r, 0); b.add(g, col, x, 0, 0, 0.08 * x); }
+    b.box(4.6, 0, 1.6, 0.12, 1.1, 0.12, [0.3, 0.3, 0.3]); b.box(4.6, 1.1, 1.6, 1.2, 0.8, 0.08, [0.2, 0.36, 0.3]);
   };
 })();

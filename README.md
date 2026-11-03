@@ -99,6 +99,9 @@ python tools/bake/bake.py raw osm data      # build data/
 python tools/bake/seams.py data             # bridge/tunnel heights across tile edges
 python tools/bake/pitches.py fetch osm/pitches.json   # pitches and courts (Overpass)
 python tools/bake/pitches.py bake osm/pitches.json data
+python tools/bake/greenery.py data           # once: drop trees clipping buildings, plant yards, parks, vacant lots
+python tools/bake/greenery.py data --yards   # once: dense microdistrict yards around 3+ storey blocks
+python tools/bake/botanic.py data          # botanical garden: arboretum zones, species trees, hides OSM boxes under garden models
 ```
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.
