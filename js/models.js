@@ -31,7 +31,7 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; this.hue = []; this.cool = []; this.stay = []; this.lit = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; this.hue = []; this.cool = []; this.stay = []; this.lit = []; this.warm = []; this.neon = []; }
     // балка между двумя точками (опоры, растяжки)
     beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
       const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
@@ -187,7 +187,7 @@
       if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
       return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win,
         flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat), hue: mk(this.hue, MD.hueMat),
-        cool: mk(this.cool, MD.coolMat), stay: mk(this.stay, MD.stayMat), lit: mk(this.lit, MD.litMat) };
+        cool: mk(this.cool, MD.coolMat), stay: mk(this.stay, MD.stayMat), lit: mk(this.lit, MD.litMat), warm: mk(this.warm, MD.warmMat), neon: mk(this.neon, MD.neonMat) };
     }
   }
 
@@ -242,6 +242,8 @@
     I: "01110001000010000100001000010001110", S: "01111100001000001110000010000111110", A: "01110100011000111111100011000110001",
     N: "10001110011010110011100011000110001", R: "11110100011000111110101001001010001", Q: "01110100011000110001101011001001101", G: "01111100001000010111100011000101111", P: "11110100011000111110100001000010000", " ": "00000000000000000000000000000000000" };
   FONT["'"] = "00100001000100000000000000000000000";
+  FONT.C = "01110100011000010000100001000101110";
+  FONT.V = "10001100011000110001100010101000100";
   MD.FONT = FONT;
   M.hotel_uz = (b, o) => {
     const L = o.L || 90, D = 17, H = o.h || 71.5, R = 115, CR = [0.93, 0.89, 0.8], BG = [0.58, 0.52, 0.45];
@@ -443,18 +445,7 @@
     b.cyl(0, 13.4, 0, 11, 1.6, P.marble, 28); b.dome(0, 15, 0, 10.2, P.cobalt, { hk: 0.85, seg: 24, ribs: [0.25, 0.44, 0.76] });
     b.box(0, 2.4, 0, 2.4, 1.8, 2.4, P.grey); b.cyl(0, 4.2, 0, 0.9, 3.2, P.bronze, 8); b.sphere(0, 8, 0, 0.7, P.bronze, 6);
   };
-  M.station = (b, o) => {
-    const L = o.L || 160, Wd = o.W || 30;
-    b.box(0, 0, 0, L, 15, Wd, [0.92, 0.89, 0.82]);
-    b.box(0, 3, Wd / 2 + 0.05, L - 8, 8, 0.3, [0.5, 0.62, 0.72], 0, true); b.box(0, 3, -Wd / 2 - 0.05, L - 8, 8, 0.3, [0.5, 0.62, 0.72], 0, true);
-    for (let x = -L / 2 + 6; x < L / 2 - 4; x += 6) { b.box(x, 3, Wd / 2 + 0.2, 0.8, 8, 0.4, P.white); b.box(x, 3, -Wd / 2 - 0.2, 0.8, 8, 0.4, P.white); }
-    b.box(0, 0, 0, L * 0.22, 24, Wd + 4, [0.95, 0.93, 0.87]);
-    b.cyl(0, 17, Wd / 2 + 2.1, 2.6, 0.4, P.white, 16); b.box(0, 17, Wd / 2 + 2.4, 0.2, 1.8, 0.2, P.dark);
-    b.box(0, 15, 0, L, 1, Wd, P.roof);
-    b.box(0, 0, -Wd / 2 - 9, L * 0.9, 0.2, 14, [0.42, 0.4, 0.38]); // перрон
-    for (let x = -L * 0.42; x <= L * 0.42; x += 12) b.box(x, 0.2, -Wd / 2 - 9, 0.4, 4, 0.4, P.grey);
-    b.box(0, 4.2, -Wd / 2 - 9, L * 0.9, 0.4, 10, [0.54, 0.58, 0.6]);
-  };
+  // M.station — в models-decor.js (детальный фасад и поезд Afrosiyob)
   M.japanese = (b) => {
     b.box(-14, 0, 6, 26, 0.15, 18, P.water);
     for (let i = 0; i < 10; i++) b.box(-14 + (i - 4.5) * 1.6, 0.3 + Math.sin(i / 9 * Math.PI) * 1.4, 6, 1.7, 0.3, 2.2, P.red);
@@ -544,6 +535,13 @@
       vec3 sc = mix(vec3(0.22, 0.3, 1.0), vec3(0.6, 0.32, 1.0), 0.5 + 0.5 * sin(vLP.y * 0.25 - uTime * 1.3));
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.08, 0.08, 0.16), uNight * 0.8);
       totalEmissiveRadiance += sc * uNight * (0.8 + 2.2 * dot1);`);
+    // скрытые тёплые линейные светильники 3000K в ламелях фасада (отель InterContinental в Trilliant)
+    MD.warmMat = nightFx("warm", `
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, uNight);
+      totalEmissiveRadiance += vec3(1.0, 0.7, 0.36) * uNight * (0.55 + 0.4 * smoothstep(10.0, 80.0, vLP.y));`);
+    // неоновые буквы и вставки: ночью светятся собственным цветом (синие вывески вокзала)
+    MD.neonMat = nightFx("neon", `
+      totalEmissiveRadiance += vColor.rgb * uNight * 2.8;`);
     // белые конструкции в лучах прожекторов снизу (пилон моста): ярче у основания, к верху гаснет
     MD.litMat = nightFx("lit", `
       totalEmissiveRadiance += vec3(0.78, 0.84, 0.95) * uNight * (0.22 + 0.5 * clamp(1.0 - (vLP.y - 4.0) / 40.0, 0.0, 1.0));`);
@@ -580,7 +578,7 @@
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show, parts.hue, parts.cool, parts.stay, parts.lit]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show, parts.hue, parts.cool, parts.stay, parts.lit, parts.warm, parts.neon]) if (m) grp.add(m);
       S.scene.add(grp);
       return { grp, parts };
     };
