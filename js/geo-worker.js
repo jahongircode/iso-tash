@@ -127,6 +127,25 @@ window.TPM_GEO_WORKER = function () {
   // длины всей цепочки моста: мостик через арык — чуть выше земли, путепровод — 6–7 м,
   // второй ярус развязки (layer ≥ 2) — до 13 м.
   const sm01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  // мост или тоннель из двух-трёх вершин: высота считается в вершинах, и без промежуточных точек
+  // короткий мост выходил плоским (обе вершины — съезды с нулевой высотой)
+  function densify(l, step) {
+    const o = [l[0], l[1]];
+    for (let i = 2; i < l.length; i += 2) {
+      const x0 = l[i - 2], z0 = l[i - 1], x1 = l[i], z1 = l[i + 1], k = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / step));
+      for (let j = 1; j <= k; j++) o.push(x0 + (x1 - x0) * j / k, z0 + (z1 - z0) * j / k);
+    }
+    return new Float32Array(o);
+  }
+  // пересекает ли линия наземную дорогу или пути (не мост и не тоннель)
+  function crosses(L, l) {
+    const X = (ax, az, bx, bz, cx, cz, dx, dz) => { const d = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx); if (!d) return false; const t = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / d, u = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / d; return t > 0 && t < 1 && u > 0 && u < 1; };
+    for (const [cls, fl, m] of L) {
+      if (!(cls <= 6 || cls === 9 || cls === 10) || (fl & 10)) continue;
+      for (let i = 2; i < l.length; i += 2) for (let j = 2; j < m.length; j += 2) if (X(l[i - 2], l[i - 1], l[i], l[i + 1], m[j - 2], m[j - 1], m[j], m[j + 1])) return true;
+    }
+    return false;
+  }
   // OV: готовые профили линий, пересекающих край тайла (блок 7, tools/bake/seams.py) — сквозные по городу
   function profiles(L, T, OV) {
     const out = new Array(L.length).fill(null), key = (x, z) => Math.round(x * 2) + "," + Math.round(z * 2);
@@ -135,8 +154,8 @@ window.TPM_GEO_WORKER = function () {
     L.forEach(([cls, fl, l], i) => {
       const k = kind(fl);
       if (!k) { if (cls < 13 && cls !== 8) for (const j of [0, l.length - 2]) flat.add(cls + ":" + key(l[j], l[j + 1])); return; }
-      if (cls >= 13 || cls === 8) return; par.set(i, i);
-      for (const j of [0, l.length - 2]) { const kk = k + ":" + key(l[j], l[j + 1]); if (!ends.has(kk)) ends.set(kk, []); ends.get(kk).push(i); }
+      if (cls >= 13 || (cls === 8 && k !== 2)) return; par.set(i, i);
+      for (const j of [0, l.length - 2]) { const kk = (cls === 8 ? "p" : "") + k + ":" + key(l[j], l[j + 1]); if (!ends.has(kk)) ends.set(kk, []); ends.get(kk).push(i); }
     });
     for (const list of ends.values()) for (let a = 1; a < list.length; a++) { const ra = find(list[0]), rb = find(list[a]); if (ra !== rb) par.set(ra, rb); }
     const lenOf = (l) => { let s = 0; for (let i = 2; i < l.length; i += 2) s += Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]); return s; };
@@ -152,13 +171,19 @@ window.TPM_GEO_WORKER = function () {
       const [cls, fl, l] = L[i], k = kind(fl), n = l.length / 2, cl = comp.get(find(i)), clH = edge.has(find(i)) ? Math.max(cl, 48) : cl;
       // свободный конец — не продолжается тем же мостом/тоннелем; на краю тайла — только если там же
       // начинается обычный (не мостовой) участок того же класса
-      const free = (j) => (!onEdge(l[j], l[j + 1]) || flat.has(cls + ":" + key(l[j], l[j + 1]))) && (ends.get(k + ":" + key(l[j], l[j + 1])) || []).length < 2;
+      const free = (j) => (!onEdge(l[j], l[j + 1]) || flat.has(cls + ":" + key(l[j], l[j + 1]))) && (ends.get((cls === 8 ? "p" : "") + k + ":" + key(l[j], l[j + 1])) || []).length < 2;
       const f0 = free(0), f1 = free(l.length - 2);
-      let Hm, R;
-      if (k === 2) { Hm = clH < 30 ? 0.8 : Math.min(fl & 16 ? 13 : 6.8, 0.9 + clH / 8); R = Math.max(8, Math.min(fl & 16 ? 110 : 75, cl * 0.36)); }
-      else { Hm = -7; R = Math.max(10, Math.min(45, cl * 0.3)); }
       const cum = new Float32Array(n); for (let j = 1; j < n; j++) cum[j] = cum[j - 1] + Math.hypot(l[j * 2] - l[j * 2 - 2], l[j * 2 + 1] - l[j * 2 - 1]);
       const tot = cum[n - 1], H = new Float32Array(n);
+      let Hm, R;
+      if (cls === 8) { // пешеходный мост: над дорогой/путями — переход на опорах со ступенями, иначе — горбатый мостик
+        H.over = crosses(L, l);
+        if (H.over) { Hm = 5.4; R = Math.max(4, Math.min(9, cl / 2.4)); } else { Hm = Math.min(2.8, 1.0 + cl / 18); R = Math.max(3, Math.min(cl * 0.42, 14)); }
+      } else if (k === 2) {
+        Hm = clH < 30 ? 0.8 : Math.min(fl & 16 ? 13 : 6.8, 0.9 + clH / 8); R = Math.max(8, Math.min(fl & 16 ? 110 : 75, cl * 0.36));
+        if (Hm > 0.8) Hm = Math.min(Hm, Math.max(0.8, R * 0.26)); // короткий мост — без «горба» круче ~26 %
+      }
+      else { Hm = -7; R = Math.max(10, Math.min(45, cl * 0.3)); }
       for (let j = 0; j < n; j++) { const d = Math.min(f0 ? cum[j] : 1e9, f1 ? tot - cum[j] : 1e9); H[j] = Hm * sm01(d / R); }
       out[i] = H;
     }
@@ -244,6 +269,62 @@ window.TPM_GEO_WORKER = function () {
     }
   }
   const k3c = (c, k) => [clamp(c[0] * k), clamp(c[1] * k), clamp(c[2] * k)];
+  // Пешеходный мост: плита с торцами, металлические перила на стойках; над дорогой — опоры-колонны
+  // и ступени на сходах, над водой — горбатый мостик с береговыми устоями.
+  function footBridge(G, Gr, l, H, w, over) {
+    const n = l.length / 2, N = edgeNormals(l), hw = w / 2, y = 0.12;
+    const SLAB = over ? [150, 154, 160] : [150, 138, 118], RAIL = over ? [62, 92, 132] : [74, 66, 58], STEP = [120, 116, 110];
+    let acc = 0;
+    for (let i = 0; i < n - 1; i++) {
+      const h0 = H[i] + y, h1 = H[i + 1] + y; if (Math.max(H[i], H[i + 1]) < 0.15) continue;
+      const E = (k, off) => [l[k * 2] + N[k * 2] * off, l[k * 2 + 1] + N[k * 2 + 1] * off];
+      const th = over ? 0.6 : 0.75;
+      for (const s of [1, -1]) {
+        const [ax, az] = E(i, hw * s), [bx, bz] = E(i + 1, hw * s);
+        // торец плиты — с двух сторон, чтобы был виден и снаружи, и из-под моста
+        face(G, [[ax, h0, az], [bx, h1, bz], [bx, Math.max(0.02, h1 - th), bz], [ax, Math.max(0.02, h0 - th), az]], SLAB, 255);
+        face(G, [[bx, h1, bz], [ax, h0, az], [ax, Math.max(0.02, h0 - th), az], [bx, Math.max(0.02, h1 - th), bz]], k3c(SLAB, 0.85), 255);
+        // перила: поручень и средняя перекладина, стойки через ~1,8 м
+        const [px, pz] = E(i, (hw - 0.08) * s), [qx, qz] = E(i + 1, (hw - 0.08) * s);
+        for (const [y0, y1] of [[1.0, 1.12], [0.5, 0.58]]) {
+          face(G, [[px, h0 + y1, pz], [qx, h1 + y1, qz], [qx, h1 + y0, qz], [px, h0 + y0, pz]], RAIL, 255);
+          face(G, [[qx, h1 + y1, qz], [px, h0 + y1, pz], [px, h0 + y0, pz], [qx, h1 + y0, qz]], RAIL, 255);
+        }
+        const L2 = Math.hypot(qx - px, qz - pz), m = Math.max(1, Math.round(L2 / 2.4));
+        for (let k = 0; k < m; k++) { const t = k / m, x = px + (qx - px) * t, z = pz + (qz - pz) * t, h = h0 + (h1 - h0) * t; prism(G, x, z, 1, 0, 0.05, 0.05, h, h + 1.12, RAIL, false); }
+      }
+      const x0 = l[i * 2], z0 = l[i * 2 + 1], x1 = l[i * 2 + 2], z1 = l[i * 2 + 3], L2 = Math.hypot(x1 - x0, z1 - z0); if (!L2) continue;
+      const ux = (x1 - x0) / L2, uz = (z1 - z0) / L2;
+      // ступени на крутых сходах: тёмные полосы поперёк настила
+      if (over && Math.abs(h1 - h0) / L2 > 0.12) for (let t = 0.2; t < L2; t += 0.45) {
+        const h = h0 + (h1 - h0) * t / L2 + 0.012, cx = x0 + ux * t, cz = z0 + uz * t, vx = -uz * hw * 0.95, vz = ux * hw * 0.95;
+        face(Gr, [[cx - vx, h, cz - vz], [cx + vx, h, cz + vz], [cx + vx + ux * 0.14, h, cz + vz + uz * 0.14], [cx - vx + ux * 0.14, h, cz - vz + uz * 0.14]], STEP, 255);
+      }
+      // опоры мостика над водой — каменные быки через ~12 м
+      if (!over) {
+        for (let t = acc; t < L2; t += 12) {
+          const h = h0 + (h1 - h0) * t / L2 - 0.7; if (h < 0.6) continue;
+          prism(G, x0 + ux * t, z0 + uz * t, ux, uz, 0.45, hw + 0.15, 0, h, [128, 120, 106]);
+        }
+        acc = ((acc - L2) % 12 + 12) % 12;
+      }
+      // опоры перехода над дорогой: пара колонн и ригель
+      if (over) {
+        for (let t = acc; t < L2; t += 11) {
+          const h = h0 + (h1 - h0) * t / L2 - 0.6; if (h < 1.6) continue;
+          const cx = x0 + ux * t, cz = z0 + uz * t;
+          for (const s of [-1, 1]) prism(G, cx - uz * hw * 0.7 * s, cz + ux * hw * 0.7 * s, ux, uz, 0.22, 0.22, 0, h, [92, 110, 140], false);
+          prism(G, cx, cz, ux, uz, 0.3, hw * 0.95, h - 0.4, h, [110, 126, 150]);
+        }
+        acc = ((acc - L2) % 11 + 11) % 11;
+      }
+    }
+    // береговые устои горбатого мостика
+    if (!over) for (const k of [0, n - 1]) {
+      const j = k ? k - 1 : 1, dx = l[k * 2] - l[j * 2], dz = l[k * 2 + 1] - l[j * 2 + 1], L2 = Math.hypot(dx, dz) || 1;
+      prism(G, l[k * 2], l[k * 2 + 1], dx / L2, dz / L2, 0.7, hw + 0.4, 0, 0.5, [150, 140, 124]);
+    }
+  }
   // балластная призма под рельсами: откосы из щебня (верх рисует сама полоса пути)
   function railBed(G, l, H, w, hb) {
     const n = l.length / 2, N = edgeNormals(l), BAL = [118, 110, 102];
@@ -827,7 +908,7 @@ window.TPM_GEO_WORKER = function () {
       } else if (tag === 2) {
         const n = vr();
         const L = [];
-        for (let f = 0; f < n; f++) { const cls = u8(), fl = u8(); L.push([cls, fl, pts()]); }
+        for (let f = 0; f < n; f++) { const cls = u8(), fl = u8(), l = pts(); L.push([cls, fl, (fl & 10) && !(OV && OV.has(f)) ? densify(l, 5) : l]); }
         const RD = railEnds(L, T), GL = galleries(L, RD);
         // наземный кусок метро, оборванный с обеих сторон, — подземный участок без отметки тоннеля в OSM
         const hiddenMetro = (f) => L[f][0] === 10 && !(L[f][1] & 2) && RD.get(f)[0] && RD.get(f)[1];
@@ -882,7 +963,7 @@ window.TPM_GEO_WORKER = function () {
           }
           const y = ay(cls);
           strip(roads, l, RW[cls], y, RC[cls], cls <= 6, H);
-          if (H && (fl & 2)) bridgeDeck(bld, l, H, cls <= 5 ? sideW(cls) : RW[cls] + 1.4, cls === 10);
+          if (H && (fl & 2)) { if (cls === 8) footBridge(bld, roads, l, H, RW[8] + 0.6, H.over); else bridgeDeck(bld, l, H, cls <= 5 ? sideW(cls) : RW[cls] + 1.4, cls === 10); }
           if (cls === 9 || cls === 10) railBed(bld, l, H, RW[cls], y);
           if (cls === 9 || cls === 10) { // рельсы и шпалы
             dashes(roads, l, 0, RW[cls] * 0.9, y + 0.01, [96, 80, 66], 0.35, 0.55, H);
