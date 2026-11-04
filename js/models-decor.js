@@ -5,6 +5,7 @@
 //  аэропорт Ташкента с самолётами Uzbekistan Airways, Piramit Tower, Ассоциация банков, Международный
 //  бизнес-центр, Законодательная палата Олий Мажлиса, башни SQB, BoMI, Asaka Bank и Aloqa Bank;
 //  ботанический сад им. Русанова: оранжерея и теплица, эстрада с амфитеатром, мостик, вход, клумбы;
+//  Центр исламской цивилизации у Хазрати Имама;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -924,6 +925,102 @@
         b.dome(d.cx, 9.4, d.cz, r * 1.02, [0.4, 0.72, 0.78], { hk: 0.88, seg: 24, ribs: [0.34, 0.64, 0.72], tip: false });
         const tp = 9.4 + r * 0.9; b.cyl(d.cx, tp - 0.2, d.cz, 0.15, 1.8, GOLD, 6); b.sphere(d.cx, tp + 1.7, d.cz, 0.35, GOLD, 6);
       }
+    }
+  };
+
+  // ---------------- Центр исламской цивилизации у Хазрати Имама (2024) ----------------
+  // По фото и макету: корпус 161×119 м в три высоких этажа — кольцо и крест флигелей вокруг четырёх
+  // озеленённых дворов; светлый мрамор, аркады стрельчатых окон в два яруса, зубчатый парапет.
+  // На каждой стороне — портал-пештак ~34 м с глубокой арочной нишей в синей мозаике, по бокам —
+  // минареты-гульдасты и малые голубые купола; северный «Портал Улугбека» (37,7 м) — к площади
+  // Хазрати Имама. В центре — восьмигранный зал, барабан с окнами и бирюзовый ребристый купол 65 м.
+  M.islamic_center = (b, o) => {
+    const Q = localParts(o), big = Q.reduce((a, q) => (q.A > a.A ? q : a)), oct = Q.find((q) => q.h === 33), drum = Q.find((q) => q.h === 45);
+    const MAR = [0.94, 0.92, 0.87], MAR2 = [0.84, 0.82, 0.77], TILE = [0.15, 0.38, 0.68], TQ = [0.3, 0.66, 0.84], TQ2 = [0.22, 0.54, 0.76];
+    const GL = [0.22, 0.3, 0.4], NICHE = [0.12, 0.2, 0.33], GOLD = [0.9, 0.72, 0.32], LAWN = [0.36, 0.56, 0.26], PAVE = [0.82, 0.78, 0.7];
+    const f = frame(big), A = f.L / 2, B = f.W / 2, RW = 18, CW = 22, HW = 19;
+    const R4 = (a0, a1, c0, c1) => [FP(f, a0, c0), FP(f, a1, c0), FP(f, a1, c1), FP(f, a0, c1)];
+    // стрельчатые окна на стене от p0 до p1 (наружу — n): два яруса с пилястрами между пролётами
+    const bays = (p0, p1, nx, nz, y0, y1) => {
+      const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), ux = (p1[0] - p0[0]) / L, uz = (p1[1] - p0[1]) / L, ry = Math.atan2(-uz, ux), n = Math.floor(L / 7);
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) * L / n, x = p0[0] + ux * t + nx * 0.15, z = p0[1] + uz * t + nz * 0.15;
+        for (const [ya, hh] of [[y0 + 1.8, 6.6], [y0 + 10.4, 4.6]]) {
+          b.box(x, ya, z, 3.2, hh, 0.3, GL, ry, true);
+          b.box(x, ya + hh, z, 2.2, 0.8, 0.3, GL, ry, true); b.box(x, ya + hh + 0.8, z, 1.1, 0.7, 0.3, GL, ry, true); // стрельчатый верх
+        }
+        const px = p0[0] + ux * (k * L / n) + nx * 0.25, pz = p0[1] + uz * (k * L / n) + nz * 0.25;
+        b.box(px, y0, pz, 0.9, y1 - y0, 0.5, MAR2, ry);
+      }
+    };
+    const block = (a0, a1, c0, c1, H, out) => {
+      const r = R4(a0, a1, c0, c1); b.loft(r, 0, r, H, MAR); cap(b, r, H, [0.86, 0.85, 0.82]);
+      band(b, r, 0.25, H - 1.2, 1.2, MAR2);
+      for (let i = 0; i < 4; i++) { if (!out[i]) continue; const p0 = r[i], p1 = r[(i + 1) % 4], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); bays(p0, p1, (p1[1] - p0[1]) / L, -(p1[0] - p0[0]) / L, 0, H - 1.2); }
+    };
+    // зубчатый парапет по внешнему периметру
+    const crest = (r, H) => { for (let i = 0; i < 4; i++) { const [x0, z0] = r[i], [x1, z1] = r[(i + 1) % 4], L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / 2.2), ry = Math.atan2(-(z1 - z0), x1 - x0); for (let k = 0; k < n; k++) { const t = (k + 0.5) / n; b.box(x0 + (x1 - x0) * t, H, z0 + (z1 - z0) * t, 1.1, 1.3, 0.6, MAR2, ry); } } };
+    // кольцо корпусов (наружные и дворовые стены с окнами) и крест флигелей
+    block(-A, A, B - RW, B, HW, [1, 1, 1, 1]); block(-A, A, -B, -B + RW, HW, [1, 1, 1, 1]);
+    block(A - RW, A, -B + RW, B - RW, HW, [0, 1, 0, 1]); block(-A, -A + RW, -B + RW, B - RW, HW, [0, 1, 0, 1]);
+    block(-A + RW, A - RW, -CW / 2, CW / 2, HW, [1, 0, 1, 0]); block(-CW / 2, CW / 2, -B + RW, B - RW, HW, [0, 1, 0, 1]);
+    crest(R4(-A, A, -B, B), HW);
+    // угловые павильоны с малыми куполами
+    for (const sa of [-1, 1]) for (const sc of [-1, 1]) {
+      const [x, z] = FP(f, sa * (A - 11), sc * (B - 11)), r = R4(sa * A - (sa > 0 ? 22 : 0), sa * A + (sa > 0 ? 0 : 22), sc * B - (sc > 0 ? 22 : 0), sc * B + (sc > 0 ? 0 : 22));
+      b.loft(r, HW, r, HW + 5, MAR); cap(b, r, HW + 5, [0.86, 0.85, 0.82]); band(b, r, 0.2, HW + 3.6, 1, TILE);
+      b.cyl(x, HW + 5, z, 5.4, 2.4, MAR, 16); b.cyl(x, HW + 6.6, z, 5.45, 0.5, TILE, 16); b.dome(x, HW + 7.4, z, 5.2, TQ, { hk: 1.05, seg: 16, ribs: TQ2, tip: false }); b.cyl(x, HW + 12.8, z, 0.12, 1.8, GOLD, 4);
+    }
+    // дворы: газон, дорожки крестом, фонтан
+    for (const sa of [-1, 1]) for (const sc of [-1, 1]) {
+      const a0 = sa * CW / 2, a1 = sa * (A - RW), c0 = sc * CW / 2, c1 = sc * (B - RW), ma = (a0 + a1) / 2, mc = (c0 + c1) / 2;
+      cap(b, R4(Math.min(a0, a1), Math.max(a0, a1), Math.min(c0, c1), Math.max(c0, c1)), 0.15, LAWN);
+      cap(b, R4(Math.min(a0, a1), Math.max(a0, a1), mc - 1.5, mc + 1.5), 0.2, PAVE); cap(b, R4(ma - 1.5, ma + 1.5, Math.min(c0, c1), Math.max(c0, c1)), 0.2, PAVE);
+      const [fx, fz] = FP(f, ma, mc); b.cyl(fx, 0, fz, 4, 0.6, MAR2, 16); b.cyl(fx, 0.55, fz, 3.5, 0.1, [0.3, 0.55, 0.72], 16); b.cyl(fx, 0.6, fz, 0.35, 2.2, [0.85, 0.92, 1], 6);
+      for (const [da, dc] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]]) { const [tx, tz] = FP(f, a0 + (a1 - a0) * da, c0 + (c1 - c0) * dc); b.cyl(tx, 0, tz, 0.2, 2.2, [0.42, 0.32, 0.22], 5); b.sphere(tx, 3.4, tz, 1.8, [0.3, 0.5, 0.24], 7); }
+    }
+    // центральный зал: восьмигранник, барабан с окнами, бирюзовый ребристый купол
+    if (oct) {
+      b.loft(oct.p, HW, oct.p, 33, MAR); cap(b, oct.p, 33, [0.86, 0.85, 0.82]); band(b, oct.p, 0.3, 31.4, 1.6, TILE);
+      for (let i = 0; i < oct.p.length; i++) { // аркады на гранях зала
+        const p0 = oct.p[i], p1 = oct.p[(i + 1) % oct.p.length], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); if (L < 8) continue;
+        let nx = (p1[1] - p0[1]) / L, nz = -(p1[0] - p0[0]) / L;
+        if (((p0[0] + p1[0]) / 2 - oct.cx) * nx + ((p0[1] + p1[1]) / 2 - oct.cz) * nz < 0) { nx = -nx; nz = -nz; }
+        bays(p0, p1, nx, nz, HW - 1.8, 31.4);
+      }
+    }
+    const dc = drum ? [drum.cx, drum.cz] : FP(f, 0, 0), Rd = drum ? Math.sqrt(drum.A / Math.PI) : 15;
+    b.cyl(dc[0], 33, dc[1], Rd + 1, 1, MAR2, 32);
+    b.cyl(dc[0], 34, dc[1], Rd, 10, MAR, 32);
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = dc[0] + Math.cos(a) * (Rd + 0.05), z = dc[1] + Math.sin(a) * (Rd + 0.05); b.box(x, 35.6, z, 2.4, 5.2, 0.3, GL, -a + Math.PI / 2, true); b.box(x, 40.8, z, 1.3, 0.9, 0.3, GL, -a + Math.PI / 2, true); }
+    b.cyl(dc[0], 42.6, dc[1], Rd + 0.3, 1.6, TILE, 32);
+    b.dome(dc[0], 44.2, dc[1], Rd * 1.04, TQ, { hk: 1.2, seg: 32, ribs: TQ2, tip: false });
+    const top = 44.2 + Rd * 1.04 * 1.2;
+    b.cyl(dc[0], top - 0.4, dc[1], 1.2, 1, GOLD, 8); b.cyl(dc[0], top + 0.5, dc[1], 0.18, 2.6, GOLD, 6); b.sphere(dc[0], top + 3.2, dc[1], 0.6, GOLD, 8);
+    // порталы-пештаки по осям сторон; ближайший к Хазрати Имаму — главный, выше остальных
+    const [hx, hz] = o.x2 !== undefined ? o.local(o.x2, o.z2) : FP(f, 0, -B * 3);
+    const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([sa, sc]) => { const [x, z] = FP(f, sa * A, sc * B); return { sa, sc, x, z, d: Math.hypot(hx - x, hz - z) }; });
+    const mainSide = sides.reduce((a, s) => (s.d < a.d ? s : a));
+    for (const s of sides) {
+      const isMain = s === mainSide, PH = isMain ? 37.7 : 34, PW = isMain ? 33.7 : 30;
+      const nx = s.sa ? f.ux * s.sa : f.vx * s.sc, nz = s.sa ? f.uz * s.sa : f.vz * s.sc, tx = -nz, tz = nx, ry = Math.atan2(-tz, tx);
+      const P = (t, n) => [s.x + tx * t + nx * n, s.z + tz * t + nz * n];
+      const [cx, cz] = P(0, 1); b.box(cx, 0, cz, PW, PH, 12, MAR, ry);                                   // массив портала
+      const [fx, fz] = P(0, 7.1);
+      b.box(fx, 0, fz, PW * 0.56, PH * 0.7, 0.4, NICHE, ry);                                             // глубокая ниша-айван
+      for (let k = 0; k < 3; k++) b.box(fx, PH * 0.7 + k * 1.3, fz, PW * 0.56 * (0.75 - k * 0.22), 1.3, 0.4, NICHE, ry); // стрельчатая арка
+      for (let r = 0; r < 4; r++) for (let c = -3; c <= 3; c++) { const [mx, mz] = P(c * PW * 0.07, 7.35); b.box(mx, PH * 0.42 + r * 1.6, mz, 1.1, 1.1, 0.2, (r + c) % 2 ? TQ : [0.85, 0.9, 0.95], ry); } // мукарнас
+      const [gx, gz] = P(0, 7.4); b.box(gx, 1.2, gz, 3.4, 5.4, 0.3, [0.42, 0.3, 0.18], ry);                // резные двери
+      for (const sg of [-1, 1]) { const [vx, vz] = P(sg * PW * 0.32, 7.2); b.box(vx, 0, vz, 2.2, PH * 0.86, 0.5, TILE, ry); }  // изразцовая рамка
+      const [bx, bz] = P(0, 7.2); b.box(bx, PH * 0.86, bz, PW * 0.66, 2.2, 0.5, TILE, ry); b.box(bx, PH * 0.865, bz, PW * 0.6, 1.2, 0.6, [0.96, 0.96, 0.94], ry); // надпись
+      b.box(bx, PH - 1.2, bz, PW + 0.6, 1.2, 0.4, MAR2, ry);
+      // гульдасты по углам портала и малые купола рядом на крыше
+      for (const sg of [-1, 1]) {
+        const [qx, qz] = P(sg * (PW / 2 - 1.2), 6.8); b.cyl(qx, 0, qz, 1.3, PH + 3, MAR, 12); b.cyl(qx, PH + 3, qz, 1.5, 0.6, TILE, 12); b.dome(qx, PH + 3.6, qz, 1.4, TQ, { hk: 1.4, seg: 10, tip: false });
+        const [kx, kz] = P(sg * (PW / 2 + 8), -6); b.cyl(kx, HW, kz, 3.4, 2, MAR, 14); b.cyl(kx, HW + 2, kz, 3.45, 0.4, TILE, 14); b.dome(kx, HW + 2.4, kz, 3.3, TQ, { hk: 1.1, seg: 14, ribs: TQ2, tip: false });
+      }
+      // широкая лестница перед главным входом
+      if (isMain) for (let k = 0; k < 4; k++) { const [lx, lz] = P(0, 13 + (3 - k) * 2.2); b.box(lx, 0, lz, PW + 26 - k * 4, 0.45 * (k + 1), 2.4 + (3 - k) * 0.2, k % 2 ? PAVE : [0.76, 0.72, 0.66], ry); }
     }
   };
 })();
