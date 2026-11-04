@@ -59,6 +59,8 @@ class Reader:
             for _ in range(self.vr()): self.vr(); [self.vr() for _ in range(self.vr())]
         elif tag == 8:
             for _ in range(self.vr()): self.u8(); self.u8(); self.pts()
+        elif tag == 9:
+            for _ in range(self.vr()): self.vr(); self.vr(); self.u8()
         else: raise ValueError("tag %d" % tag)
 
 

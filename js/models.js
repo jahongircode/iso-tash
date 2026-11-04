@@ -31,7 +31,7 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; this.hue = []; }
     // балка между двумя точками (опоры, растяжки)
     beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
       const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
@@ -186,7 +186,7 @@
       const body = mk(this.parts, MD.mat) || new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)]), MD.mat);
       if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
       return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win,
-        flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat) };
+        flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat), hue: mk(this.hue, MD.hueMat) };
     }
   }
 
@@ -527,6 +527,11 @@
     MD.flagMat = nightFx("flag", `
       float fs = (vLP.x + vLP.z) * 0.005 + vLP.y * 0.007 - uTime * 0.11;
       totalEmissiveRadiance += flagSeq(fs) * uNight * 1.15;`);
+    // световые линии по этажам (18-этажки на площади Хамида Алимджана): цвет плавно бежит по спектру снизу вверх
+    MD.hueMat = nightFx("hue", `
+      float hh = fract(vLP.y * 0.011 - uTime * 0.045 + (vLP.x + vLP.z) * 0.0015);
+      vec3 rb = clamp(abs(fract(hh + vec3(0.0, 0.667, 0.333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+      totalEmissiveRadiance += mix(rb, vec3(0.7, 0.92, 1.0), 0.3) * uNight * 1.2;`);
     // телебашня ночью (по видео): вся залита тёплым золотом прожекторов (снизу ярче, светлые элементы ярче
     // синих), по стволу и капсулам случайно мигают холодно-белые огоньки
     MD.showMat = nightFx("show", `
@@ -560,7 +565,7 @@
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show, parts.hue]) if (m) grp.add(m);
       S.scene.add(grp);
       return { grp, parts };
     };

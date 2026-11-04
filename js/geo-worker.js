@@ -109,16 +109,17 @@ window.TPM_GEO_WORKER = function () {
   const centerH = (fp) => { let x = 0, z = 0; const n = fp.length / 2; for (let i = 0; i < fp.length; i += 2) { x += fp[i]; z += fp[i + 1]; } return hT(x / n, z / n); };
 
   // ---------- палитра земли (день) ----------
-  const GCOL = { base: [156, 150, 124], 0: [164, 156, 134], 1: [168, 162, 150], 2: [150, 146, 138], 3: [126, 150, 84], 4: [88, 120, 62],
+  const GCOL = { base: [156, 150, 124], 0: [150, 150, 118], 1: [168, 162, 150], 2: [150, 146, 138], 3: [126, 150, 84], 4: [88, 120, 62],
     5: [150, 152, 96], 6: [196, 180, 136], 7: [122, 140, 96], 8: [62, 108, 140], 9: [98, 150, 72], 10: [172, 162, 138], 11: [100, 136, 108],
     12: [130, 130, 128], 13: [150, 152, 124], 14: [178, 160, 120], 16: [140, 142, 118], 17: [112, 146, 76],
-    18: [150, 132, 104], 19: [176, 174, 168] }; // 18 — пустырь (голая земля), 19 — бетонная площадка
-  const GY = { 5: 0.01, 13: 0.012, 0: 0.02, 1: 0.024, 2: 0.026, 16: 0.028, 10: 0.03, 7: 0.032, 9: 0.05, 14: 0.05, 6: 0.034, 11: 0.036, 12: 0.04, 3: 0.044, 17: 0.046, 4: 0.048, 8: 0.06, 18: 0.03, 19: 0.034 };
+    18: [150, 132, 104], 19: [176, 174, 168], 20: [110, 140, 78] }; // 18 — пустырь, 19 — бетонная площадка, 20 — сад во дворе
+  const GY = { 5: 0.01, 13: 0.012, 0: 0.02, 1: 0.024, 2: 0.026, 16: 0.028, 10: 0.03, 7: 0.032, 9: 0.05, 14: 0.05, 6: 0.034, 11: 0.036, 12: 0.04, 3: 0.044, 17: 0.046, 4: 0.048, 8: 0.06, 18: 0.03, 19: 0.034, 20: 0.05 };
   // дороги: ширина (м), цвет асфальта, высота
   const RW = { 0: 24, 1: 22, 2: 18, 3: 14, 4: 11, 5: 7.5, 6: 4.5, 7: 3, 8: 2.4, 9: 4.2, 10: 3.2, 11: 45, 12: 20, 13: 22, 14: 9, 15: 3 };
   const RC = { 0: [78, 78, 82], 1: [80, 80, 84], 2: [86, 86, 90], 3: [92, 91, 93], 4: [100, 98, 98], 5: [110, 107, 104], 6: [126, 122, 116],
     7: [150, 136, 106], 8: [200, 188, 152], 9: [122, 106, 92], 10: [112, 104, 98], 11: [96, 96, 98], 12: [112, 112, 112], 13: [62, 108, 140], 14: [62, 108, 140], 15: [70, 116, 146] };
   const SIDEWALK = [182, 176, 164];
+  const GARDEN = [[108, 140, 76], [100, 134, 70], [116, 146, 82], [96, 128, 68], [112, 138, 74]];
 
   function hash(a, b) { let h = (a * 374761393 + b * 668265263) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return (h ^ (h >>> 16)) >>> 0; }
 
@@ -354,6 +355,38 @@ window.TPM_GEO_WORKER = function () {
     }
   }
   const k3c = (c, k) => [clamp(c[0] * k), clamp(c[1] * k), clamp(c[2] * k)];
+  // Зебра поперёк ближайшей дороги: белые полосы вдоль движения через всю проезжую часть;
+  // у перехода со светофором — стоп-линии перед ним (на двусторонней дороге — по своей половине).
+  function crosswalks(G, C, L, PH) {
+    const W = [236, 234, 226];
+    const quad = (cx, cz, ux, uz, a0, a1, b0, b1, y) => {
+      const vx = -uz, vz = ux, base = G.vc;
+      for (const [a, b] of [[a0, b0], [a1, b0], [a1, b1], [a0, b1]]) G.v(cx + ux * a + vx * b, y, cz + uz * a + vz * b, 0, 1, 0, W[0], W[1], W[2], 255);
+      G.tri(base, base + 2, base + 1); G.tri(base, base + 3, base + 2); G.tri(base, base + 1, base + 2); G.tri(base, base + 2, base + 3);
+    };
+    for (let k = 0; k < C.length; k += 3) {
+      const px = C[k], pz = C[k + 1], sig = C[k + 2] === 1;
+      let best = null;
+      L.forEach(([cls, fl, l], f) => {
+        if (cls > 6 || (fl & 10)) return;
+        for (let i = 2; i < l.length; i += 2) {
+          const ax = l[i - 2], az = l[i - 1], dx = l[i] - ax, dz = l[i + 1] - az, q = dx * dx + dz * dz; if (q < 0.01) continue;
+          const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / q)), d = Math.hypot(px - ax - dx * t, pz - az - dz * t);
+          if (d < RW[cls] / 2 + 3 && (!best || d < best.d)) best = { d, cls, fl, f, i, t, ax, az, dx, dz, L: Math.sqrt(q) };
+        }
+      });
+      if (!best) continue;
+      const { cls, fl, f, i, t, ax, az, dx, dz } = best, ux = dx / best.L, uz = dz / best.L, cx = ax + dx * t, cz = az + dz * t;
+      const H = PH[f], h = H ? H[i / 2 - 1] + (H[i / 2] - H[i / 2 - 1]) * t : 0;
+      const y = 0.2 + (12 - Math.min(cls, 12)) * 0.006 + h + 0.005, hw = RW[cls] / 2 - 0.4, cw = cls <= 2 ? 6 : cls === 3 ? 5 : 4;
+      for (let b = -hw + 0.3; b <= hw - 0.7; b += 1.4) quad(cx, cz, ux, uz, -cw / 2, cw / 2, b, b + 0.75, y);
+      if (sig) { // стоп-линии
+        const d = cw / 2 + 1.6;
+        if (fl & 1) quad(cx, cz, ux, uz, -d - 0.4, -d, -hw, hw, y);
+        else { quad(cx, cz, ux, uz, -d - 0.4, -d, 0, hw, y); quad(cx, cz, ux, uz, d, d + 0.4, -hw, 0, y); }
+      }
+    }
+  }
   // ---------- вода ниже берега ----------
   // Каналы и реки Ташкента текут в бетонных руслах: зеркало воды на 2–3 м ниже набережной,
   // у прудов и озёр — около метра. Над водой в земле вырезается «окно» (маска wmask + трафарет
@@ -1061,7 +1094,7 @@ window.TPM_GEO_WORKER = function () {
         acc = ((acc - Ls) % 34 + 34) % 34;
       }
     }
-    let tag, OV = null;
+    let tag, OV = null, RL = null, RPH = null; // линии дорог тайла — для ориентации переходов
     while ((tag = u8()) !== 0 && P < B.length) {
       if (tag === 7) { // сквозные высоты мостов и тоннелей у краёв тайла
         OV = new Map();
@@ -1160,21 +1193,48 @@ window.TPM_GEO_WORKER = function () {
               bufferStop(bld, l[a], l[a + 1], (l[a] - l[b]) / L2, (l[a + 1] - l[b + 1]) / L2);
             }
           }
+          if (cls <= 5 && !(fl & 8)) { // бордюр, тёмный прикромочный лоток, сплошные краевые линии
+            const hw = RW[cls] / 2, kerb = [206, 202, 194], gut = [RC[cls][0] * 0.82, RC[cls][1] * 0.82, RC[cls][2] * 0.84];
+            for (const s of [1, -1]) {
+              // куски по 4–6 м, чтобы линии обрывались у перекрёстков, а не пересекали их
+              dashes(roads, l, s * (hw + 0.12), 0.26, y + 0.002, kerb, 6, 0, H, skipJ);
+              if (cls <= 4) dashes(roads, l, s * (hw - 0.28), 0.36, y + 0.001, gut, 6, 0, H, skipJ);
+              if (cls <= 3) dashes(roads, l, s * (hw - 0.75), 0.15, y + 0.003, [226, 222, 208], 4, 0, H, skipJ);
+            }
+          }
           if (cls <= 4) { // разметка (не заходит на перекрёстки)
             const mk = [232, 228, 214], my = y + 0.003;
             if (cls <= 2 && !(fl & 1)) { dashes(roads, l, 0.18, 0.16, my, mk, 5, 0, H, skipJ); dashes(roads, l, -0.18, 0.16, my, mk, 5, 0, H, skipJ); }
             else if (!(fl & 1)) dashes(roads, l, 0, 0.16, my, mk, 3, 4, H, skipJ);
             if (cls <= 2) { const q = RW[cls] / 4; dashes(roads, l, q, 0.14, my, mk, 3, 6, H, skipJ); dashes(roads, l, -q, 0.14, my, mk, 3, 6, H, skipJ); }
           }
-          if (cls <= 5) out.lines.push({ cls, fl, p: l, h: H });
+          if (cls <= 5) out.lines.push(lineOut(cls, fl, l, H));
           if (cls <= 4) lampsAlong(l, cls, fl, H);
         }
+        RL = L; RPH = PH;
       } else if (tag === 3) {
         const n = vr(); out.bcount = n;
         const BL = [];
         for (let f = 0; f < n; f++) { const h = vr() / 10, mh = vr() / 10, roof = u8(), rh = vr() / 10, wall = u24(), rc = u24(), kind = u8(), fp = pts(); BL.push({ h, mh, roof, rh, wall, rc, kind, fp }); }
         if (msg.skipBld) continue;
         harmonize(BL);
+        // дворы-сады махаллей: вокруг частного дома — трава, кое-где вскопанные грядки (а не голая земля)
+        for (let f = 0; f < n; f++) {
+          const { h, kind, fp } = BL[f];
+          if (!(kind === 1 || kind === 0) || h > 7.6) continue;
+          const o = obb(fp); if (!o || o.L * o.Wd > 420) continue;
+          const hh = hash(f, 7), A = o.L / 2 + 5.5 + (hh % 3), Bd = o.Wd / 2 + 5 + ((hh >> 3) % 3); // участок хавли: дорога и соседи рисуются поверх
+          const R = (a, c) => [o.cx + o.ux * a + o.vx * c, o.cz + o.uz * a + o.vz * c];
+          const ring = new Float32Array([...R(-A, -Bd), ...R(A, -Bd), ...R(A, Bd), ...R(-A, Bd)]);
+          const g = GARDEN[hh % GARDEN.length];
+          // на дальнем плане (3–4 м на пиксель) узкая кайма не видна — двор шире, как весь участок хавли
+          if (far) rA.push([20, [new Float32Array([...R(-A - 4, -Bd - 4), ...R(A + 4, -Bd - 4), ...R(A + 4, Bd + 4), ...R(-A - 4, Bd + 4)])], ((hh % 7) - 3) * 0.02]);
+          else polyFill(ground, [ring], GY[20], g, 0);
+          if (!far && hh % 6 === 0) { // грядки
+            const s2 = (hh >> 5) % 2 ? 1 : -1, bed = new Float32Array([...R(-A + 1, s2 * (o.Wd / 2 + 0.6)), ...R(-A + 1 + Math.min(6, A), s2 * (o.Wd / 2 + 0.6)), ...R(-A + 1 + Math.min(6, A), s2 * (Bd - 0.6)), ...R(-A + 1, s2 * (Bd - 0.6))]);
+            polyFill(ground, [bed], GY[20] + 0.004, [128, 106, 78], 0);
+          }
+        }
         for (let f = 0; f < n; f++) {
           const { h, mh, roof, rh, wall, rc, kind, fp } = BL[f];
           const id = hash(f, fp.length) % 1000;
@@ -1190,12 +1250,25 @@ window.TPM_GEO_WORKER = function () {
       } else if (tag === 4) {
         const n = vr(), tr = new Float32Array(n * 3); let x = 0, y = 0;
         for (let i = 0; i < n; i++) { x += sv(); y += sv(); tr[i * 3] = x / 10; tr[i * 3 + 1] = y / 10; tr[i * 3 + 2] = u8() / 85; }
-        if (far) treesRaw = tr; else out.trees = tr;
+        if (far) treesRaw = tr; else {
+          out.trees = tr;
+          // газон под кронами: зелёное пятно под каждым деревом (во дворах, вдоль арыков и улиц)
+          for (let i = 0; i < n; i++) {
+            const tx = tr[i * 3], tz = tr[i * 3 + 1], r = tr[i * 3 + 2], f = r % 1, rr = r >= 2 ? 1.6 : 2.2 + f * 1.8, b = ground.vc, g = GARDEN[(i * 7) % GARDEN.length];
+            ground.v(tx, 0.052, tz, 0, 1, 0, g[0] - 6, g[1] - 4, g[2] - 6, 255);
+            for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + f * 3, q = rr * (0.85 + ((i + k) % 3) * 0.1); ground.v(tx + Math.cos(a) * q, 0.052, tz + Math.sin(a) * q, 0, 1, 0, g[0], g[1], g[2], 255); }
+            for (let k = 0; k < 6; k++) ground.tri(b, b + 1 + (k + 1) % 6, b + 1 + k);
+          }
+        }
       } else if (tag === 5) {
         out.signals = pts();
       } else if (tag === 6) {
         const n = vr();
         for (let i = 0; i < n; i++) { const c = u8(), x = sv() / 10, z = sv() / 10, nm = str(), lt = str(); out.places.push({ c, x, z, n: nm, lt }); }
+      } else if (tag === 9) { // пешеходные переходы из OSM: точка и тип (0 — зебра, 1 — со светофором)
+        const n = vr(), C = []; let x = 0, z = 0;
+        for (let i = 0; i < n; i++) { x += sv(); z += sv(); C.push(x / 10, z / 10, u8()); }
+        if (!far && RL) crosswalks(roads, C, RL, RPH);
       } else if (tag === 8) { // спортплощадки: вид спорта, покрытие, контур
         const n = vr();
         for (let i = 0; i < n; i++) {
