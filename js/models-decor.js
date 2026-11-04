@@ -7,6 +7,7 @@
 //  ботанический сад им. Русанова: оранжерея и теплица, эстрада с амфитеатром, мостик, вход, клумбы;
 //  Центр исламской цивилизации у Хазрати Имама; IT Park Uzbekistan (башни, подиумы, логотипы);
 //  ансамбль площади Хамида Алимджана (18-этажки с короной и ночной подсветкой этажей);
+//  вантовый пешеходный мост «знак бесконечности» через Анхор у парка «Навруз»;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -1125,6 +1126,110 @@
       pilasters(b, pod.p, 0, 8.2, 4, 0.7, 0.6, WHT);                                                                   // белая аркада
       band(b, pod.p, 0.5, 8.2, 1.7, WHT); band(b, pod.p, 0.56, 9.7, 0.22, [0.95, 0.35, 0.35], "hue");                // карниз и неоновая кромка
       cap(b, pod.p, 9.9, [0.62, 0.64, 0.68]);
+    }
+  };
+  // ---------------- пешеходный мост через Анхор у парка «Навруз» ----------------
+  // Первый вантовый пешеходный мост Узбекистана (Гипростроймост, 2019), «знак бесконечности»:
+  // прямой верхний настил над каналом и две петли-пандуса, спускающиеся к набережным и проходящие
+  // низко над водой под верхним настилом. Белый А-образный пилон стоит в канале между пандусами,
+  // от его головы веером расходятся ванты. Настилы — белые, с «килем» снизу, перила из нержавейки
+  // с горизонтальными прутьями. Ночью (по фото): по кромкам настилов — холодно-белые светодиодные
+  // ленты, ванты — в сине-фиолетовых бусинах огней, голова пилона подсвечена прожектором.
+  // parts: [0] — верхний настил (запад → восток), [1], [2] — пандусы (от земли к настилу).
+  M.navruz_bridge = (b, o) => {
+    const c0 = Math.cos(o.ang), s0 = Math.sin(o.ang), h0 = TPM.terrain.hAt(o.x, o.z);
+    const W2L = ([x, z]) => o.local(x, z), L2W = (x, z) => [x * c0 - z * s0 + o.x, x * s0 + z * c0 + o.z];
+    const gH = (x, z) => { const [wx, wz] = L2W(x, z); return TPM.terrain.hAt(wx, wz) - h0; };
+    // берега Анхора у моста (контур воды OSM): над водой опоры уходят к зеркалу, на 2,6 м ниже берега
+    const WATER = [[-837, -1528], [-829, -1551], [-820, -1566], [-811, -1578], [-798, -1569], [-813, -1548], [-809, -1544], [-821, -1506], [-826, -1502]];
+    const wet = (x, z) => { const [px, pz] = L2W(x, z); let c = false; for (let i = 0, j = WATER.length - 1; i < WATER.length; j = i++) { const [xi, zi] = WATER[i], [xj, zj] = WATER[j]; if ((zi > pz) !== (zj > pz) && px < (xj - xi) * (pz - zi) / (zj - zi) + xi) c = !c; } return c; };
+    const base = (x, z) => gH(x, z) - (wet(x, z) ? 2.6 : 0);
+    const WHT = [0.94, 0.94, 0.93], SOFF = [0.84, 0.85, 0.85], WALK = [0.7, 0.68, 0.64], STEEL = [0.66, 0.68, 0.72], CAB = [0.86, 0.87, 0.9];
+    const TOPY = 6.0;
+    // сглаживание петель (Чайкин) и шаг ~1,5 м
+    const chaikin = (p, n) => { for (let k = 0; k < n; k++) { const q = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const [ax, az] = p[i], [bx, bz] = p[i + 1]; q.push([ax * 0.75 + bx * 0.25, az * 0.75 + bz * 0.25], [ax * 0.25 + bx * 0.75, az * 0.25 + bz * 0.75]); } q.push(p[p.length - 1]); p = q; } return p; };
+    const resample = (p, step) => {
+      const out = [[p[0][0], p[0][1], 0]]; let acc = 0;
+      for (let i = 1; i < p.length; i++) {
+        const [ax, az] = p[i - 1], [bx, bz] = p[i], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / step));
+        for (let k = 1; k <= n; k++) out.push([ax + (bx - ax) * k / n, az + (bz - az) * k / n, acc + L * k / n]);
+        acc += L;
+      }
+      return out;
+    };
+    const Pt = o.parts.map((q) => q.p.map(W2L));
+    const U = resample([Pt[0][0], Pt[0][1]], 1.5), UL = U[U.length - 1][2];
+    U.forEach((q) => { q[3] = TOPY + 0.55 * Math.sin(Math.PI * q[2] / UL); });     // лёгкий выгиб верхнего настила
+    const ramps = [Pt[1], Pt[2]].map((p) => {
+      const r = resample(chaikin(p, 3), 1.5), S = r[r.length - 1][2], g0 = gH(r[0][0], r[0][1]) + 0.12;
+      r.forEach((q) => { const t = q[2] / S; q[3] = g0 + (TOPY - g0) * (t < 0.92 ? t / 0.92 : 1); });  // у стыка — горизонтальная площадка
+      return r;
+    });
+    // ---- настил по оси с отметками: верх, торцы, низ с «килем», светодиодные ленты, перила
+    const deck = (A, w, th, keel) => {
+      const n = A.length, N = A.map((q, i) => {
+        const a = A[Math.max(0, i - 1)], c = A[Math.min(n - 1, i + 1)], dx = c[0] - a[0], dz = c[1] - a[1], L = Math.hypot(dx, dz) || 1;
+        return [-dz / L, dx / L];
+      });
+      const top = [], side = [], bot = [], led = [], rail = [], rod = [];
+      const E = (i, s, d = 0) => [A[i][0] + N[i][0] * (w / 2 + d) * s, A[i][1] + N[i][1] * (w / 2 + d) * s];
+      const quad = (arr, p0, y0, p1, y1, p2, y2, p3, y3) => arr.push(p0[0], y0, p0[1], p1[0], y1, p1[1], p2[0], y2, p2[1], p0[0], y0, p0[1], p2[0], y2, p2[1], p3[0], y3, p3[1]);
+      for (let i = 0; i < n - 1; i++) {
+        const y0 = A[i][3], y1 = A[i + 1][3], L0 = E(i, -1), R0 = E(i, 1), L1 = E(i + 1, -1), R1 = E(i + 1, 1);
+        quad(top, L0, y0, R0, y0, R1, y1, L1, y1);
+        for (const s of [-1, 1]) {
+          const a = E(i, s), c = E(i + 1, s), ao = E(i, s, 0.03), co = E(i + 1, s, 0.03);
+          quad(side, a, y0 - th, c, y1 - th, c, y1, a, y0);
+          quad(led, ao, y0 - th * 0.75, co, y1 - th * 0.75, co, y1 - th * 0.12, ao, y0 - th * 0.12);
+          const ai = E(i, s, -0.08), ci = E(i + 1, s, -0.08);
+          quad(rail, ai, y0 + 1.04, ci, y1 + 1.04, ci, y1 + 1.14, ai, y0 + 1.14);                  // поручень
+          for (const hh of [0.3, 0.55, 0.8]) quad(rod, ai, y0 + hh, ci, y1 + hh, ci, y1 + hh + 0.035, ai, y0 + hh + 0.035); // прутья
+        }
+        if (keel) { // низ треугольником: от кромок к «килю» по оси
+          const C0 = [A[i][0], A[i][1]], C1 = [A[i + 1][0], A[i + 1][1]];
+          quad(bot, L0, y0 - th, L1, y1 - th, C1, y1 - th - keel, C0, y0 - th - keel);
+          quad(bot, C0, y0 - th - keel, C1, y1 - th - keel, R1, y1 - th, R0, y0 - th);
+        } else quad(bot, L0, y0 - th, L1, y1 - th, R1, y1 - th, R0, y0 - th);
+      }
+      b.raw(top, WALK); b.raw(side, WHT); b.raw(bot, SOFF); b.raw(led, [0.9, 0.92, 0.94], "cool"); b.raw(rail, STEEL); b.raw(rod, STEEL);
+      for (let i = 0; i < n; i += 2) for (const s of [-1, 1]) { const [px, pz] = E(i, s, -0.08); b.box(px, A[i][3], pz, 0.07, 1.12, 0.07, STEEL); } // стойки перил
+    };
+    deck(U, 4.6, 0.7, 0.75);
+    ramps.forEach((r) => deck(r, 3.2, 0.5, 0.25));
+    // ---- круглые белые опоры пандусов (каждые ~10 м, где настил заметно над землёй)
+    ramps.forEach((r) => {
+      for (let i = 4; i < r.length - 2; i += 7) {
+        const [x, z, , y] = r[i], g = base(x, z); if (y - 0.5 - g < 1.0) continue;
+        b.cyl(x, g, z, 0.38, y - 0.5 - g, WHT, 10);
+        if (g < gH(x, z) - 1) b.cyl(x, g - 0.3, z, 0.8, 0.9, [0.72, 0.72, 0.7], 10);            // ростверк в воде
+      }
+    });
+    for (const q of [U[0], U[U.length - 1]]) { const g = base(q[0], q[1]); b.cyl(q[0], g, q[1], 0.6, q[3] - 0.9 - g, WHT, 12); } // опоры стыков
+    // ---- пилон: две белые ноги из воды сходятся над настилом в одну голову
+    const ti = Math.round((U.length - 1) * 0.55), [px, pz, , py] = U[ti];
+    const ux = U[ti + 1][0] - U[ti - 1][0], uz = U[ti + 1][1] - U[ti - 1][1], ul = Math.hypot(ux, uz), dX = ux / ul, dZ = uz / ul, vX = -dZ, vZ = dX;
+    const ry = Math.atan2(-dZ, dX), gW = base(px, pz), HT = 27, HH = 34;
+    const legAt = (s, y) => { const t = (y - gW) / (HT - gW), off = 4.0 + (0.55 - 4.0) * t; return [px + vX * off * s, pz + vZ * off * s]; };
+    for (const s of [-1, 1]) {
+      const [bx, bz] = legAt(s, gW), [tx, tz] = legAt(s, HT);
+      b.box(bx, gW - 0.4, bz, 2.4, 1.0, 2.4, [0.74, 0.74, 0.72], ry);                                 // ростверк
+      b.beam(bx, gW, bz, tx, HT, tz, 1.0, WHT, "lit", 1.4);
+    }
+    const bar = (y, w) => { const [ax, az] = legAt(-1, y), [cx, cz] = legAt(1, y); b.beam(ax, y, az, cx, y, cz, w, WHT, "lit", w); };
+    bar(py - 1.6, 0.9); bar(19.5, 0.7);                                                           // ригель под настилом и верхняя распорка
+    b.box(px, HT - 0.3, pz, 1.8, HH - HT + 0.3, 1.6, WHT, ry); to(b, "lit");                                  // голова пилона
+    for (const s of [-1, 1]) b.box(px + dX * 0.92 * s, HT + 1.5, pz + dZ * 0.92 * s, 0.12, HH - HT - 3, 0.7, [0.42, 0.44, 0.48], ry); // пазы под ванты
+    b.box(px, HH, pz, 1.4, 0.25, 1.2, [0.95, 0.9, 0.75], ry); to(b, "glow");                        // прожектор на голове
+    for (const s of [-1, 1]) { b.box(px + vX * 1.2 * s, py + 0.2, pz + vZ * 1.2 * s, 0.5, 0.5, 0.5, [0.95, 0.9, 0.75], ry); to(b, "glow"); } // светильники у ног
+    // ---- ванты: по 6 в каждую сторону с каждой кромки (24), дальние крепятся выше
+    const atS = (d) => { // точка оси верхнего настила на расстоянии d от пилона
+      const S = U[ti][2] + d; let k = 1; while (k < U.length - 1 && U[k][2] < S) k++;
+      const a = U[k - 1], c = U[k], t = Math.max(0, Math.min(1, (S - a[2]) / (c[2] - a[2] || 1)));
+      return [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t, a[3] + (c[3] - a[3]) * t];
+    };
+    for (const dir of [-1, 1]) for (let k = 0; k < 6; k++) {
+      const d = 4.5 + k * (dir > 0 ? 4.1 : 4.6), [qx, qz, qy] = atS(d * dir), ay = HT + 0.8 + k * 1.05;
+      for (const s of [-1, 1]) b.beam(px + vX * 0.5 * s + dX * 0.5 * dir, ay, pz + vZ * 0.5 * s + dZ * 0.5 * dir, qx + vX * 2.2 * s, qy + 0.05, qz + vZ * 2.2 * s, 0.2, CAB, "stay");
     }
   };
 })();

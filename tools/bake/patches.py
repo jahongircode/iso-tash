@@ -30,6 +30,10 @@ PATCHES = [
     {"tile": (11347, 6122), "hide": [[4756, -3382], [4733, -3356], [4647, -3375], [4677, -3349], [4782, -3474], [4725, -3466], [4620, -3461], [4587, -3420], [4743, -3364], [4669, -3353], [4753, -3465], [4683, -3498], [4644, -3493], [4666, -3477], [4700, -3552]]},
     # площадь Хамида Алимджана, восточная сторона: четыре 18-этажки и изогнутый бизнес-комплекс — модель hamid_olimjon
     {"tile": (11345, 6123), "hide": [[1173, -864], [1215, -881], [1258, -872], [1287, -842], [1227, -833]]},
+    # вантовый пешеходный мост через Анхор у парка «Навруз» («знак бесконечности»): верхний настил и две
+    # петли-пандуса — модель navruz_bridge; линии мостов OSM убираем (drop_lines: x, z, радиус),
+    # заодно деревья в 3 м от них, чтобы не прорастали сквозь настил
+    {"tile": (11344, 6123), "drop_lines": (-822, -1530, 60)},
 ]
 
 
@@ -41,6 +45,14 @@ def inside(poly, x, z):
     return c
 
 
+def seg_d(x, z, l):
+    best = 1e9
+    for (ax, az), (bx, bz) in zip(l, l[1:]):
+        dx, dz = bx - ax, bz - az; q = dx * dx + dz * dz or 1; t = max(0, min(1, ((x - ax) * dx + (z - az) * dz) / q))
+        best = min(best, math.hypot(x - ax - dx * t, z - az - dz * t))
+    return best
+
+
 def main(D):
     by = {}
     for p in PATCHES: by.setdefault(p["tile"], []).append(p)
@@ -49,6 +61,19 @@ def main(D):
         path, mm, B = load(D, tx, ty); ox, oz = (tx * SIZE - gx(LNG0)) * MPU, (ty * SIZE - gy(LAT0)) * MPU
         r = Dec(B); out = b""; clear = []
         hide = [q for p in PS for q in p.get("hide", [])]
+        drops = [p["drop_lines"] for p in PS if "drop_lines" in p]
+        drop, dl = set(), []  # индексы убираемых линий (блок 7 ссылается на них по номеру — перенумеруем)
+        if drops:
+            q = Dec(B)
+            while True:
+                t = q.u8()
+                if t == 0: break
+                if t != 2: q.skip(t); continue
+                for i in range(q.vr()):
+                    c = q.u8(); fl = q.u8(); pts = [(x + ox, z + oz) for x, z in q.ptsl()]
+                    if c == 8 and fl & 2 and any(all(math.hypot(x - a, z - b) < rr for x, z in pts) for a, b, rr in drops): drop.add(i); dl.append(pts)
+            print("drop lines", sorted(drop))
+        remap = lambda i: i - sum(1 for d in drop if d < i)
         circles = [p["clear"] for p in PS if "clear" in p]
         while True:
             st = r.P; tag = r.u8()
@@ -76,6 +101,20 @@ def main(D):
                             print("bld", p["bld"], "h", h / 10)
                     seg += wvar(h) + wvar(mh) + bytes([roof]) + wvar(rh) + bytes(wall) + bytes(rc) + bytes([kind]) + pts; kept += 1
                 out += bytes([3]) + wvar(kept) + bytes(seg)
+            elif tag == 7 and drop:
+                n = r.vr(); seg = bytearray(); kept = 0
+                for _ in range(n):
+                    i = r.vr(); m = r.vr(); a = r.P
+                    for _ in range(m): r.vr()
+                    if i in drop: continue
+                    seg += wvar(remap(i)) + wvar(m) + B[a:r.P]; kept += 1
+                out += bytes([7]) + wvar(kept) + bytes(seg)
+            elif tag == 2 and drop:
+                n = r.vr(); seg = bytearray()
+                for i in range(n):
+                    a = r.P; r.u8(); r.u8(); r.ptsl()
+                    if i not in drop: seg += B[a:r.P]
+                out += bytes([2]) + wvar(n - len(drop)) + bytes(seg)
             elif tag == 4:
                 n = r.vr(); x = z = 0; T = []
                 for _ in range(n): x += r.sv(); z += r.sv(); T.append((x, z, r.u8()))
@@ -84,6 +123,7 @@ def main(D):
                     wx, wz = x / 10 + ox, z / 10 + oz
                     if any(inside(w, wx, wz) and (hash((x, z)) % 1000) / 1000 >= k for w, k in clear): continue
                     if any(math.hypot(wx - a_, wz - b_) < rr for a_, b_, rr in circles): continue
+                    if any(seg_d(wx, wz, l) < 3 for l in dl): continue
                     keep.append((x, z, c))
                 if len(keep) != len(T): print("trees", len(T), "->", len(keep))
                 seg = bytes([4]) + wvar(len(keep)); px0 = pz0 = 0

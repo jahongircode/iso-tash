@@ -31,7 +31,7 @@
   }
   const lerpR = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
   class MB {
-    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; this.hue = []; }
+    constructor() { this.parts = []; this.glow = []; this.led = []; this.win = []; this.flag = []; this.show = []; this.hue = []; this.cool = []; this.stay = []; this.lit = []; }
     // балка между двумя точками (опоры, растяжки)
     beam(x0, y0, z0, x1, y1, z1, w, col, list = "parts", d = w) {
       const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz);
@@ -186,7 +186,8 @@
       const body = mk(this.parts, MD.mat) || new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0)]), MD.mat);
       if (win) { body.geometry.computeBoundingBox(); const bb = body.geometry.boundingBox.union(win.geometry.boundingBox); body.geometry.boundingBox = bb; body.geometry.boundingSphere = bb.getBoundingSphere(new THREE.Sphere()); }
       return { body, glow: mk(this.glow, MD.glowMat), led: mk(this.led, MD.ledMat), win,
-        flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat), hue: mk(this.hue, MD.hueMat) };
+        flag: mk(this.flag, MD.flagMat), show: mk(this.show, MD.showMat), hue: mk(this.hue, MD.hueMat),
+        cool: mk(this.cool, MD.coolMat), stay: mk(this.stay, MD.stayMat), lit: mk(this.lit, MD.litMat) };
     }
   }
 
@@ -532,6 +533,20 @@
       float hh = fract(vLP.y * 0.011 - uTime * 0.045 + (vLP.x + vLP.z) * 0.0015);
       vec3 rb = clamp(abs(fract(hh + vec3(0.0, 0.667, 0.333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
       totalEmissiveRadiance += mix(rb, vec3(0.7, 0.92, 1.0), 0.3) * uNight * 1.2;`);
+    // холодно-белые светодиодные ленты (кромки пешеходного моста в «Навруз»)
+    MD.coolMat = nightFx("cool", `
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2), uNight * 0.6);
+      totalEmissiveRadiance += vec3(0.86, 0.94, 1.0) * uNight * 1.7;`);
+    // ванты в бусинах светодиодов: сине-фиолетовые точки, по ним медленно бежит перелив
+    MD.stayMat = nightFx("stay", `
+      float sd = (vLP.x + vLP.z) * 0.9 + vLP.y * 1.3;
+      float dot1 = step(0.45, fract(sd));
+      vec3 sc = mix(vec3(0.22, 0.3, 1.0), vec3(0.6, 0.32, 1.0), 0.5 + 0.5 * sin(vLP.y * 0.25 - uTime * 1.3));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.08, 0.08, 0.16), uNight * 0.8);
+      totalEmissiveRadiance += sc * uNight * (0.8 + 2.2 * dot1);`);
+    // белые конструкции в лучах прожекторов снизу (пилон моста): ярче у основания, к верху гаснет
+    MD.litMat = nightFx("lit", `
+      totalEmissiveRadiance += vec3(0.78, 0.84, 0.95) * uNight * (0.22 + 0.5 * clamp(1.0 - (vLP.y - 4.0) / 40.0, 0.0, 1.0));`);
     // телебашня ночью (по видео): вся залита тёплым золотом прожекторов (снизу ярче, светлые элементы ярче
     // синих), по стволу и капсулам случайно мигают холодно-белые огоньки
     MD.showMat = nightFx("show", `
@@ -565,7 +580,7 @@
         const nx = -Math.sin(g.ang), nz = Math.cos(g.ang); // куда смотрит локальная +z
         if ((fx - g.x) * nx + (fz - g.z) * nz < 0) grp.rotation.y += Math.PI;
       }
-      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show, parts.hue]) if (m) grp.add(m);
+      for (const m of [parts.body, parts.glow, parts.led, parts.win, parts.flag, parts.show, parts.hue, parts.cool, parts.stay, parts.lit]) if (m) grp.add(m);
       S.scene.add(grp);
       return { grp, parts };
     };
