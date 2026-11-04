@@ -1,7 +1,8 @@
 # =====================================================================
 #  Точечные исправления готовых тайлов по спутнику и панорамам — там,
 #  где разметка OSM расходится с реальностью: класс участка (газон, который
-#  на деле пустырь), высота и цвета отдельного здания, лишние деревья.
+#  на деле пустырь), высота и цвета отдельного здания, лишние деревья,
+#  здания OSM под моделями (hide) и площадки без деревьев (clear: x, z, радиус).
 #  Объект ищется по центру контура (мировые м, ±tol). Повторный запуск безопасен.
 #      python tools/bake/patches.py data
 # =====================================================================
@@ -17,6 +18,11 @@ PATCHES = [
     {"tile": (11346, 6122), "area": (2377, -2811), "cls": 18, "keep_trees": 0.05},
     # сам склад: тёмно-серая кровля из сэндвич-панелей, светло-серые стены, ~11 м
     {"tile": (11346, 6122), "bld": (2427, -3037), "h": 11.5, "wall": 0xC2C6CA, "roof": 0x595D64},
+    # мемориал «Шахидлар хотираси»: музей с двумя куполами и ротонда — модель shahidlar (models-decor.js);
+    # здания OSM под ней прячем, вокруг ротонды — открытый партер с клумбами, у музея — мощёная площадка
+    {"tile": (11345, 6121), "hide": [(710, -3995), (713, -4009), (709, -3981), (703, -4089)]},
+    {"tile": (11345, 6121), "clear": (703, -4089, 24)},
+    {"tile": (11345, 6121), "clear": (710, -3995, 31)},
 ]
 
 
@@ -35,6 +41,8 @@ def main(D):
     for (tx, ty), PS in by.items():
         path, mm, B = load(D, tx, ty); ox, oz = (tx * SIZE - gx(LNG0)) * MPU, (ty * SIZE - gy(LAT0)) * MPU
         r = Dec(B); out = b""; clear = []
+        hide = [q for p in PS for q in p.get("hide", [])]
+        circles = [p["clear"] for p in PS if "clear" in p]
         while True:
             st = r.P; tag = r.u8()
             if tag == 0: out += B[st:]; break
@@ -49,17 +57,18 @@ def main(D):
                     seg += body
                 out += bytes(seg)
             elif tag == 3:
-                n = r.vr(); seg = bytearray([3]) + wvar(n)
+                n = r.vr(); seg = bytearray(); kept = 0
                 for _ in range(n):
                     h = r.vr(); mh = r.vr(); roof = r.u8(); rh = r.vr(); wall = B[r.P:r.P + 3]; rc = B[r.P + 3:r.P + 6]; kind = B[r.P + 6]; r.P += 7
                     a = r.P; fp = r.ptsl(); pts = B[a:r.P]
                     cx = sum(q[0] for q in fp) / len(fp) + ox; cz = sum(q[1] for q in fp) / len(fp) + oz
+                    if any(math.hypot(cx - a_, cz - b_) < 4 for a_, b_ in hide): print("hide", int(cx), int(cz)); continue
                     for p in PS:
                         if "bld" in p and math.hypot(cx - p["bld"][0], cz - p["bld"][1]) < 8:
                             h = int(p.get("h", h / 10) * 10); wall = p.get("wall", int.from_bytes(wall, "big")).to_bytes(3, "big"); rc = p.get("roof", int.from_bytes(rc, "big")).to_bytes(3, "big")
                             print("bld", p["bld"], "h", h / 10)
-                    seg += wvar(h) + wvar(mh) + bytes([roof]) + wvar(rh) + bytes(wall) + bytes(rc) + bytes([kind]) + pts
-                out += bytes(seg)
+                    seg += wvar(h) + wvar(mh) + bytes([roof]) + wvar(rh) + bytes(wall) + bytes(rc) + bytes([kind]) + pts; kept += 1
+                out += bytes([3]) + wvar(kept) + bytes(seg)
             elif tag == 4:
                 n = r.vr(); x = z = 0; T = []
                 for _ in range(n): x += r.sv(); z += r.sv(); T.append((x, z, r.u8()))
@@ -67,6 +76,7 @@ def main(D):
                 for x, z, c in T:
                     wx, wz = x / 10 + ox, z / 10 + oz
                     if any(inside(w, wx, wz) and (hash((x, z)) % 1000) / 1000 >= k for w, k in clear): continue
+                    if any(math.hypot(wx - a_, wz - b_) < rr for a_, b_, rr in circles): continue
                     keep.append((x, z, c))
                 if len(keep) != len(T): print("trees", len(T), "->", len(keep))
                 seg = bytes([4]) + wvar(len(keep)); px0 = pz0 = 0
