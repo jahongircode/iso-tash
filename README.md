@@ -102,6 +102,7 @@ python tools/bake/pitches.py bake osm/pitches.json data
 python tools/bake/greenery.py data           # once: drop trees clipping buildings, plant yards, parks, vacant lots
 python tools/bake/greenery.py data --yards   # once: dense microdistrict yards around 3+ storey blocks
 python tools/bake/botanic.py data          # botanical garden: arboretum zones, species trees, hides OSM boxes under garden models
+python tools/bake/patches.py data          # spot fixes from satellite/panoramas (land class, building colours, stray trees)
 ```
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.
