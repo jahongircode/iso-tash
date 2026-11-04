@@ -5,7 +5,7 @@
 //  аэропорт Ташкента с самолётами Uzbekistan Airways, Piramit Tower, Ассоциация банков, Международный
 //  бизнес-центр, Законодательная палата Олий Мажлиса, башни SQB, BoMI, Asaka Bank и Aloqa Bank;
 //  ботанический сад им. Русанова: оранжерея и теплица, эстрада с амфитеатром, мостик, вход, клумбы;
-//  Центр исламской цивилизации у Хазрати Имама;
+//  Центр исламской цивилизации у Хазрати Имама; IT Park Uzbekistan (башни, подиумы, логотипы);
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -1021,6 +1021,78 @@
       }
       // широкая лестница перед главным входом
       if (isMain) for (let k = 0; k < 4; k++) { const [lx, lz] = P(0, 13 + (3 - k) * 2.2); b.box(lx, 0, lz, PW + 26 - k * 4, 0.45 * (k + 1), 2.4 + (3 - k) * 0.2, k % 2 ? PAVE : [0.76, 0.72, 0.66], ry); }
+    }
+  };
+  // ---------------- IT Park Uzbekistan (ул. Муминова) ----------------
+  // По фото: две пары башен ~94 м из тёмного сине-зелёного зеркального стекла со срезанными углами
+  // и белыми вертикальными рёбрами, каждая пара стоит на плавном стеклянном подиуме с белыми лентами;
+  // над входами — белые наклонные козырьки с надписями IT PARK и UZBEKISTAN и зелёным логотипом,
+  // между парами — площадь с рядом белых флагов. Вторая очередь — башни ~72 м из светлого стекла,
+  // корпуса по 28 м и круглый конгресс-холл. Ночью логотипы и рёбра башен светятся.
+  M.it_park = (b, o) => {
+    const Q = localParts(o), WH = [0.93, 0.94, 0.95], GL1 = [0.16, 0.26, 0.3], GL2 = [0.34, 0.46, 0.54], GRN = [0.36, 0.72, 0.24], INK = [0.16, 0.18, 0.2];
+    const T1 = Q.filter((q) => q.h > 90), T2 = Q.filter((q) => q.h > 70 && q.h < 80), POD = Q.filter((q) => q.h < 14 && q.A > 2000), REST = Q.filter((q) => !T1.includes(q) && !T2.includes(q) && !POD.includes(q));
+    const outward = (q, p0, p1) => { const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); let nx = (p1[1] - p0[1]) / L, nz = -(p1[0] - p0[0]) / L; if (((p0[0] + p1[0]) / 2 - q.cx) * nx + ((p0[1] + p1[1]) / 2 - q.cz) * nz < 0) { nx = -nx; nz = -nz; } return [nx, nz, L]; };
+    // центр площади — середина между подиумами пар
+    const pc = POD.length ? [POD.reduce((a, q) => a + q.cx, 0) / POD.length, POD.reduce((a, q) => a + q.cz, 0) / POD.length] : [0, 0];
+    // башня: стекло с окнами, белые рёбра на углах, белая корона, техэтаж
+    const tower = (q, y0, GL, id) => {
+      b.winRing(q.p, y0, q.h - 2.5, GL, id);
+      for (const [x, z] of q.p) b.box(x, y0, z, 0.9, q.h - y0, 0.9, WH);
+      band(b, q.p, 0.25, q.h - 2.5, 2.5, WH); cap(b, q.p, q.h, [0.5, 0.54, 0.58]);
+      const inner = offset(q.p, -4); b.loft(inner, q.h, inner, q.h + 3, [0.62, 0.64, 0.66]); cap(b, inner, q.h + 3, [0.55, 0.57, 0.6]);
+      pilasters(b, q.p, q.h - 2.5, q.h, 1e9, 0.5, 0.6, [0.75, 0.95, 0.7], "led");                           // светящиеся рёбра короны
+    };
+    for (const q of T1) tower(q, POD.some((pd) => Math.hypot(pd.cx - q.cx, pd.cz - q.cz) < 45) ? 9.9 : 0, GL1, 71);
+    for (const q of T2) tower(q, POD.some((pd) => Math.hypot(pd.cx - q.cx, pd.cz - q.cz) < 45) ? 13 : 0, GL2, 72);
+    // логотип IT PARK на верхних этажах высоких башен — со стороны, обращённой от площади
+    for (const q of T1) {
+      let best = null;
+      for (let i = 0; i < q.p.length; i++) { const p0 = q.p[i], p1 = q.p[(i + 1) % q.p.length], [nx, nz, L] = outward(q, p0, p1); if (L < 12) continue; const d = ((p0[0] + p1[0]) / 2 - pc[0]) * nx + ((p0[1] + p1[1]) / 2 - pc[1]) * nz; if (!best || d > best.d) best = { d, p0, p1, nx, nz, L }; }
+      if (!best) continue;
+      const mx = (best.p0[0] + best.p1[0]) / 2 + best.nx * 0.6, mz = (best.p0[1] + best.p1[1]) / 2 + best.nz * 0.6, px = Math.min(0.42, best.L * 0.62 / 41);
+      sign(b, "IT PARK", mx + best.nz * px * 5, q.h - 9, mz - best.nx * px * 5, best.nx, best.nz, px, [0.95, 0.97, 0.95]);
+      const lx = mx - best.nz * (px * 23), lz = mz + best.nx * (px * 23), ry = Math.atan2(best.nx, best.nz);
+      b.box(lx, q.h - 9.6, lz, px * 9, px * 9, 0.4, GRN, ry, true); b.box(lx + best.nx * 0.25, q.h - 9.6 + px * 2.5, lz + best.nz * 0.25, px * 3.6, px * 4.4, 0.2, [0.97, 0.98, 0.97], ry, true);
+    }
+    // подиумы: стекло, белые ленты, белый наклонный козырёк над входом с надписью и логотипом
+    POD.forEach((q, k) => {
+      b.winRing(q.p, 0, q.h - 1.6, [0.3, 0.38, 0.44], 73); band(b, q.p, 0.35, 3.8, 0.7, WH); band(b, q.p, 0.4, q.h - 1.6, 1.6, WH); cap(b, q.p, q.h, [0.7, 0.72, 0.74]);
+      if (q.h > 12) return; // подиум второй очереди — без козырька
+      let best = null;
+      for (let i = 0; i < q.p.length; i++) { const p0 = q.p[i], p1 = q.p[(i + 1) % q.p.length], [nx, nz, L] = outward(q, p0, p1); if (L < 10) continue; const d = Math.hypot((p0[0] + p1[0]) / 2 - pc[0], (p0[1] + p1[1]) / 2 - pc[1]) - L * 0.3; if (!best || d < best.d) best = { d, p0, p1, nx, nz, L }; }
+      if (!best) return;
+      const { p0, p1, nx, nz, L } = best, ux = (p1[0] - p0[0]) / L, uz = (p1[1] - p0[1]) / L, N = 10;
+      // козырёк: белая лента, поднимающаяся к краю у площади (клин)
+      for (let i = 0; i < N; i++) {
+        const t0 = i / N, t1 = (i + 1) / N, h0 = q.h + 1 + t0 * 6, h1 = q.h + 1 + t1 * 6;
+        const a = [p0[0] + ux * L * t0 + nx * 3, p0[1] + uz * L * t0 + nz * 3], c = [p0[0] + ux * L * t1 + nx * 3, p0[1] + uz * L * t1 + nz * 3];
+        b.raw([a[0], q.h - 2, a[1], c[0], q.h - 2, c[1], c[0], h1, c[1], a[0], q.h - 2, a[1], c[0], h1, c[1], a[0], h0, a[1]], WH);
+        b.raw([c[0], q.h - 2, c[1], a[0], q.h - 2, a[1], a[0], h0, a[1], c[0], q.h - 2, c[1], a[0], h0, a[1], c[0], h1, c[1]], WH);
+        const ia = [p0[0] + ux * L * t0, p0[1] + uz * L * t0], ic = [p0[0] + ux * L * t1, p0[1] + uz * L * t1];
+        b.raw([ia[0], h0, ia[1], ic[0], h1, ic[1], c[0], h1, c[1], ia[0], h0, ia[1], c[0], h1, c[1], a[0], h0, a[1]], [0.86, 0.87, 0.88]);
+      }
+      const txt = k % 2 ? "UZBEKISTAN" : "IT PARK", px = Math.min(0.55, L * 0.7 / (txt.length * 6));
+      const sx = p0[0] + ux * L * 0.55 + nx * 3.35, sz = p0[1] + uz * L * 0.55 + nz * 3.35;
+      sign(b, txt, sx, q.h + 1.5, sz, nx, nz, px, INK, "parts", 0.2);
+      if (!(k % 2)) { const gx = p0[0] + ux * L * 0.12 + nx * 3.4, gz = p0[1] + uz * L * 0.12 + nz * 3.4, ry = Math.atan2(nx, nz); b.box(gx, q.h + 0.8, gz, 3.6, 3.6, 0.4, GRN, ry, true); b.box(gx + nx * 0.25, q.h + 1.8, gz + nz * 0.25, 1.4, 1.8, 0.2, [0.97, 0.98, 0.97], ry, true); }
+    });
+    // площадь между парами: светлое мощение и ряд флагов
+    if (POD.length >= 2) {
+      const [a, c] = POD, dx = c.cx - a.cx, dz = c.cz - a.cz, L = Math.hypot(dx, dz), nx = -dz / L, nz = dx / L;
+      cap(b, se(16, 16, 2, 24).map(([x, z]) => [x + pc[0], z + pc[1]]), 0.12, [0.84, 0.82, 0.78]);
+      for (let k = -5; k <= 5; k++) {
+        const x = pc[0] + nx * k * 4.2, z = pc[1] + nz * k * 4.2;
+        b.box(x, 0, z, 0.9, 0.9, 0.9, [0.92, 0.92, 0.9]); b.cyl(x, 0.9, z, 0.08, 11, [0.85, 0.86, 0.88], 6);
+        b.box(x + dx / L * 1.1, 10, z + dz / L * 1.1, 2.2, 1.3, 0.05, [0.97, 0.97, 0.97], Math.atan2(-dz, dx));
+      }
+    }
+    // корпуса второй очереди и круглый конгресс-холл
+    for (const q of REST) {
+      const round = q.p.length > 16;
+      b.winRing(q.p, 0, q.h - 1.2, round ? [0.28, 0.4, 0.5] : [0.4, 0.46, 0.5], round ? 74 : 75);
+      if (round) for (let y = 4; y < q.h - 2; y += 6) band(b, q.p, 0.2, y, 0.6, WH);
+      band(b, q.p, 0.3, q.h - 1.2, 1.2, WH); cap(b, q.p, q.h, [0.66, 0.68, 0.7]);
     }
   };
 })();
