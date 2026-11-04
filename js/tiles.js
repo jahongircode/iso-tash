@@ -39,7 +39,11 @@
     const src = window.EARCUT_SRC + "\n;(" + window.TPM_GEO_WORKER.toString() + ")();";
     const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
     const n = Math.min(3, Math.max(1, (navigator.hardwareConcurrency || 2) - 1));
-    for (let i = 0; i < n; i++) { const w = new Worker(url); w.onmessage = (e) => { const cb = cbs.get(e.data.id); cbs.delete(e.data.id); cb && cb(e.data); }; workers.push(w); }
+    const g = TPM.terrain.grid;
+    for (let i = 0; i < n; i++) {
+      const w = new Worker(url); w.onmessage = (e) => { const cb = cbs.get(e.data.id); cbs.delete(e.data.id); cb && cb(e.data); }; workers.push(w);
+      if (g) w.postMessage({ terrain: { x0: g.x0, z0: g.z0, s: g.s, W: g.W, H: g.H, Hn: g.Hn } }); // рельеф — один раз на поток
+    }
   }
   const build = (b64, o) => new Promise((res) => { const id = nid++; cbs.set(id, res); workers[wi++ % workers.length].postMessage({ id, b64, tileM: TILE_M, skipBld: false, ...o }); });
 
@@ -63,6 +67,9 @@
     grain(M.ground, 0.11); grain(M.roads, 0.07);
     M.ground.customProgramCacheKey = () => "grain-g"; M.roads.customProgramCacheKey = () => "grain-r";
     M.water = new THREE.MeshLambertMaterial({ vertexColors: true });
+    // вода ниже берега: маска (контуры воды на уровне земли) пишет 1 в трафарет, земля там не рисуется
+    M.wmask = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp, stencilZFail: THREE.ReplaceStencilOp });
+    Object.assign(M.ground, { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp });
     M.water.onBeforeCompile = (sh) => {
       sh.uniforms.uTime = T.uTime;
       sh.vertexShader = "varying vec3 vWP;\n" + sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed,1.0)).xyz;");
@@ -195,7 +202,7 @@
     for (let k = 0; k < n; k++) {
       const i = ids[k], r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2, sp = species(r);
       const hgt = poplar ? 13 + f * 8 : 6 + f * 7.5;
-      p.set(tr[i * 3], 0.1, tr[i * 3 + 1]);
+      p.set(tr[i * 3], 0.1 + TPM.terrain.hAt(tr[i * 3] + ox, tr[i * 3 + 1] + oz), tr[i * 3 + 1]);
       q.setFromAxisAngle(up, f * 6.28);
       if (sp) { // порода дендрария: своя форма и цвет по сезону
         const [S, sf] = sp, h2 = S.h[0] + sf * S.h[1], vr = ((tr[i * 3] * 12.9898 + tr[i * 3 + 1] * 78.233) % 1 + 1) % 1;
@@ -276,7 +283,7 @@
       if (rec.state === "dead") return;
       const Q = TPM.city.Q;
       const t1 = performance.now();
-      const r = await build(rec.b64, { lod, res: Q.farRes || 512, tallH: Q.tallH || 11, treePal: treePalCss() });
+      const r = await build(rec.b64, { lod, res: Q.farRes || 512, tallH: Q.tallH || 11, treePal: treePalCss(), ox: rec.ox, oz: rec.oz });
       if (rec.timing) { rec.timing[1] = Math.round(performance.now() - t1); rec.prof = r.prof; }
       if (r.noRaster) { T.noFar = true; return; }
       if (r.error) throw new Error(r.error);
@@ -302,17 +309,20 @@
         tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestMipmapLinearFilter; tex.anisotropy = 4; tex.generateMipmaps = true; tex.needsUpdate = true;
         const mat = new THREE.MeshLambertMaterial({ map: tex });
         mat.onBeforeCompile = farShader; mat.customProgramCacheKey = () => "far";
-        const g = new THREE.BufferGeometry(), Tm = TILE_M;
-        g.setAttribute("position", new THREE.BufferAttribute(new Float32Array([0, 0, 0, Tm, 0, 0, Tm, 0, Tm, 0, 0, Tm]), 3));
-        g.setAttribute("normal", new THREE.BufferAttribute(new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]), 3));
-        g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
-        g.setIndex([0, 2, 1, 0, 3, 2]); g.computeBoundingSphere();
+        // плита дальнего плана — та же нарезанная по рельефу земля из воркера, текстура по координатам
+        const g = new THREE.BufferGeometry(), Tm = TILE_M, gp = r.ground.p, uv = new Float32Array(gp.length / 3 * 2);
+        for (let i = 0; i < uv.length / 2; i++) { uv[i * 2] = gp[i * 3] / Tm; uv[i * 2 + 1] = gp[i * 3 + 2] / Tm; }
+        g.setAttribute("position", new THREE.BufferAttribute(gp, 3));
+        g.setAttribute("normal", new THREE.InterleavedBufferAttribute(new THREE.InterleavedBuffer(r.ground.n, 4), 3, 0, true));
+        g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+        g.setIndex(new THREE.BufferAttribute(r.ground.i, 1)); g.computeBoundingSphere();
         const q = new THREE.Mesh(g, mat); q.position.set(ox, 0, oz); q.matrixAutoUpdate = false; q.updateMatrix(); q.receiveShadow = true;
         L.tex = tex; L.mat = mat; add(q);
         add(mesh(r.bld, M.bld, ox, oz, { cast: true }));
       } else {
         add(mesh(r.ground, M.ground, ox, oz));
         add(mesh(r.water, M.water, ox, oz));
+        { const wm = mesh(r.wmask, M.wmask, ox, oz); if (wm) { wm.renderOrder = -1; wm.receiveShadow = false; } add(wm); }
         add(mesh(r.roads, M.roads, ox, oz));
         add(mesh(r.bld, M.bld, ox, oz, { cast: true }));
         if (r.trees && r.trees.length) { L.trees = makeTrees(r.trees, ox, oz); L.trees.forEach(add); }

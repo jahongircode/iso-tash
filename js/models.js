@@ -553,7 +553,7 @@
       const b = new MB(); M[id](b, g);
       const parts = b.build(id);
       const grp = new THREE.Group();
-      grp.position.set(g.x, 0, g.z); grp.rotation.y = -g.ang;
+      grp.position.set(g.x, TPM.terrain.hAt(g.x, g.z), g.z); grp.rotation.y = -g.ang;
       // повернуть фасадом (локальная +z) к заданной точке
       if (FACE[id]) {
         const [fx, fz] = T.ll2m(FACE[id][0], FACE[id][1]);
@@ -574,7 +574,7 @@
       MD.list.push({ l, grp, r: parts.body.geometry.boundingSphere.radius });
       if (l.id === "mustaqillik" && g.x2 !== undefined) {
         const b2 = new MB(); M.mustaqillik_mon(b2); const p2 = b2.build("mon");
-        p2.body.position.set(g.x2, 0, g.z2); S.scene.add(p2.body);
+        p2.body.position.set(g.x2, TPM.terrain.hAt(g.x2, g.z2), g.z2); S.scene.add(p2.body);
       }
       if (l.id === "new_tashkent") {
         [[-40, -40, 58], [70, 20, 48], [-80, 60, 44]].forEach(([x, z, h], i) => {

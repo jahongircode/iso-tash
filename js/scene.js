@@ -67,9 +67,10 @@
     renderer.setSize(W, H, true);
     w = Math.ceil(W / S.px); h = Math.ceil(H / S.px);
     if (rt) rt.dispose();
-    rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true });
+    // трафарет нужен для «окон» в земле над водой (вода ниже набережной)
+    rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, stencilBuffer: true });
     rt.depthTexture = new THREE.DepthTexture(w, h);
-    rt.depthTexture.type = THREE.UnsignedIntType;
+    rt.depthTexture.format = THREE.DepthStencilFormat; rt.depthTexture.type = THREE.UnsignedInt248Type;
     post.uniforms.tColor.value = rt.texture; post.uniforms.tDepth.value = rt.depthTexture;
     post.uniforms.res.value.set(w, h);
     S.w = w; S.h = h; S.W = W; S.H = H;
@@ -89,6 +90,7 @@
     return tmp.set(Math.cos(a) * Math.cos(S.el), Math.sin(S.el), Math.sin(a) * Math.cos(S.el));
   }
   function updateCamera() {
+    if (TPM.terrain) S.target.y = TPM.terrain.hAt(S.target.x, S.target.z); // камера смотрит на землю под собой
     const hw = w * S.mpp / 2, hh = h * S.mpp / 2;
     camera.left = -hw; camera.right = hw; camera.top = hh; camera.bottom = -hh;
     const d = camDir();
@@ -125,8 +127,10 @@
     // пересечение прямой (а не луча) с землёй: точка верна и для краёв кадра «за» ближней плоскостью
     const o = ray.ray.origin, d = ray.ray.direction;
     if (Math.abs(d.y) < 1e-6) return null;
-    const t = -o.y / d.y;
-    return (out || new THREE.Vector3()).set(o.x + d.x * t, 0, o.z + d.z * t);
+    // рельеф: пересечение с плоскостью на высоте земли, уточнённое по высоте найденной точки
+    let y = S.target.y, x = 0, z = 0;
+    for (let k = 0; k < 4; k++) { const t = (y - o.y) / d.y; x = o.x + d.x * t; z = o.z + d.z * t; if (!TPM.terrain) break; y = TPM.terrain.hAt(x, z); }
+    return (out || new THREE.Vector3()).set(x, y, z);
   };
   S.raycaster = () => { ray.setFromCamera(ndc, camera); return ray; };
   S.setNdc = (sx, sy) => ndc.set(sx / W * 2 - 1, -(sy / H) * 2 + 1);
@@ -259,6 +263,7 @@
     step(dt);
     updateCamera();
     S.hooks.frame && S.hooks.frame(dt);
+    renderer.state.buffers.stencil.setMask(0xff); // иначе очистка трафарета не сработает и «окна» над водой накопятся
     renderer.setRenderTarget(rt);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
@@ -266,5 +271,5 @@
     S.hooks.after && S.hooks.after(dt);
   }
   S.start = () => { updateCamera(); requestAnimationFrame(frame); };
-  S.renderOnce = () => { updateCamera(); renderer.setRenderTarget(rt); renderer.render(scene, camera); renderer.setRenderTarget(null); renderer.render(postScene, postCam); };
+  S.renderOnce = () => { updateCamera(); renderer.state.buffers.stencil.setMask(0xff); renderer.setRenderTarget(rt); renderer.render(scene, camera); renderer.setRenderTarget(null); renderer.render(postScene, postCam); };
 })();

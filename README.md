@@ -24,6 +24,7 @@ Every building, road, park, river and tree comes from OpenStreetMap. The data is
 - **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
 - **Notable residential towers.** U-Tower, Modera Towers, Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram, the experimental Zhemchug (Pearl) house the National Bank (NBU) tower Tashkent International Airport (terminal, control tower and parked Uzbekistan Airways airliners), Piramit Tower with its diagrid, the Uzbekistan Banking Association tower, the International Business Center, the Oliy Majlis Legislative Chamber and the Tashkent City bank towers (SQB, BoMI, Asaka Bank, Aloqa Bank) have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
 - **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower is floodlit in warm gold at night, with cool-white lights twinkling along the shaft and pods.
+- **Terrain relief.** The ground follows the real relief of the city from a 50 m elevation grid (SRTM): the valleys of the Bozsu, Ankhor and Salar canals, the terraces of the Chirchik and the hills read as slopes with hill shading. Local relief is exaggerated ×3 so it shows on mostly flat Tashkent; the overall slope of the city is kept as is. Roads, water and parks lie on the terrain, buildings and landmark models stand on it with a plinth on slopes, bridge decks run straight from bank to bank over the valleys, and cars drive up and down the slopes. Canals and rivers flow in concrete channels 2–3 m below the embankment (ponds about 1 m), with sloped walls, a wet strip at the waterline and a light kerb along the top; bridge piers go down to the water.
 - **Minimap** (top right), with a frame showing the current view.
 - **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
 - **Guided tour**, a time-of-day switch (auto, day, night, cycle) and quality presets.
@@ -71,6 +72,7 @@ You need a browser with WebGL 2: a recent Chrome, Edge, Firefox or Safari. The i
 ```
 index.html, css/style.css
 js/config.js        settings and quality presets
+js/terrain.js       elevation grid: height lookups for the camera, trees, models and cars
 js/scene.js         camera, pixel-art post shader, lighting, input
 js/geo-worker.js    worker: tile decoding → 3D geometry, far-LOD impostor raster
 js/tiles.js         tile loading/unloading, LOD switching, materials, trees
@@ -83,7 +85,7 @@ js/landmarks.js     landmark texts
 js/ui.js, areas.js, minimap.js, photos.js, data.js, main.js
 lib/                three.js r149, earcut 2.2.4
 data/t/X_Y.js       pre-baked city tiles
-data/               index, landmark placement, districts, minimap
+data/               index, landmark placement, districts, minimap, terrain (elevation grid)
 tools/bake/         data baking scripts (Python 3 + numpy + Pillow)
 ```
 
@@ -103,6 +105,7 @@ python tools/bake/greenery.py data           # once: drop trees clipping buildin
 python tools/bake/greenery.py data --yards   # once: dense microdistrict yards around 3+ storey blocks
 python tools/bake/botanic.py data          # botanical garden: arboretum zones, species trees, hides OSM boxes under garden models
 python tools/bake/patches.py data          # spot fixes from satellite/panoramas (land class, building colours, stray trees)
+python tools/bake/terrain.py data          # elevation grid from Terrain Tiles (SRTM) -> data/terrain.js
 ```
 
 Landmark placement is defined in `tools/bake/landmarks_spec.json`.
@@ -124,6 +127,7 @@ python tools/bake/recolor.py data
 - Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL.
 - Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema).
 - Buildings, traffic lights, trees and boundaries: Overpass API (maps.mail.ru mirror).
+- Elevation: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) on the AWS Open Data Registry (Terrarium format, originally made by Mapzen / [Tilezen](https://github.com/tilezen/joerd)). In the Tashkent area they come from **SRTM** (NASA/USGS, public domain); lower zooms also use **GMTED2010** (USGS) and **ETOPO1** (NOAA). See the [Terrain Tiles attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
 - [three.js](https://threejs.org) (MIT) and [earcut](https://github.com/mapbox/earcut) (ISC).
 - Model references: photos on Wikimedia Commons and Wikipedia (used only as references; they are not shipped).
 - Card photos: Wikimedia Commons and Wikipedia; the author and licence are shown under each photo.

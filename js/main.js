@@ -7,11 +7,12 @@
     if (!window.THREE) { document.body.innerHTML = "<p class='nojs'>Не удалось загрузить three.js</p>"; return; }
     const canvas = document.getElementById("world");
     try { S.init(canvas); } catch (e) { document.getElementById("nogl").hidden = false; return; }
+    await TPM.terrain.init();
     T.init(); TPM.traffic.init(); TPM.models.init();
     UI.init(); UI.applyQuality();
     TPM.minimap.init(document.getElementById("mm"));
     S.hooks.frame = TPM.city.frame; S.hooks.after = UI.frame;
-    S.target.set(TPM.config.start.x, 0, TPM.config.start.z);
+    S.target.set(TPM.config.start.x, TPM.terrain.hAt(TPM.config.start.x, TPM.config.start.z), TPM.config.start.z);
     S.start();
     try { TPM.models.makeThumbs(); } catch (e) { console.warn(e); }
     UI.renderList();

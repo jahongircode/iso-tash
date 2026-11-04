@@ -175,7 +175,7 @@
     if (key !== lastKey) {
       lastKey = key;
       const show = S.mpp < 2.4;
-      const order = TPM.landmarks.filter((l) => l.mx !== undefined).map((l) => { S.project(l.mx, (l.top || 20) + 6, l.mz, pp); return { l, x: pp[0], y: pp[1] }; });
+      const order = TPM.landmarks.filter((l) => l.mx !== undefined).map((l) => { S.project(l.mx, (l.top || 20) + 6 + TPM.terrain.hAt(l.mx, l.mz), l.mz, pp); return { l, x: pp[0], y: pp[1] }; });
       order.sort((a, b) => (b.l === City.selected) - (a.l === City.selected) || (b.l === City.hover) - (a.l === City.hover) || b.y - a.y);
       const placed = [];
       for (const o of order) {

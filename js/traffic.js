@@ -174,7 +174,7 @@
     return null;
   }
   const PR = [0, 0];
-  function onScreen(x, z, pad) { const p = S.project(x, 0, z, PR); return p[0] > -pad && p[0] < S.W + pad && p[1] > -pad && p[1] < S.H + pad; }
+  function onScreen(x, z, pad) { const p = S.project(x, TPM.terrain.hAt(x, z), z, PR); return p[0] > -pad && p[0] < S.W + pad && p[1] > -pad && p[1] < S.H + pad; }
   // свободно ли место на ребре (та же полоса и направление): новые машины не появляются друг в друге
   function freeAt(e, dir, lane, s, len) {
     const b = byEdge.get(e); if (!b) return true;
@@ -436,7 +436,7 @@
         if (Math.abs(n.x - S.target.x) > ext || Math.abs(n.z - S.target.z) > ext) continue;
         if (!n.poles) {
           n.poles = [];
-          for (const o of n.inl) { const e = o.e, [hx, hz] = endH(e, o.dir); n.poles.push({ x: n.x - hx * 7 - hz * (e.half + 1.4), z: n.z - hz * 7 + hx * (e.half + 1.4), ph: phaseFor(n.ctrl, hx, hz), y: e.y }); }
+          for (const o of n.inl) { const e = o.e, [hx, hz] = endH(e, o.dir); n.poles.push({ x: n.x - hx * 7 - hz * (e.half + 1.4), z: n.z - hz * 7 + hx * (e.half + 1.4), ph: phaseFor(n.ctrl, hx, hz), y: 0 }); }
         }
         for (const p of n.poles) list.push(n, p);
       }
@@ -444,6 +444,7 @@
       let j = 0;
       for (let i = 0; i < list.length; i += 2) {
         const n = list[i], p = list[i + 1];
+        if (p.y === 0) p.y = TPM.terrain.hAt(p.x, p.z) + 0.001;
         p3.set(p.x, p.y, p.z); s3.set(1, 1, 1); q4.identity(); m4.compose(p3, q4, s3);
         poleMesh.setMatrixAt(j, m4); headMesh.setMatrixAt(j, m4);
         const st = sigState(n.ctrl, p.ph, t), c = SIGC[st];

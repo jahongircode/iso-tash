@@ -16,21 +16,97 @@ window.TPM_GEO_WORKER = function () {
   const str = () => { const n = vr(), s = td.decode(B.subarray(P, P + n)); P += n; return s; };
 
   // ---------- сборщик геометрии ----------
+  // drape — плоские слои (земля, дороги, вода): треугольники режутся по сетке рельефа и ложатся на неё.
+  // off — смещение по высоте для твёрдых объектов: число (здание целиком на одной отметке) или
+  // функция (x, y, z) (настил моста над долиной). Вершины без off получают высоту земли под собой.
   class Geo {
-    constructor(withExtra) { this.p = []; this.n = []; this.c = []; this.i = []; this.e = withExtra ? [] : null; }
+    constructor(withExtra, drape) { this.p = []; this.n = []; this.c = []; this.i = []; this.e = withExtra ? [] : null; this.f = []; this.off = null; this.drape = !!drape; }
     get vc() { return this.p.length / 3; }
     v(x, y, z, nx, ny, nz, r, g, b, a, eu, ev) {
-      this.p.push(x, y, z); this.n.push(nx * 127 | 0, ny * 127 | 0, nz * 127 | 0, 0); this.c.push(r, g, b, a);
+      let fx = 0;
+      if (this.off !== null) { y += typeof this.off === "number" ? this.off : this.off(x, y, z); fx = 1; }
+      this.p.push(x, y, z); this.n.push(nx * 127 | 0, ny * 127 | 0, nz * 127 | 0, 0); this.c.push(r, g, b, a); this.f.push(fx);
       if (this.e) this.e.push(eu, ev);
     }
     tri(a, b, c) { this.i.push(a, b, c); }
+    terrain() {
+      const Pp = this.p, F = this.f, n0 = Pp.length / 3, need = new Uint8Array(n0), I = this.i, keep = [];
+      if (!this.drape) { for (let k = 0; k < n0; k++) if (!F[k]) Pp[k * 3 + 1] += hT(Pp[k * 3], Pp[k * 3 + 2]); return; }
+      const s = TER.s, gx = TER.x0 - OX, gz = TER.z0 - OZ, nn = [0, 0, 0];
+      const U = (k) => (Pp[k * 3] - gx) / s, W = (k) => (Pp[k * 3 + 2] - gz) / s;
+      const inside = (f0, f1, f2) => { const lo = Math.min(f0, f1, f2), hi = Math.max(f0, f1, f2); return Math.floor(lo) + 1 < hi; };
+      const Cc = this.c, Nn = this.n;
+      const rec = (k) => [Pp[k * 3], Pp[k * 3 + 1], Pp[k * 3 + 2], Cc[k * 4], Cc[k * 4 + 1], Cc[k * 4 + 2], Cc[k * 4 + 3]];
+      const lerp = (p, q, t) => { const o = new Array(7); for (let m = 0; m < 7; m++) o[m] = p[m] + (q[m] - p[m]) * t; return o; };
+      const fam = [(v) => (v[0] - gx) / s, (v) => (v[2] - gz) / s, (v) => (v[0] - gx) / s + (v[2] - gz) / s];
+      for (let t = 0; t < I.length; t += 3) {
+        const a = I[t], b = I[t + 1], c = I[t + 2];
+        if (F[a] || F[b] || F[c]) { keep.push(a, b, c); if (!F[a]) need[a] = 1; if (!F[b]) need[b] = 1; if (!F[c]) need[c] = 1; continue; }
+        const ua = U(a), ub = U(b), uc = U(c), wa = W(a), wb = W(b), wc = W(c);
+        if (!inside(ua, ub, uc) && !inside(wa, wb, wc) && !inside(ua + wa, ub + wb, uc + wc)) { keep.push(a, b, c); need[a] = need[b] = need[c] = 1; continue; }
+        // разрезать по линиям сетки: вертикали, горизонтали, диагонали клеток
+        let polys = [[rec(a), rec(b), rec(c)]];
+        for (const F2 of fam) {
+          const nxt = [];
+          for (let poly of polys) {
+            let lo = Infinity, hi = -Infinity; for (const v of poly) { const f = F2(v); if (f < lo) lo = f; if (f > hi) hi = f; }
+            for (let k = Math.floor(lo) + 1; k < hi && poly.length >= 3; k++) {
+              const A = [], Bq = [];
+              for (let m = 0; m < poly.length; m++) {
+                const p = poly[m], q = poly[(m + 1) % poly.length], fp = F2(p) - k, fq = F2(q) - k;
+                if (fp < -1e-7) A.push(p); else if (fp > 1e-7) Bq.push(p); else { A.push(p); Bq.push(p); } // точка на линии — в обе части
+                if ((fp < -1e-7 && fq > 1e-7) || (fp > 1e-7 && fq < -1e-7)) { const r = lerp(p, q, fp / (fp - fq)); A.push(r); Bq.push(r); }
+              }
+              if (A.length >= 3) nxt.push(A);
+              poly = Bq;
+            }
+            if (poly.length >= 3) nxt.push(poly);
+          }
+          polys = nxt;
+        }
+        for (const poly of polys) {
+          const base = Pp.length / 3;
+          for (const v of poly) {
+            nT(v[0], v[2], nn);
+            Pp.push(v[0], v[1] + hT(v[0], v[2]), v[2]); Nn.push(nn[0] * 127 | 0, nn[1] * 127 | 0, nn[2] * 127 | 0, 0); Cc.push(v[3] | 0, v[4] | 0, v[5] | 0, v[6] | 0); F.push(1);
+          }
+          for (let m = 1; m < poly.length - 1; m++) keep.push(base, base + m, base + m + 1);
+        }
+      }
+      for (let k = 0; k < n0; k++) if (need[k]) { const x = Pp[k * 3], z = Pp[k * 3 + 2]; Pp[k * 3 + 1] += hT(x, z); if (Nn[k * 4 + 1] > 100) { nT(x, z, nn); Nn[k * 4] = nn[0] * 127 | 0; Nn[k * 4 + 1] = nn[1] * 127 | 0; Nn[k * 4 + 2] = nn[2] * 127 | 0; } }
+      this.i = keep;
+    }
     pack() {
+      if (TER) this.terrain();
       const vc = this.vc;
       return { p: new Float32Array(this.p), n: new Int8Array(this.n), c: new Uint8Array(this.c),
         e: this.e ? new Int16Array(this.e) : null, i: vc > 65535 ? new Uint32Array(this.i) : new Uint16Array(this.i) };
     }
   }
   const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
+
+  // ---------- рельеф (сетка из js/terrain.js, координаты тайла) ----------
+  let TER = null, OX = 0, OZ = 0;
+  function hT(x, z) {
+    if (!TER) return 0;
+    let u = (x + OX - TER.x0) / TER.s, v = (z + OZ - TER.z0) / TER.s;
+    u = u < 0 ? 0 : u > TER.W - 1.0001 ? TER.W - 1.0001 : u; v = v < 0 ? 0 : v > TER.H - 1.0001 ? TER.H - 1.0001 : v;
+    const i = u | 0, j = v | 0, fx = u - i, fz = v - j, H = TER.Hn, W = TER.W;
+    const a = H[j * W + i], b = H[j * W + i + 1], c = H[(j + 1) * W + i], d = H[(j + 1) * W + i + 1];
+    return fx + fz <= 1 ? a + (b - a) * fx + (c - a) * fz : d + (c - d) * (1 - fx) + (b - d) * (1 - fz);
+  }
+  // нормаль склона; наклон для освещения чуть усилен — «отмывка» рельефа
+  function nT(x, z, o) {
+    const e = 3, dx = (hT(x + e, z) - hT(x - e, z)) / (2 * e) * 4, dz = (hT(x, z + e) - hT(x, z - e)) / (2 * e) * 4, L = Math.hypot(dx, 1, dz);
+    o[0] = -dx / L; o[1] = 1 / L; o[2] = -dz / L; return o;
+  }
+  // опора моста: настил идёт по прямой между съездами, а не по дну долины под ним
+  function baseFn(b) {
+    const [ax, az, bx, bz] = b, ha = hT(ax, az), hb = hT(bx, bz), dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+    return (x, y, z) => { if (y < 0.05) return hT(x, z); const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)); return ha + (hb - ha) * t; };
+  }
+  const footMin = (fp) => { let m = Infinity; for (let i = 0; i < fp.length; i += 2) m = Math.min(m, hT(fp[i], fp[i + 1])); return m; };
+  const centerH = (fp) => { let x = 0, z = 0; const n = fp.length / 2; for (let i = 0; i < fp.length; i += 2) { x += fp[i]; z += fp[i + 1]; } return hT(x / n, z / n); };
 
   // ---------- палитра земли (день) ----------
   const GCOL = { base: [156, 150, 124], 0: [164, 156, 134], 1: [168, 162, 150], 2: [150, 146, 138], 3: [126, 150, 84], 4: [88, 120, 62],
@@ -167,12 +243,14 @@ window.TPM_GEO_WORKER = function () {
       const r = find(i), l = L[i][2]; comp.set(r, (comp.get(r) || 0) + lenOf(l));
       if (onEdge(l[0], l[1]) || onEdge(l[l.length - 2], l[l.length - 1])) edge.add(r);
     }
+    const freeEnds = new Map();
     for (const i of par.keys()) {
       const [cls, fl, l] = L[i], k = kind(fl), n = l.length / 2, cl = comp.get(find(i)), clH = edge.has(find(i)) ? Math.max(cl, 48) : cl;
       // свободный конец — не продолжается тем же мостом/тоннелем; на краю тайла — только если там же
       // начинается обычный (не мостовой) участок того же класса
       const free = (j) => (!onEdge(l[j], l[j + 1]) || flat.has(cls + ":" + key(l[j], l[j + 1]))) && (ends.get((cls === 8 ? "p" : "") + k + ":" + key(l[j], l[j + 1])) || []).length < 2;
       const f0 = free(0), f1 = free(l.length - 2);
+      if (k === 2) { const r = find(i); if (!freeEnds.has(r)) freeEnds.set(r, []); if (f0) freeEnds.get(r).push(l[0], l[1]); if (f1) freeEnds.get(r).push(l[l.length - 2], l[l.length - 1]); }
       const cum = new Float32Array(n); for (let j = 1; j < n; j++) cum[j] = cum[j - 1] + Math.hypot(l[j * 2] - l[j * 2 - 2], l[j * 2 + 1] - l[j * 2 - 1]);
       const tot = cum[n - 1], H = new Float32Array(n);
       let Hm, R;
@@ -187,7 +265,14 @@ window.TPM_GEO_WORKER = function () {
       for (let j = 0; j < n; j++) { const d = Math.min(f0 ? cum[j] : 1e9, f1 ? tot - cum[j] : 1e9); H[j] = Hm * sm01(d / R); }
       out[i] = H;
     }
-    if (OV) for (const [i, h] of OV) if (out[i] && h.length === out[i].length) out[i] = h;
+    // опорная прямая моста — между двумя самыми далёкими свободными концами всей цепочки
+    for (const i of par.keys()) {
+      const l = L[i][2]; if (kind(L[i][1]) !== 2 || !out[i]) continue;
+      const fe = freeEnds.get(find(i)) || []; let best = [l[0], l[1], l[l.length - 2], l[l.length - 1]], bd = -1;
+      for (let a = 0; a < fe.length; a += 2) for (let b = a + 2; b < fe.length; b += 2) { const d = Math.hypot(fe[a] - fe[b], fe[a + 1] - fe[b + 1]); if (d > bd) { bd = d; best = [fe[a], fe[a + 1], fe[b], fe[b + 1]]; } }
+      out[i].base = best;
+    }
+    if (OV) for (const [i, h] of OV) if (out[i] && h.length === out[i].length) { h.base = out[i].base; h.over = out[i].over; out[i] = h; }
     return out;
   }
   // точки перекрёстков (общие вершины разных линий) — там не рисуем разметку
@@ -261,14 +346,81 @@ window.TPM_GEO_WORKER = function () {
       for (let t = acc; t < L2; t += step) {
         const h = h0 + (h1 - h0) * t / L2; if (h < LOW) continue;
         const cx = x0 + ux * t, cz = z0 + uz * t, top = h - 1.9;
-        if (!metro && w > 13) for (const q of [-0.3, 0.3]) prism(G, cx + vx * w * q, cz + vz * w * q, ux, uz, 0.75, 0.75, 0, top - 1, PILLAR, false);
-        else prism(G, cx, cz, ux, uz, metro ? 0.9 : 0.8, metro ? 1.1 : 0.9, 0, top - 1, PILLAR, false);
+        if (!metro && w > 13) for (const q of [-0.3, 0.3]) prism(G, cx + vx * w * q, cz + vz * w * q, ux, uz, 0.75, 0.75, -3.2, top - 1, PILLAR, false);
+        else prism(G, cx, cz, ux, uz, metro ? 0.9 : 0.8, metro ? 1.1 : 0.9, -3.2, top - 1, PILLAR, false);
         prism(G, cx, cz, ux, uz, 0.9, hw * 0.78, top - 1, top, k3c(PILLAR, 1.05));                                   // ригель-«молоток»
       }
       acc = ((acc - L2) % step + step) % step;
     }
   }
   const k3c = (c, k) => [clamp(c[0] * k), clamp(c[1] * k), clamp(c[2] * k)];
+  // ---------- вода ниже берега ----------
+  // Каналы и реки Ташкента текут в бетонных руслах: зеркало воды на 2–3 м ниже набережной,
+  // у прудов и озёр — около метра. Над водой в земле вырезается «окно» (маска wmask + трафарет
+  // в материале земли), а по краю — наклонные бетонные откосы с тёмной мокрой полосой у воды.
+  function ringsBox(rings) { let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const r of rings) for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); z0 = Math.min(z0, r[i + 1]); z1 = Math.max(z1, r[i + 1]); } return [x0, z0, x1, z1]; }
+  function waterDepth(rings) {
+    const r = rings[0]; if (!r || r.length < 6) return 2.4;
+    let A = 0, P = 0; const n = r.length / 2;
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; A += r[i * 2] * r[j * 2 + 1] - r[j * 2] * r[i * 2 + 1]; P += Math.hypot(r[j * 2] - r[i * 2], r[j * 2 + 1] - r[i * 2 + 1]); }
+    A = Math.abs(A) / 2;
+    const round = 4 * Math.PI * A / (P * P || 1); // пруд — компактный и небольшой, русло — вытянутое
+    return round > 0.25 && A < 60000 ? 1.1 : 2.6;
+  }
+  function inRings(rings, x, z) {
+    let c = false;
+    for (const r of rings) for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) { const xi = r[i], zi = r[i + 1], xj = r[j], zj = r[j + 1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; }
+    return c;
+  }
+  function nearLine(l, hw, x, z) {
+    for (let i = 2; i < l.length; i += 2) {
+      const ax = l[i - 2], az = l[i - 1], dx = l[i] - ax, dz = l[i + 1] - az, q = dx * dx + dz * dz, t = q ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / q)) : 0;
+      if (Math.hypot(x - ax - dx * t, z - az - dz * t) < hw) return true;
+    }
+    return false;
+  }
+  function embankments(G, WP, WL, T) {
+    const wet = (x, z) => {
+      for (const w of WP) { const b = w.bb; if (x > b[0] && x < b[2] && z > b[1] && z < b[3] && inRings(w.rings, x, z)) return true; }
+      for (const w of WL) if (nearLine(w.l, w.hw, x, z)) return true;
+      return false;
+    };
+    const onEdge = (x, z) => x < 0.5 || z < 0.5 || x > T - 0.5 || z > T - 0.5;
+    const CON = [166, 162, 152], WET = [104, 104, 98], TOP = [198, 194, 184];
+    // край воды от a до b, n — внутрь воды; D — глубина
+    const bank = (ax, az, bx, bz, nx, nz, D) => {
+      const L = Math.hypot(bx - ax, bz - az); if (L < 0.3) return;
+      if (onEdge(ax, az) && onEdge(bx, bz)) return;                                  // шов тайла — не берег
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (wet(mx - nx * 1.2, mz - nz * 1.2) || !wet(mx + nx * 1.2, mz + nz * 1.2)) return; // снаружи тоже вода — это стык двух водоёмов
+      const k = Math.max(1, Math.ceil(L / 8)), ins = Math.min(1.8, D * 0.6), yw = -D + 0.35;
+      for (let i = 0; i < k; i++) {
+        const t0 = i / k, t1 = (i + 1) / k, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+        const fw = ins * (D - 0.35 - 0.05) / D;
+        face(G, [[x0, 0.05, z0], [x1, 0.05, z1], [x1 + nx * fw, yw, z1 + nz * fw], [x0 + nx * fw, yw, z0 + nz * fw]], CON, 255);        // откос
+        face(G, [[x0 + nx * fw, yw, z0 + nz * fw], [x1 + nx * fw, yw, z1 + nz * fw], [x1 + nx * ins, -D - 0.4, z1 + nz * ins], [x0 + nx * ins, -D - 0.4, z0 + nz * ins]], WET, 255); // мокрая полоса
+        face(G, [[x0 - nx * 0.5, 0.1, z0 - nz * 0.5], [x1 - nx * 0.5, 0.1, z1 - nz * 0.5], [x1, 0.1, z1], [x0, 0.1, z0]], TOP, 255);        // бортик набережной
+      }
+    };
+    for (const w of WP) for (const r of w.rings) {
+      for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+        const ax = r[j], az = r[j + 1], bx = r[i], bz = r[i + 1], L = Math.hypot(bx - ax, bz - az); if (L < 0.3) continue;
+        let nx = -(bz - az) / L, nz = (bx - ax) / L;
+        if (!inRings(w.rings, (ax + bx) / 2 + nx * 0.8, (az + bz) / 2 + nz * 0.8)) { nx = -nx; nz = -nz; }
+        bank(ax, az, bx, bz, nx, nz, w.D);
+      }
+    }
+    for (const w of WL) {
+      const l = w.l, N = edgeNormals(l);
+      for (const s of [1, -1]) for (let i = 2; i < l.length; i += 2) {
+        const ax = l[i - 2] + N[i - 2] * w.hw * s, az = l[i - 1] + N[i - 1] * w.hw * s, bx = l[i] + N[i] * w.hw * s, bz = l[i + 1] + N[i + 1] * w.hw * s;
+        const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz) || 1;
+        let nx = -dz / L, nz = dx / L; const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        if ((mx + nx - (l[i - 2] + l[i]) / 2) ** 2 + (mz + nz - (l[i - 1] + l[i + 1]) / 2) ** 2 > (mx - (l[i - 2] + l[i]) / 2) ** 2 + (mz - (l[i - 1] + l[i + 1]) / 2) ** 2) { nx = -nx; nz = -nz; }
+        bank(ax, az, bx, bz, nx, nz, w.D);
+      }
+    }
+  }
   // Пешеходный мост: плита с торцами, металлические перила на стойках; над дорогой — опоры-колонны
   // и ступени на сходах, над водой — горбатый мостик с береговыми устоями.
   function footBridge(G, Gr, l, H, w, over) {
@@ -303,8 +455,8 @@ window.TPM_GEO_WORKER = function () {
       // опоры мостика над водой — каменные быки через ~12 м
       if (!over) {
         for (let t = acc; t < L2; t += 12) {
-          const h = h0 + (h1 - h0) * t / L2 - 0.7; if (h < 0.6) continue;
-          prism(G, x0 + ux * t, z0 + uz * t, ux, uz, 0.45, hw + 0.15, 0, h, [128, 120, 106]);
+          const h = h0 + (h1 - h0) * t / L2 - 0.7; if (h < 0.2) continue;
+          prism(G, x0 + ux * t, z0 + uz * t, ux, uz, 0.45, hw + 0.15, -3.2, h, [128, 120, 106]);
         }
         acc = ((acc - L2) % 12 + 12) % 12;
       }
@@ -313,7 +465,7 @@ window.TPM_GEO_WORKER = function () {
         for (let t = acc; t < L2; t += 11) {
           const h = h0 + (h1 - h0) * t / L2 - 0.6; if (h < 1.6) continue;
           const cx = x0 + ux * t, cz = z0 + uz * t;
-          for (const s of [-1, 1]) prism(G, cx - uz * hw * 0.7 * s, cz + ux * hw * 0.7 * s, ux, uz, 0.22, 0.22, 0, h, [92, 110, 140], false);
+          for (const s of [-1, 1]) prism(G, cx - uz * hw * 0.7 * s, cz + ux * hw * 0.7 * s, ux, uz, 0.22, 0.22, -3.2, h, [92, 110, 140], false);
           prism(G, cx, cz, ux, uz, 0.3, hw * 0.95, h - 0.4, h, [110, 126, 150]);
         }
         acc = ((acc - L2) % 11 + 11) % 11;
@@ -612,6 +764,8 @@ window.TPM_GEO_WORKER = function () {
     const n = fp.length / 2;
     let A = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n; A += fp[i * 2] * fp[j * 2 + 1] - fp[j * 2] * fp[i * 2 + 1]; }
     const sgn = A > 0 ? 1 : -1;
+    // на склоне стены уходят до нижней точки земли под домом (цоколь), иначе угол висит в воздухе
+    const mb = mh > 0 || typeof G.off !== "number" ? mh : Math.min(0, footMin(fp) - G.off) - 0.3;
     const wr = (wall >> 16) & 255, wg = (wall >> 8) & 255, wb = wall & 255;
     const rr = (rcol >> 16) & 255, rg = (rcol >> 8) & 255, rb = rcol & 255;
     const winA = kind === 4 || kind === 9 || kind === 7 || h < 2.9 ? 255 : (id % 250); // 255 — без окон
@@ -625,8 +779,8 @@ window.TPM_GEO_WORKER = function () {
       const nx = sgn * dz / L, nz = -sgn * dx / L; // наружу
       const base = G.vc;
       const lo = 0.8, hi = 1.0; // лёгкое затемнение у земли
-      G.v(x0, mh, z0, nx, 0, nz, clamp(wr * lo), clamp(wg * lo), clamp(wb * lo), winA, u * 4, 0);
-      G.v(x1, mh, z1, nx, 0, nz, clamp(wr * lo), clamp(wg * lo), clamp(wb * lo), winA, (u + L) * 4, 0);
+      G.v(x0, mb, z0, nx, 0, nz, clamp(wr * lo), clamp(wg * lo), clamp(wb * lo), winA, u * 4, (mb - mh) * 10);
+      G.v(x1, mb, z1, nx, 0, nz, clamp(wr * lo), clamp(wg * lo), clamp(wb * lo), winA, (u + L) * 4, (mb - mh) * 10);
       G.v(x1, eaves, z1, nx, 0, nz, wr * hi, wg * hi, wb * hi, winA, (u + L) * 4, (eaves - mh) * 10);
       G.v(x0, eaves, z0, nx, 0, nz, wr * hi, wg * hi, wb * hi, winA, u * 4, (eaves - mh) * 10);
       // обход: внешняя сторона — лицевая
@@ -872,8 +1026,21 @@ window.TPM_GEO_WORKER = function () {
   function build(buf, msg) {
     const tb0 = performance.now();
     B = buf; P = 0;
-    const ground = new Geo(false), roads = new Geo(false), water = new Geo(false), bld = new Geo(true);
+    const ground = new Geo(false, true), roads = new Geo(false, true), water = new Geo(false, true), bld = new Geo(true), wmask = new Geo(false, true);
+    const WP = [], WL = []; // водоёмы и русла тайла — для набережных
     const T = msg.tileM, far = msg.lod === 2;
+    OX = msg.ox || 0; OZ = msg.oz || 0;
+    // линия для трафика: точки не реже 20 м, высота — абсолютная (рельеф или опорная прямая моста)
+    const lineOut = (cls, fl, l, H) => {
+      const bf = (fl & 2) && H && H.base ? baseFn(H.base) : null, P2 = [l[0], l[1]], H2 = [H ? H[0] : 0];
+      for (let i = 2; i < l.length; i += 2) {
+        const k = Math.max(1, Math.ceil(Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]) / 20)), h0 = H ? H[i / 2 - 1] : 0, h1 = H ? H[i / 2] : 0;
+        for (let j = 1; j <= k; j++) { P2.push(l[i - 2] + (l[i] - l[i - 2]) * j / k, l[i - 1] + (l[i + 1] - l[i - 1]) * j / k); H2.push(h0 + (h1 - h0) * j / k); }
+      }
+      const p = new Float32Array(P2), h = new Float32Array(H2.length);
+      for (let j = 0; j < H2.length; j++) h[j] = H2[j] + (bf ? bf(p[j * 2], 1, p[j * 2 + 1]) : hT(p[j * 2], p[j * 2 + 1]));
+      return { cls, fl, p, h };
+    };
     const rA = far ? [] : null, rL = far ? [] : null, rB = far ? [] : null; // данные для текстуры дальнего плана
     let treesRaw = null;
     // базовая плита тайла
@@ -886,7 +1053,11 @@ window.TPM_GEO_WORKER = function () {
       for (let i = 0; i + 3 < l.length; i += 2) {
         const dx = l[i + 2] - l[i], dz = l[i + 3] - l[i + 1], Ls = Math.hypot(dx, dz); if (!Ls) continue;
         const ux = dx / Ls, uz = dz / Ls;
-        for (let t = acc; t < Ls; t += 34) { const j = i >> 1, br = H ? H[j] + (H[j + 1] - H[j]) * t / Ls : 0; lamps.push(l[i] + ux * t - uz * off, 6.5 + br, l[i + 1] + uz * t + ux * off); if (!(fl & 1)) lamps.push(l[i] + ux * t + uz * off, 6.5 + br, l[i + 1] + uz * t - ux * off); }
+        const bf = (fl & 2) && H && H.base ? baseFn(H.base) : null, gh = (x, z) => (bf ? bf(x, 1, z) : hT(x, z));
+        for (let t = acc; t < Ls; t += 34) {
+          const j = i >> 1, br = H ? H[j] + (H[j + 1] - H[j]) * t / Ls : 0, ax = l[i] + ux * t - uz * off, az = l[i + 1] + uz * t + ux * off, bx = l[i] + ux * t + uz * off, bz = l[i + 1] + uz * t - ux * off;
+          lamps.push(ax, 6.5 + br + gh(ax, az), az); if (!(fl & 1)) lamps.push(bx, 6.5 + br + gh(bx, bz), bz);
+        }
         acc = ((acc - Ls) % 34 + 34) % 34;
       }
     }
@@ -902,7 +1073,11 @@ window.TPM_GEO_WORKER = function () {
           for (let r = 0; r < nr; r++) rings.push(pts());
           const vary = ((hash(f, cls) % 100) / 100 - 0.5) * 0.07;
           if (far) { rA.push([cls, rings, vary]); continue; }
-          if (cls === 8) polyFill(water, rings, GY[8], GCOL[8], 0);
+          if (cls === 8) {
+            const D = waterDepth(rings);
+            polyFill(water, rings, GY[8] - D, GCOL[8], 0); polyFill(wmask, rings, 0.07, GCOL[8], 0);
+            WP.push({ rings, D, bb: ringsBox(rings) });
+          }
           else polyFill(ground, rings, GY[cls] || 0.02, GCOL[cls] || GCOL.base, vary);
         }
       } else if (tag === 2) {
@@ -923,7 +1098,7 @@ window.TPM_GEO_WORKER = function () {
             }
             if (hiddenMetro(f)) return;
             if (!(fl & 8)) rL.push([cls, fl, l]);
-            if (cls <= 5) out.lines.push({ cls, fl, p: l, h: PH[f] });
+            if (cls <= 5) out.lines.push(lineOut(cls, fl, l, PH[f]));
             if (cls <= 4 && !(fl & 8)) lampsAlong(l, cls, fl, PH[f]);
           });
           continue;
@@ -935,16 +1110,25 @@ window.TPM_GEO_WORKER = function () {
         const sideW = (cls) => RW[cls] + (cls <= 4 ? 5 : 2.6);
         for (let f = 0; f < L.length; f++) {
           const [cls, fl, l] = L[f], H = PH[f];
-          if (cls >= 13) { strip(water, l, RW[cls], 0.065, RC[cls], false); continue; }
+          if (cls >= 13) {
+            const D = cls === 15 ? 1.3 : 2.6;
+            strip(water, l, RW[cls], 0.065 - D, RC[cls], false); strip(wmask, l, RW[cls], 0.07, RC[cls], false);
+            WL.push({ l, hw: RW[cls] / 2, D });
+            continue;
+          }
           if (fl & 8) continue; // тротуары у тоннелей не рисуем
+          roads.off = (fl & 2) && H && H.base ? baseFn(H.base) : null;
           if (cls <= 5) strip(roads, l, sideW(cls), 0.13 + (5 - cls) * 0.002, SIDEWALK, true, H);
+          roads.off = null;
         }
         for (let f = 0; f < L.length; f++) {
           const [cls, fl, l] = L[f];
+          roads.off = bld.off = null;
           if (cls >= 13) continue;
           if (GL.has(f)) { const d = RD.get(f); gallery(bld, l, d[0], d[1]); continue; }
           if (hiddenMetro(f)) continue;
           let H = PH[f];
+          if ((fl & 2) && H && H.base) roads.off = bld.off = baseFn(H.base);
           if (fl & 8) { // тоннель: видны только въезды, между порталами дорога уходит под землю
             const RR = runs(l, H, (h) => h > -2.4);
             for (const r of RR) {
@@ -958,7 +1142,7 @@ window.TPM_GEO_WORKER = function () {
             }
             // чем глубже спуск, тем темнее асфальт у портала
             for (const d of runs(l, H, (h) => h > -2.4 && h < -1.0)) strip(roads, d.p, RW[cls] - 0.3, 0.176, [RC[cls][0] * 0.62, RC[cls][1] * 0.62, RC[cls][2] * 0.66], false);
-            if (cls <= 5) out.lines.push({ cls, fl, p: l, h: H });
+            if (cls <= 5) out.lines.push(lineOut(cls, fl, l, H));
             continue;
           }
           const y = ay(cls);
@@ -998,10 +1182,10 @@ window.TPM_GEO_WORKER = function () {
             // дальний план: 3D остаются только заметные по высоте здания, остальные — в текстуре
             const tall = h >= msg.tallH || roof === 7 || roof === 4 || roof === 5;
             rB.push([fp, h + (roof && roof < 4 ? rh * 0.5 : 0), rc, tall]);
-            if (tall) building(bld, fp, h, mh, roof, rh, wall, rc, kind, id);
+            if (tall) { bld.off = centerH(fp); building(bld, fp, h, mh, roof, rh, wall, rc, kind, id); bld.off = null; }
             continue;
           }
-          building(bld, fp, h, mh, roof, rh, wall, rc, kind, id);
+          bld.off = centerH(fp); building(bld, fp, h, mh, roof, rh, wall, rc, kind, id); bld.off = null;
         }
       } else if (tag === 4) {
         const n = vr(), tr = new Float32Array(n * 3); let x = 0, y = 0;
@@ -1035,7 +1219,8 @@ window.TPM_GEO_WORKER = function () {
       };
       out.trees = keep(out.trees); treesRaw = keep(treesRaw);
     }
-    out.ground = ground.pack(); out.roads = roads.pack(); out.water = water.pack(); out.bld = bld.pack();
+    if (!far && (WP.length || WL.length)) embankments(bld, WP, WL, T);
+    out.ground = ground.pack(); out.roads = roads.pack(); out.water = water.pack(); out.bld = bld.pack(); out.wmask = wmask.pack();
     out.lamps = new Float32Array(lamps);
     const tr0 = performance.now();
     if (far) out.tex = raster(msg.res, T, rA, rL, treesRaw, rB, msg.treePal);
@@ -1047,6 +1232,7 @@ window.TPM_GEO_WORKER = function () {
   try { canRaster = typeof OffscreenCanvas !== "undefined" && !!new OffscreenCanvas(2, 2).getContext("2d"); } catch (e) {}
   self.onmessage = async (ev) => {
     const m = ev.data;
+    if (m.terrain) { TER = m.terrain; return; }
     if (m.lod === 2 && !canRaster) { self.postMessage({ id: m.id, noRaster: true }); return; }
     try {
       const bin = atob(m.b64), raw = new Uint8Array(bin.length);
@@ -1055,7 +1241,7 @@ window.TPM_GEO_WORKER = function () {
       const r = build(new Uint8Array(ab), m);
       r.id = m.id;
       const tr = [];
-      for (const k of ["ground", "roads", "water", "bld"]) for (const a of ["p", "n", "c", "e", "i"]) if (r[k][a]) tr.push(r[k][a].buffer);
+      for (const k of ["ground", "roads", "water", "bld", "wmask"]) for (const a of ["p", "n", "c", "e", "i"]) if (r[k][a]) tr.push(r[k][a].buffer);
       for (const k of ["trees", "signals", "lamps", "tex"]) if (r[k]) tr.push(r[k].buffer);
       self.postMessage(r, tr);
     } catch (e) { self.postMessage({ id: m.id, error: String(e && e.stack || e) }); }
