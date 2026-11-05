@@ -78,12 +78,57 @@ window.TPM_GEO_WORKER = function () {
     }
     pack() {
       if (TER) this.terrain();
-      const vc = this.vc;
-      return { p: new Float32Array(this.p), n: new Int8Array(this.n), c: new Uint8Array(this.c),
-        e: this.e ? new Int16Array(this.e) : null, i: vc > 65535 ? new Uint32Array(this.i) : new Uint16Array(this.i) };
+      const vc = this.vc, p = new Float32Array(this.p), I = vc > 65535 ? new Uint32Array(this.i) : new Uint16Array(this.i);
+      const ch = TILEM ? chunkSort(p, I, TILEM) : null;
+      return { p, n: new Int8Array(this.n), c: new Uint8Array(this.c), e: this.e ? new Int16Array(this.e) : null, i: I, ch };
     }
   }
   const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
+  // Оптимизация отрисовки: треугольники тайла сортируются по ячейкам CH×CH (по центру треугольника),
+  // ch — таблица ячеек [начало, число индексов, центр x, y, z, радиус]. Главный поток делает из каждой
+  // ячейки отдельный меш со своей ограничивающей сферой — three.js рисует только ячейки в кадре.
+  let TILEM = 0;
+  const CH = 5;
+  function chunkSort(P, I, T) {
+    const cell = T / CH, nt = I.length / 3, cid = new Uint8Array(nt), cnt = new Uint32Array(CH * CH);
+    const cl = (v) => { const k = Math.floor(v / cell); return k < 0 ? 0 : k >= CH ? CH - 1 : k; };
+    for (let t = 0; t < nt; t++) {
+      const a = I[t * 3] * 3, b = I[t * 3 + 1] * 3, c = I[t * 3 + 2] * 3;
+      const k = cl((P[a + 2] + P[b + 2] + P[c + 2]) / 3) * CH + cl((P[a] + P[b] + P[c]) / 3);
+      cid[t] = k; cnt[k]++;
+    }
+    const start = new Uint32Array(CH * CH), fill = new Uint32Array(CH * CH);
+    for (let k = 1; k < CH * CH; k++) start[k] = start[k - 1] + cnt[k - 1] * 3;
+    const src = I.slice();
+    for (let t = 0; t < nt; t++) { const k = cid[t], o = start[k] + fill[k]++ * 3; I[o] = src[t * 3]; I[o + 1] = src[t * 3 + 1]; I[o + 2] = src[t * 3 + 2]; }
+    const out = [];
+    for (let k = 0; k < CH * CH; k++) {
+      if (!cnt[k]) continue;
+      let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
+      for (let j = start[k], e = start[k] + cnt[k] * 3; j < e; j++) {
+        const v = I[j] * 3, x = P[v], y = P[v + 1], z = P[v + 2];
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+      }
+      out.push(start[k], cnt[k] * 3, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 1);
+    }
+    return new Float32Array(out);
+  }
+  // деревья: высота земли под каждым и признак «одиночное» (в радиусе 9 м меньше двух соседей;
+  // породы дендрария — коды 85..161 — посажены нарочно и одиночными не считаются)
+  function treeExtra(tr) {
+    const n = tr.length / 3, Y = new Float32Array(n), iso = new Uint8Array(n), G = 9, grid = new Map();
+    for (let i = 0; i < n; i++) { Y[i] = hT(tr[i * 3], tr[i * 3 + 1]); const k = Math.floor(tr[i * 3] / G) * 4096 + Math.floor(tr[i * 3 + 1] / G); let l = grid.get(k); if (!l) grid.set(k, l = []); l.push(i); }
+    for (let i = 0; i < n; i++) {
+      const x = tr[i * 3], z = tr[i * 3 + 1], gx = Math.floor(x / G), gz = Math.floor(z / G); let cnt = 0;
+      for (let a = -1; a <= 1 && cnt < 2; a++) for (let b = -1; b <= 1 && cnt < 2; b++) {
+        const l = grid.get((gx + a) * 4096 + gz + b);
+        if (l) for (const j of l) { if (j === i) continue; const dx = tr[j * 3] - x, dz = tr[j * 3 + 1] - z; if (dx * dx + dz * dz < G * G && ++cnt >= 2) break; }
+      }
+      const u = Math.round(tr[i * 3 + 2] * 85) - 85;
+      iso[i] = cnt < 2 && !(u >= 0 && u < 77) ? 1 : 0;
+    }
+    return { Y, iso };
+  }
 
   // ---------- рельеф (сетка из js/terrain.js, координаты тайла) ----------
   let TER = null, OX = 0, OZ = 0;
@@ -1062,6 +1107,7 @@ window.TPM_GEO_WORKER = function () {
     const ground = new Geo(false, true), roads = new Geo(false, true), water = new Geo(false, true), bld = new Geo(true), wmask = new Geo(false, true);
     const WP = [], WL = []; // водоёмы и русла тайла — для набережных
     const T = msg.tileM, far = msg.lod === 2;
+    TILEM = T;
     OX = msg.ox || 0; OZ = msg.oz || 0;
     // линия для трафика: точки не реже 20 м, высота — абсолютная (рельеф или опорная прямая моста)
     const lineOut = (cls, fl, l, H) => {
@@ -1293,6 +1339,7 @@ window.TPM_GEO_WORKER = function () {
       out.trees = keep(out.trees); treesRaw = keep(treesRaw);
     }
     if (!far && (WP.length || WL.length)) embankments(bld, WP, WL, T);
+    if (out.trees && out.trees.length) { const te = treeExtra(out.trees); out.treeY = te.Y; out.treeIso = te.iso; }
     out.ground = ground.pack(); out.roads = roads.pack(); out.water = water.pack(); out.bld = bld.pack(); out.wmask = wmask.pack();
     out.lamps = new Float32Array(lamps);
     const tr0 = performance.now();
@@ -1315,7 +1362,8 @@ window.TPM_GEO_WORKER = function () {
       r.id = m.id;
       const tr = [];
       for (const k of ["ground", "roads", "water", "bld", "wmask"]) for (const a of ["p", "n", "c", "e", "i"]) if (r[k][a]) tr.push(r[k][a].buffer);
-      for (const k of ["trees", "signals", "lamps", "tex"]) if (r[k]) tr.push(r[k].buffer);
+      for (const k of ["ground", "roads", "water", "bld", "wmask"]) if (r[k].ch) tr.push(r[k].ch.buffer);
+      for (const k of ["trees", "treeY", "treeIso", "signals", "lamps", "tex"]) if (r[k]) tr.push(r[k].buffer);
       self.postMessage(r, tr);
     } catch (e) { self.postMessage({ id: m.id, error: String(e && e.stack || e) }); }
   };

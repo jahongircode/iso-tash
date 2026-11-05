@@ -177,8 +177,14 @@
   const species = (r) => { const u = Math.round(r * 85) - 85; return u >= 0 && u < SPECIES.length * 7 ? [SPECIES[Math.floor(u / 7)], (u % 7) / 6] : null; };
   // одиночные деревья (меньше двух соседей в радиусе 9 м) — отдельная группа: вблизи видны,
   // а на среднем плане скрываются, иначе вдоль улиц и в промзонах остаётся россыпь цветных точек
-  function makeTrees(tr, ox, oz) {
-    const n = tr.length / 3, iso = new Uint8Array(n), grid = new Map(), G = 9;
+  function makeTrees(tr, ox, oz, isoW, Y) {
+    const n = tr.length / 3;
+    if (isoW) { // одиночные деревья и высоты земли посчитаны в воркере
+      const dense = [], lone = [];
+      for (let i = 0; i < n; i++) (isoW[i] ? lone : dense).push(i);
+      return [...treeSet(tr, dense, ox, oz, Y), ...treeSet(tr, lone, ox, oz, Y)];
+    }
+    const iso = new Uint8Array(n), grid = new Map(), G = 9;
     for (let i = 0; i < n; i++) { const k = Math.floor(tr[i * 3] / G) + "," + Math.floor(tr[i * 3 + 1] / G); let l = grid.get(k); if (!l) grid.set(k, l = []); l.push(i); }
     for (let i = 0; i < n; i++) {
       const x = tr[i * 3], z = tr[i * 3 + 1], gx = Math.floor(x / G), gz = Math.floor(z / G); let cnt = 0;
@@ -189,7 +195,7 @@
     for (let i = 0; i < n; i++) (iso[i] ? lone : dense).push(i);
     return [...treeSet(tr, dense, ox, oz), ...treeSet(tr, lone, ox, oz)];
   }
-  function treeSet(tr, ids, ox, oz) {
+  function treeSet(tr, ids, ox, oz, Y) {
     const n = ids.length;
     let nb = 0, nc = 0;
     const kinds = new Uint8Array(n);
@@ -202,7 +208,7 @@
     for (let k = 0; k < n; k++) {
       const i = ids[k], r = tr[i * 3 + 2], f = r % 1, poplar = r >= 2, sp = species(r);
       const hgt = poplar ? 13 + f * 8 : 6 + f * 7.5;
-      p.set(tr[i * 3], 0.1 + TPM.terrain.hAt(tr[i * 3] + ox, tr[i * 3 + 1] + oz), tr[i * 3 + 1]);
+      p.set(tr[i * 3], 0.1 + (Y ? Y[i] : TPM.terrain.hAt(tr[i * 3] + ox, tr[i * 3 + 1] + oz)), tr[i * 3 + 1]);
       q.setFromAxisAngle(up, f * 6.28);
       if (sp) { // порода дендрария: своя форма и цвет по сезону
         const [S, sf] = sp, h2 = S.h[0] + sf * S.h[1], vr = ((tr[i * 3] * 12.9898 + tr[i * 3 + 1] * 78.233) % 1 + 1) % 1;
@@ -221,29 +227,75 @@
         c.setRGB(sc[0] * k, sc[1] * k, sc[2] * k); mb.setColorAt(ib++, c);
       }
     }
-    for (const mm of [mb, mc]) { mm.position.set(ox, 0, oz); mm.castShadow = true; mm.receiveShadow = true; if (mm.instanceColor) mm.instanceColor.needsUpdate = true; mm.instanceMatrix.needsUpdate = true; }
-    // те же экземпляры, но простая геометрия и без теней — для среднего плана
-    const lb = new THREE.InstancedMesh(treeLo, M.tree, Math.max(1, nb)), lc = new THREE.InstancedMesh(coneLo, M.tree, Math.max(1, nc));
-    lb.instanceMatrix = mb.instanceMatrix; lb.instanceColor = mb.instanceColor; lc.instanceMatrix = mc.instanceMatrix; lc.instanceColor = mc.instanceColor; lb.count = nb; lc.count = nc;
-    for (const mm of [lb, lc]) { mm.position.set(ox, 0, oz); mm.castShadow = false; mm.receiveShadow = true; }
-    for (const mm of [mb, mc, lb, lc]) mm.frustumCulled = false; // в r149 у InstancedMesh общий bounding sphere — отсекаем тайлами
-    return [mb, mc, lb, lc];
+    // Оптимизация: экземпляры раскладываются по ячейкам тайла (как земля). У каждой ячейки своя
+    // InstancedMesh с прокси-геометрией: общие буферы кроны, но своя ограничивающая сфера, поэтому
+    // three.js отсекает ячейки вне кадра и вне камеры тени. Полная и упрощённая кроны делят матрицы.
+    const out = [new THREE.Group(), new THREE.Group(), new THREE.Group(), new THREE.Group()];
+    const split = (src, n, full, lo, gFull, gLo) => {
+      if (!n) return;
+      const cell = TILE_M / CH, lists = new Map(), e = src.instanceMatrix.array, col = src.instanceColor && src.instanceColor.array;
+      const cl = (v) => Math.min(CH - 1, Math.max(0, Math.floor(v / cell)));
+      for (let i = 0; i < n; i++) { const k = cl(e[i * 16 + 14]) * CH + cl(e[i * 16 + 12]); let l = lists.get(k); if (!l) lists.set(k, l = []); l.push(i); }
+      for (const l of lists.values()) {
+        const mat = new Float32Array(l.length * 16), cc = col ? new Float32Array(l.length * 3) : null;
+        let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
+        l.forEach((i, j) => {
+          mat.set(e.subarray(i * 16, i * 16 + 16), j * 16); if (cc) cc.set(col.subarray(i * 3, i * 3 + 3), j * 3);
+          const x = e[i * 16 + 12], y = e[i * 16 + 13], z = e[i * 16 + 14];
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+        });
+        const sph = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2 + 10, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0 + 22, z1 - z0) / 2 + 10);
+        const im = new THREE.InstancedBufferAttribute(mat, 16), ica = cc ? new THREE.InstancedBufferAttribute(cc, 3) : null;
+        for (const [geo, grp, cast] of [[gFull, full, true], [gLo, lo, false]]) {
+          const pg = new THREE.BufferGeometry(); for (const k in geo.attributes) pg.setAttribute(k, geo.attributes[k]);
+          pg.boundingSphere = sph; pg.userData.proxy = true;
+          const m = new THREE.InstancedMesh(pg, M.tree, l.length);
+          m.instanceMatrix = im; if (ica) m.instanceColor = ica; m.count = l.length;
+          m.castShadow = cast; m.receiveShadow = true; m.matrixAutoUpdate = false; m.frustumCulled = true; // в r149 InstancedMesh по умолчанию не отсекается
+          grp.add(m);
+        }
+      }
+    };
+    split(mb, ib, out[0], out[2], treeGeo, treeLo);
+    split(mc, ic, out[1], out[3], coneGeo, coneLo);
+    for (const g of out) { g.position.set(ox, 0, oz); g.matrixAutoUpdate = false; g.updateMatrix(); g.updateMatrixWorld(true); }
+    return out;
   }
 
   function mesh(g, mat, ox, oz, opts = {}) {
     if (!g.i.length) return null;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(g.p, 3));
-    geo.setAttribute("normal", new THREE.InterleavedBufferAttribute(new THREE.InterleavedBuffer(g.n, 4), 3, 0, true));
-    geo.setAttribute("color", new THREE.BufferAttribute(g.c, 4, true));
-    if (g.e) geo.setAttribute("wuv", new THREE.BufferAttribute(g.e, 2, false));
-    geo.setIndex(new THREE.BufferAttribute(g.i, 1));
-    geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(ox, 0, oz);
-    m.matrixAutoUpdate = false; m.updateMatrix();
-    m.receiveShadow = true; m.castShadow = !!opts.cast;
-    return m;
+    const attrs = {
+      position: new THREE.BufferAttribute(g.p, 3),
+      normal: new THREE.InterleavedBufferAttribute(new THREE.InterleavedBuffer(g.n, 4), 3, 0, true),
+      color: new THREE.BufferAttribute(g.c, 4, true),
+    };
+    if (g.e) attrs.wuv = new THREE.BufferAttribute(g.e, 2, false);
+    // Оптимизация: тайл (1,8 км) разбит воркером на ячейки (g.ch: начало, длина, сфера). Ячейки делят
+    // буферы вершин и один буфер индексов (у каждой — своё окно в нём) и свою ограничивающую сферу,
+    // поэтому three.js отсекает ячейки вне кадра и вне камеры тени, а не рисует весь тайл целиком.
+    const grp = new THREE.Group(); grp.position.set(ox, 0, oz); grp.matrixAutoUpdate = false; grp.updateMatrix();
+    const ch = g.ch || new Float32Array([0, g.i.length, TILE_M / 2, 0, TILE_M / 2, TILE_M]);
+    for (let k = 0; k < ch.length; k += 6) {
+      const geo = new THREE.BufferGeometry();
+      for (const a in attrs) geo.setAttribute(a, attrs[a]);
+      geo.setIndex(new THREE.BufferAttribute(g.i.subarray(ch[k], ch[k] + ch[k + 1]), 1));
+      geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(ch[k + 2], ch[k + 3], ch[k + 4]), ch[k + 5]);
+      const m = new THREE.Mesh(geo, mat);
+      m.matrixAutoUpdate = false;
+      m.receiveShadow = true; m.castShadow = !!opts.cast;
+      grp.add(m);
+    }
+    grp.updateMatrixWorld(true);
+    return grp;
+  }
+  const CH = 5;
+  // освобождение: ячейки делят буферы вершин; общие геометрии деревьев не трогаем
+  function disposeObj(o) {
+    o.traverse((c) => {
+      const g = c.geometry; if (!g || g === treeGeo || g === coneGeo || g === treeLo || g === coneLo) return;
+      if (g.userData.proxy) { g.attributes = {}; g.index = null; } // прокси деревьев: буферы общие — освобождаем только саму геометрию (VAO)
+      g.dispose();
+    });
   }
 
   // ---------- загрузка и уровни детализации (LOD) ----------
@@ -322,10 +374,10 @@
       } else {
         add(mesh(r.ground, M.ground, ox, oz));
         add(mesh(r.water, M.water, ox, oz));
-        { const wm = mesh(r.wmask, M.wmask, ox, oz); if (wm) { wm.renderOrder = -1; wm.receiveShadow = false; } add(wm); }
+        { const wm = mesh(r.wmask, M.wmask, ox, oz); if (wm) wm.traverse((c) => { c.renderOrder = -1; c.receiveShadow = false; }); add(wm); }
         add(mesh(r.roads, M.roads, ox, oz));
         add(mesh(r.bld, M.bld, ox, oz, { cast: true }));
-        if (r.trees && r.trees.length) { L.trees = makeTrees(r.trees, ox, oz); L.trees.forEach(add); }
+        if (r.trees && r.trees.length) { L.trees = makeTrees(r.trees, ox, oz, r.treeIso, r.treeY); L.trees.forEach(add); }
       }
       if (r.lamps.length) {
         const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(r.lamps, 3));
@@ -361,10 +413,7 @@
   }
   function disposeLod(rec, lod) {
     const L = rec.lods[lod]; if (!L) return;
-    for (const o of L.objs) {
-      S.scene.remove(o);
-      if (o.geometry && o.geometry !== treeGeo && o.geometry !== coneGeo && o.geometry !== treeLo && o.geometry !== coneLo) o.geometry.dispose();
-    }
+    for (const o of L.objs) { S.scene.remove(o); disposeObj(o); }
     if (L.tex) L.tex.dispose(); if (L.mat) L.mat.dispose();
     delete rec.lods[lod];
   }
@@ -380,10 +429,11 @@
       const L = rec.lods[l], on = +l === lod;
       for (const o of L.objs) o.visible = on;
       if (L.trees) { // 0 — нет, 1 — простые кроны, 2 — полные без теней, 3 — полные с тенями
-        for (let i = 0; i < 2; i++) { L.trees[i].visible = on && treeMode >= 2; L.trees[i].castShadow = treeMode === 3; }
+        const cast = (g, v) => { for (const c of g.children) c.castShadow = v; };
+        for (let i = 0; i < 2; i++) { L.trees[i].visible = on && treeMode >= 2; cast(L.trees[i], treeMode === 3); }
         L.trees[2].visible = on && treeMode === 1; L.trees[3].visible = on && treeMode === 1;
         // одиночные деревья — только вблизи
-        for (let i = 4; i < 6; i++) { L.trees[i].visible = on && treeMode === 3; L.trees[i].castShadow = true; }
+        for (let i = 4; i < 6; i++) { L.trees[i].visible = on && treeMode === 3; cast(L.trees[i], true); }
         L.trees[6].visible = L.trees[7].visible = false;
       }
     }

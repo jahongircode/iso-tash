@@ -47,6 +47,7 @@ At far zoom, triangles dropped from about 15.5 million to about 0.3 million per 
 
 Other optimisations:
 
+- **Cells inside tiles:** the worker sorts each tile's triangles into a 5 × 5 grid of ~370 m cells and sends a table of cell ranges and bounding spheres; trees are split into the same cells. Each cell is its own mesh, so three.js skips cells outside the view and outside the shadow camera instead of drawing the whole 1.8 km tile. Close up this cut the load from about 6 million to about 0.8 million triangles per frame. The worker also precomputes tree heights and lone-tree flags, so adding a tile takes ~20 ms on the main thread instead of ~100 ms.
 - **Tiles:** the city is split into 651 pre-baked tiles of about 1.8 × 1.8 km each. They are binary, use varint and delta encoding, and are deflate-compressed. Only visible tiles load, nearest first.
 - **Background work:** tiles are decoded and built into geometry in Web Workers. Meshes are uploaded to the GPU with a per-frame time budget, so loading doesn't stutter.
 - **Rendering:** each tile is a few large merged meshes. Trees, cars and traffic lights use instancing.
