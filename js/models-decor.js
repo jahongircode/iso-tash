@@ -27,6 +27,7 @@
 //  Победоносца, Courtyard by Marriott, Минобороны, дом-музей Тамары Ханум, Фармацевтический и Стоматологический институты;
 //  партия 4: посольства Франции, Беларуси, Индонезии и Индии, гостиница Navruz, мавзолеи Зайнуддина и
 //  Чапан-ата, медресе Муйи Мубарак, Химико-технологический институт, Духовная семинария;
+//  партия 5: Конгресс-холл Tashkent City, ТЦ Next, Mega Planet, Riviera и Compass, Алайский базар, Южный вокзал;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -2545,4 +2546,82 @@
   M.chemtech = (b, o) => institute(b, o, 16.1, 165);
   // Ташкентская духовная семинария (у Успенского собора): белые стены с наличниками, зелёная вальмовая кровля.
   M.seminary = (b, o) => villa(b, o, { wall: [0.95, 0.94, 0.9], trim: [0.86, 0.8, 0.66], pil: 3.4, seed: 166, h: 9, hip: [0.34, 0.56, 0.42] });
+
+  // ======================= крупные ТЦ, рынки и вокзал: партия 5 =======================
+  // торговый центр: стеклянный первый этаж, глухие панели с цветными поясами, витражи, вывеска на
+  // фасаде к улице (wx, wz); ночью вывеска и цветные пояса светятся
+  const mall = (b, o, st, wx, wz) => {
+    const Q = localParts(o);
+    Q.forEach((q, i) => {
+      const p = q.p, H = st.h || q.h;
+      b.loft(offset(p, -0.5), 0, offset(p, -0.5), 5, [0.28, 0.36, 0.44], "glow");
+      if (st.glass) b.winRing(p, 5, H, st.glass, st.seed + i); else b.loft(p, 5, p, H, st.wall);
+      pilasters(b, p, 5, H, st.rib || 9, 0.5, 0.4, st.trim);
+      band(b, p, 0.5, 5, 0.6, st.trim); band(b, p, 0.4, H - 1.6, 0.8, st.accent, "neon"); cap(b, p, H, [0.55, 0.56, 0.58]);
+      if (i === 0) {
+        const e = frontEdge(o, p, wx, wz, 14), ux = (e.x1 - e.x0) / e.L, uz = (e.z1 - e.z0) / e.L;
+        b.box(e.mx + e.nx * 0.4, 5, e.mz + e.nz * 0.4, Math.min(28, e.L * 0.5), H - 5, 0.4, [0.32, 0.46, 0.58], e.ry); to(b, "glow"); // витраж входа
+        b.box(e.mx + e.nx * 3, 4.6, e.mz + e.nz * 3, Math.min(30, e.L * 0.55), 0.5, 6, st.trim, e.ry);                                   // навес
+        sign(b, st.name, e.mx + e.nx * 0.9, H - 4, e.mz + e.nz * 0.9, e.nx, e.nz, st.px || 0.4, st.signCol, "glow", 0.12);
+      }
+    });
+  };
+
+  // Конгресс-холл Tashkent City (2021): белый объём, обнесённый по периметру частой колоннадой
+  // тонких колонн во всю высоту, за ней — синее остекление; широкая плита кровли с выносом.
+  M.congress_hall = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = 24, WH = [0.95, 0.94, 0.9];
+    const r = box4(f, A - 4, B - 4);
+    b.loft(r, 0, r, H - 2, [0.3, 0.42, 0.56], "glow"); b.winRing(r, 0.5, H - 2.5, [0.3, 0.42, 0.56], 170);
+    b.loft(box4(f, A + 0.5, B + 0.5), 0, box4(f, A + 0.5, B + 0.5), 0.8, [0.82, 0.8, 0.76]);              // стилобат
+    const ro = box4(f, A, B);
+    b.loft(ro, H - 2, ro, H, WH); to(b, "lit"); cap(b, ro, H, [0.7, 0.7, 0.7]);
+    for (let i = 0; i < 4; i++) {
+      const [x0, z0] = ro[i], [x1, z1] = ro[(i + 1) % 4], L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 4.2);
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n; b.cyl(x0 + (x1 - x0) * t, 0.8, z0 + (z1 - z0) * t, 0.45, H - 2.8, WH, 8); to(b, "lit"); }
+    }
+    b.loft(box4(f, A * 0.5, B * 0.5), H, box4(f, A * 0.42, B * 0.42), H + 3, [0.86, 0.86, 0.84]); cap(b, box4(f, A * 0.42, B * 0.42), H + 3, [0.66, 0.66, 0.66]);
+  };
+
+  // ТРК Next (Чиланзар): белые панели, оранжевый световой пояс, высокий витраж входа и вывеска NEXT.
+  M.next_mall = (b, o) => mall(b, o, { name: "NEXT", wall: [0.92, 0.92, 0.9], trim: [0.82, 0.82, 0.8], accent: [1.0, 0.5, 0.12], signCol: [1.0, 0.55, 0.15], seed: 171, rib: 7, px: 0.6 }, -2480, 1510);
+  // ТРЦ Mega Planet (Юнусабад): синие и белые панели, синий световой пояс, вывеска MEGA PLANET.
+  M.mega_planet = (b, o) => mall(b, o, { name: "MEGA PLANET", wall: [0.3, 0.42, 0.66], trim: [0.92, 0.92, 0.9], accent: [0.3, 0.6, 1.0], signCol: [0.95, 0.95, 0.95], seed: 172, px: 0.4 }, 943, -6330);
+  // ТРЦ Riviera (Себзар): светлый травертин, ленты стекла, золотистый пояс, вывеска RIVIERA.
+  M.riviera = (b, o) => mall(b, o, { name: "RIVIERA", wall: [0.88, 0.84, 0.74], trim: [0.94, 0.92, 0.86], accent: [0.95, 0.75, 0.35], glass: [0.3, 0.44, 0.58], signCol: [0.95, 0.85, 0.55], seed: 173, px: 0.45 }, -2092, -3120);
+  // ТРЦ Compass (Сергели): крупный корпус, тёмно-синие панели с белыми рёбрами, бирюзовый пояс, вывеска COMPASS.
+  M.compass_mall = (b, o) => mall(b, o, { name: "COMPASS", wall: [0.22, 0.3, 0.42], trim: [0.9, 0.9, 0.9], accent: [0.2, 0.85, 0.85], signCol: [0.95, 0.95, 0.95], seed: 174, rib: 8, px: 0.6 }, 4133, 7900);
+
+  // Алайский базар: торговые корпуса с аркадами стрельчатых арок, бирюзовыми порталами входов,
+  // рядами малых куполов-фонарей на кровле и вывеской OLOY BOZORI.
+  M.oloy_bozori = (b, o) => {
+    const Q = localParts(o), SA = [0.9, 0.84, 0.72];
+    Q.forEach((q, i) => {
+      const p = q.p, f = frame(q), H = i === 0 ? 10 : 12;
+      b.loft(p, 0, p, H, SA); to(b, "show");
+      pilasters(b, p, 0, H - 1.5, 4, 3, 0.15, P.niche);                       // арочные проёмы
+      band(b, p, 0.3, H - 1.5, 1.5, P.turq); cap(b, p, H, [0.62, 0.58, 0.52]);
+      const nx = Math.max(1, Math.round(f.L / 16)), nz = Math.max(1, Math.round(f.W / 16));
+      for (let a = 0; a < nx; a++) for (let c = 0; c < nz; c++) {
+        const [x, z] = FP(f, -f.L / 2 + f.L * (a + 0.5) / nx, -f.W / 2 + f.W * (c + 0.5) / nz), R = Math.min(5, f.W / nz * 0.3);
+        b.cyl(x, H, z, R + 0.3, 1.2, SA, 14); b.dome(x, H + 1.2, z, R, P.turq, { hk: 0.8, seg: 14, tip: false }); to(b, "lit");
+      }
+      if (i === 0) { const e = frontEdge(o, p, 380, -848, 14);
+        b.pishtaq(e.mx + e.nx * 0.8, e.mz + e.nz * 0.8, 12, 1.6, H + 5, SA, P.cobalt, Math.atan2(e.nx, e.nz));
+        sign(b, "OLOY BOZORI", e.mx + e.nx * 1.8, H + 3.3, e.mz + e.nz * 1.8, e.nx, e.nz, 0.22, [0.95, 0.9, 0.7], "glow", 0.1); }
+    });
+  };
+
+  // Южный вокзал: вытянутое здание вокзала — светлые стены, высокий остеклённый зал ожидания по центру,
+  // часы на фронтоне и вывеска JANUBIY VOKZAL.
+  M.south_station = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, WH = [0.93, 0.91, 0.85];
+    const r = box4(f, A, B); b.winRing(r, 0, 9, WH, 175); pilasters(b, r, 0, 9, 4, 0.8, 0.4, WH); band(b, r, 0.5, 9, 1, WH, "lit"); cap(b, r, 10, [0.56, 0.56, 0.56]);
+    const c = box4(f, A * 0.25, B + 0.6);
+    b.loft(c, 0, c, 16, [0.32, 0.46, 0.6], "glow"); b.loft(offset(c, 0.4), 16, offset(c, 0.4), 18, WH); to(b, "lit"); cap(b, offset(c, 0.4), 18, [0.6, 0.6, 0.6]);
+    const e = frontEdge(o, r, -4440, 5700, 20);
+    const sx = e.mx + e.nx * 1.4, sz = e.mz + e.nz * 1.4;
+    sign(b, "JANUBIY VOKZAL", sx, 16.3, sz, e.nx, e.nz, 0.16, [0.95, 0.95, 0.95], "glow", 0.1);
+    b.cyl(sx, 12.5, sz, 1.4, 0.3, [0.95, 0.95, 0.9], 16); to(b, "glow");
+  };
 })();
