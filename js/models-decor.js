@@ -11,6 +11,13 @@
 //  бизнес-парк Trilliant: офисные башни и отель InterContinental на общем подиуме;
 //  исторический кирпичный корпус Вестминстерского университета с башней-часами;
 //  вокзал «Ташкент» (портал, колоннады, вывески) и скоростной поезд Afrosiyob у перрона;
+//  здание «Узбекэнерго» у сквера Амира Темура (солнцезащитная решётка, портал, фонтан);
+//  гостиницы City Palace (стеклянная башня, купол, портик) и Hyatt Regency (белый камень, синие ленты);
+//  квартал у дворца Романова: БЦ «Пойтахт», Национальная библиотека, Дворец творчества молодёжи, галерея, Монетный двор;
+//  Дом печати «Шарк» / УзА с типографией и Государственный музей истории Узбекистана;
+//  бывшие Мужская и Женская гимназии на Сайилгох (корпуса Юридического университета);
+//  квартал на ул. Бухоро: биржа «Тошкент» с куполом, Beeline, «Узавтосаноат», новые башни;
+//  бывший Ташкентский кадетский корпус (ныне Академия вооружённых сил) из красного кирпича с куполом;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -190,31 +197,55 @@
   // Две 24-этажные башни-близнецы: тёмное стекло за частыми белыми рёбрами, верх срезан плавной дугой
   // (ночью кромка светится фиолетовым), общий стилобат из синего стекла с белыми поясами.
   M.modera = (b, o) => {
+    // ЖК Modera Towers (ул. Шота Руставели, 19/2): две 25-этажные башни (~100 м) на общем стилобате.
+    // По фото застройщика: белый каркас с частыми вертикальными рёбрами и тёмным остеклением,
+    // у северной башни — скошенная корона (кровля поднимается к одному торцу), у южной — стрельчатая
+    // корона из двух «лепестков» с узкой прорезью посередине. Стилобат — 4 этажа: белые пояса и ленты
+    // стекла, логотип-ромб и вывеска MODERA. Ночью рёбра углов и кромки корон светятся сиреневым.
+    // Башни повёрнуты относительно осей модели, поэтому всё строится в осях каждого корпуса (frame).
     const Q = localParts(o), groups = [];
     for (const q of Q) { let g = groups.find((G) => Math.hypot(G.cx - q.cx, G.cz - q.cz) < 15); if (!g) groups.push(g = { cx: q.cx, cz: q.cz, qs: [] }); g.qs.push(q); }
-    const all = Q.flatMap((q) => q.p), X0 = Math.min(...all.map((v) => v[0])), X1 = Math.max(...all.map((v) => v[0])), Z0 = Math.min(...all.map((v) => v[1])), Z1 = Math.max(...all.map((v) => v[1]));
-    // стилобат
-    const PH = 15;
-    for (let y = 0; y < PH; y += 3.75) { b.box((X0 + X1) / 2, y, (Z0 + Z1) / 2, X1 - X0 + 4, 3, Z1 - Z0 + 4, [0.18, 0.36, 0.62], 0, true); b.box((X0 + X1) / 2, y + 3, (Z0 + Z1) / 2, X1 - X0 + 4.4, 0.75, Z1 - Z0 + 4.4, [0.93, 0.94, 0.95]); }
-    b.box((X0 + X1) / 2, PH, (Z0 + Z1) / 2, X1 - X0 + 3, 0.4, Z1 - Z0 + 3, [0.55, 0.6, 0.55]);
+    const WH = [0.95, 0.95, 0.96], GL = [0.3, 0.36, 0.44], GL2 = [0.34, 0.42, 0.54], GLC = [0.44, 0.52, 0.62], NAVY = [0.16, 0.24, 0.5];
+    const big = groups.map((G) => G.qs.reduce((a, v) => (v.A > a.A ? v : a)));
+    const F0 = frame(big[0]);
+    // ---- стилобат: прямоугольник в осях башен, охватывающий оба корпуса
+    let a0 = 1e9, a1 = -1e9, c0 = 1e9, c1 = -1e9;
+    for (const q of big) for (const [x, z] of q.p) { const a = (x - F0.cx) * F0.ux + (z - F0.cz) * F0.uz, c = (x - F0.cx) * F0.vx + (z - F0.cz) * F0.vz; a0 = Math.min(a0, a); a1 = Math.max(a1, a); c0 = Math.min(c0, c); c1 = Math.max(c1, c); }
+    const PH = 15, pc = [(a0 + a1) / 2, (c0 + c1) / 2], pA = (a1 - a0) / 2 + 2, pB = (c1 - c0) / 2 + 2;
+    const prect = (dA, dB) => [FP(F0, pc[0] - dA, pc[1] - dB), FP(F0, pc[0] + dA, pc[1] - dB), FP(F0, pc[0] + dA, pc[1] + dB), FP(F0, pc[0] - dA, pc[1] + dB)];
+    const pr = prect(pA, pB);
+    b.loft(offset(pr, 0.2), 0, offset(pr, 0.2), 5, [0.3, 0.34, 0.38], "glow");                              // витрины первого этажа
+    for (let y = 5; y < PH - 0.5; y += 3.4) { b.loft(pr, y, pr, y + 0.8, WH); b.loft(offset(pr, -0.1), y + 0.8, offset(pr, -0.1), y + 3.4, GL2, "glow"); }
+    band(b, pr, 0.3, PH - 0.6, 1.0, WH); cap(b, pr, PH + 0.4, [0.55, 0.6, 0.55]);
+    for (const s of [-1, 1]) { // вывеска MODERA и логотип-ромб на длинных фасадах стилобата
+      const [mx, mz] = FP(F0, pc[0], pc[1] + s * (pB + 0.5));
+      sign(b, "MODERA", mx, PH - 0.4, mz, F0.vx * s, F0.vz * s, 0.32, [0.92, 0.9, 0.86], "glow", 0.12);
+      const [lx, lz] = FP(F0, pc[0] + pA * 0.62, pc[1] + s * (pB + 0.4));
+      const dm = new THREE.BoxGeometry(2.2, 2.2, 0.2); dm.rotateZ(Math.PI / 4); dm.rotateY(Math.atan2(F0.vx * s, F0.vz * s));
+      b.add(dm, NAVY, lx, 9.5, lz, 0, false); to(b, "neon");
+    }
+    // ---- башни
     groups.forEach((G, gi) => {
-      const q = G.qs.reduce((a, v) => (v.A > a.A ? v : a)), H = Math.max(...G.qs.map((v) => v.h)), H0 = q.h - 6;
-      const A = (q.x1 - q.x0) / 2, B = (q.z1 - q.z0) / 2, cx = (q.x0 + q.x1) / 2, cz = (q.z0 + q.z1) / 2;
-      const ring = [[cx - A, cz - B], [cx + A, cz - B], [cx + A, cz + B], [cx - A, cz + B]];
-      b.loft(ring, PH, ring, H0, [0.16, 0.2, 0.28]);
-      b.winRing(offset(ring, -0.05), PH, H0, [0.2, 0.24, 0.3], 70 + gi);
-      const side = Math.sign(cx - (X0 + X1) / 2) || 1;                                             // дуга поднимается наружу
-      const arc = (x) => H0 + (H - H0) * (1 - Math.cos(Math.max(0, Math.min(1, (side * (x - cx) + A) / (2 * A))) * Math.PI / 2));
-      for (const [zf, dz] of [[cz - B, -1], [cz + B, 1]]) for (let x = cx - A; x <= cx + A + 0.01; x += 2.2) {
-        const t = arc(x); b.box(x, PH, zf + dz * 0.35, 0.5, t - PH, 0.7, [0.95, 0.95, 0.96]);
-        b.box(x, t - 0.6, zf + dz * 0.6, 2.3, 0.6, 0.3, [0.85, 0.75, 1]); to(b, "led");
+      const q = big[gi], f = frame(q), A = f.L / 2, B = f.W / 2, Hmax = Math.max(...G.qs.map((v) => v.h)), H0 = q.h - 4;
+      const rect = (a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)], r = rect(A, B);
+      b.winRing(offset(r, -0.05), PH, H0, GL, 70 + gi);
+      pilasters(b, r, PH, H0, 1.8, 0.75, 0.5, WH);                                                    // частые белые рёбра
+      for (let y = PH + 3.6; y < H0; y += 3.6) band(b, r, 0.2, y, 0.8, WH);                            // междуэтажные пояса
+      for (const [sa, sc] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const [x, z] = FP(f, sa * (A + 0.2), sc * (B + 0.2)); b.box(x, PH, z, 0.9, H0 - PH, 0.9, WH, f.ry); to(b, "led"); } // светящиеся углы
+      // корона: срезы вдоль длинной оси с профилем верха top(t), t ∈ [-1, 1]
+      const slanted = gi === 0;
+      const top = slanted ? (t) => H0 + (Hmax + 6 - H0) * (t + 1) / 2
+        : (t) => (Math.abs(t) < 0.06 ? H0 + 2 : H0 + (Hmax + 6 - H0) * Math.sqrt(Math.max(0, 1 - Math.pow((Math.abs(t) - 0.06) / 0.94, 2))) * (1 - 0.25 * Math.abs(t)));
+      const N = 14;
+      for (let i = 0; i < N; i++) {
+        const t0 = -1 + 2 * i / N, t1 = -1 + 2 * (i + 1) / N, tm = (t0 + t1) / 2, y = top(tm); if (y < H0 + 0.5) continue;
+        const [x, z] = FP(f, tm * A, 0);
+        b.box(x, H0, z, A * 2 / N + 0.02, y - H0, B * 2 - 1.6, GLC, f.ry);                               // остеклённая «парус»-стена короны
+        for (const s of [-1, 1]) { const [ex, ez] = FP(f, tm * A, s * (B - 0.3)); b.box(ex, y - 0.6, ez, A * 2 / N + 0.1, 0.6, 0.7, WH, f.ry); to(b, "led"); } // светящаяся кромка
+        for (const s of [-1, 1]) { const [ex, ez] = FP(f, tm * A, s * (B - 0.5)); b.box(ex, H0, ez, 0.3, y - H0 - 0.6, 0.4, WH, f.ry); }  // рёбра короны
       }
-      for (const [xf, dx] of [[cx - A, -1], [cx + A, 1]]) for (let z = cz - B; z <= cz + B + 0.01; z += 2.2) b.box(xf + dx * 0.35, PH, z, 0.7, arc(xf) - PH, 0.5, [0.95, 0.95, 0.96]);
-      // скошенная кровля по дуге
-      const n = 10;
-      for (let i = 0; i < n; i++) { const xa = cx - A + 2 * A * i / n, xb = cx - A + 2 * A * (i + 1) / n; b.raw([xa, arc(xa), cz - B, xb, arc(xb), cz - B, xb, arc(xb), cz + B, xa, arc(xa), cz - B, xb, arc(xb), cz + B, xa, arc(xa), cz + B], [0.42, 0.44, 0.5]); }
+      cap(b, rect(A - 0.1, B - 0.1), H0 + 0.01, [0.45, 0.47, 0.52]);
     });
-    b.box((X0 + X1) / 2, PH + 0.4, Z1 + 1.5, 16, 1.4, 0.2, [1, 0.95, 0.85], 0, true);               // вывеска MODERA TOWERS
   };
 
   // ориентированный прямоугольник корпуса (по самому выгодному ребру): центр, оси, размеры
@@ -1530,5 +1561,449 @@
       x += len;
     };
     car(20, true, -1); for (let i = 0; i < 11; i++) car(13.14, false, 0); car(20, true, 1);
+  };
+  // ---------------- здание «Узбекэнерго» (Минэнерго, ул. Истиклол, 6) ----------------
+  // Советский модернизм 1970-х рядом с музеем Темуридов: светлый «гребень» с внутренними дворами,
+  // пять этажей за солнцезащитной решёткой — глубокие горизонтальные полки на каждом этаже и частые
+  // тонкие вертикальные рёбра, крупные лопатки через 6 м; глухой парапет с синей вывеской
+  // «O'ZBEKENERGO» AJ, утопленный остеклённый первый этаж, синий портал входа с козырьком,
+  // перед ним — круглый фонтан. Ночью светятся окна, вестибюль, вывеска и струи фонтана.
+  M.uzbekenergo = (b, o) => {
+    const q = localParts(o)[0], p = q.p, n = p.length;
+    const WH = [0.9, 0.9, 0.88], WH2 = [0.82, 0.83, 0.82], BLUE = [0.12, 0.35, 0.78], ROOF = [0.5, 0.5, 0.5];
+    const G0 = 4.2, FL = 3.3, TOP = 17.4, H = 19.5;
+    b.loft(offset(p, -0.8), 0, offset(p, -0.8), G0, [0.24, 0.28, 0.32], "glow");                         // утопленный стеклянный первый этаж
+    b.loft(p, G0, p, G0 + 0.5, WH);
+    b.winRing(offset(p, -0.3), G0 + 0.5, TOP, [0.78, 0.8, 0.8], 105);
+    b.loft(p, TOP, p, H, WH); cap(b, p, H, ROOF); band(b, p, 0.15, H, 0.3, WH2);                           // глухой парапет
+    for (let y = G0 + FL; y < TOP - 0.2; y += FL) band(b, p, 0.7, y - 0.12, 0.24, WH);                     // солнцезащитные полки
+    band(b, p, 0.75, G0 + 0.3, 0.3, WH);
+    for (let i = 0; i < n; i++) {
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % n], L = Math.hypot(x1 - x0, z1 - z0); if (L < 3) continue;
+      const nx = (z1 - z0) / L, nz = -(x1 - x0) / L, ry = Math.atan2(-(z1 - z0), x1 - x0), nf = Math.round(L / 1.5);
+      for (let k = 1; k < nf; k++) {
+        const t = k / nf, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, big = k % 4 === 0;
+        b.box(x + nx * (big ? 0.45 : 0.35), G0 + 0.5, z + nz * (big ? 0.45 : 0.35), big ? 0.5 : 0.14, TOP - G0 - 0.5, big ? 0.9 : 0.7, big ? WH : WH2, ry);
+      }
+      for (const t of [0, 1]) { const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; b.box(x, 0, z, 0.8, TOP, 0.8, WH, ry); } // угловые столбы до земли
+    }
+    // главный фасад — к фонтану
+    const [fx, fz] = o.local(95, -190);
+    let best = null;
+    for (let i = 0; i < n; i++) {
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % n], L = Math.hypot(x1 - x0, z1 - z0); if (L < 40) continue;
+      const ux = (x1 - x0) / L, uz = (z1 - z0) / L, t = Math.max(0, Math.min(L, (fx - x0) * ux + (fz - z0) * uz));
+      const d = Math.hypot(fx - x0 - ux * t, fz - z0 - uz * t);                                      // расстояние от фонтана до стены
+      let nx = uz, nz = -ux; if (nx * (fx - x0) + nz * (fz - z0) < 0) { nx = -nx; nz = -nz; }        // нормаль — к фонтану
+      if (!best || d < best.k) best = { k: d, mx: (x0 + x1) / 2, mz: (z0 + z1) / 2, nx, nz, L, ux, uz, ry: Math.atan2(-uz, ux) };
+    }
+    if (best) {
+      const { nx, nz, ux, uz, ry } = best;
+      // точка входа — проекция фонтана на фасад
+      let s = (fx - best.mx) * ux + (fz - best.mz) * uz; s = Math.max(-best.L / 2 + 12, Math.min(best.L / 2 - 12, s));
+      const ex = best.mx + ux * s, ez = best.mz + uz * s, at = (a, d, y = 0) => [ex + ux * a + nx * d, ez + uz * a + nz * d];
+      for (const sd of [-1, 1]) { const [px, pz] = at(sd * 5.6, 2.2); b.box(px, 0, pz, 1.6, 9.5, 4.4, BLUE, ry); }  // синий портал
+      { const [px, pz] = at(0, 2.2); b.box(px, 8.3, pz, 12.8, 1.4, 4.4, BLUE, ry); }
+      { const [px, pz] = at(0, 4.3); b.box(px, 0.1, pz, 9.6, 7.6, 0.2, [0.3, 0.32, 0.3], ry); to(b, "glow"); }   // витраж и двери
+      { const [px, pz] = at(-12, 3.0); b.box(px, 4.0, pz, 13, 0.5, 6, WH, ry); b.box(px, 4.5, pz + 0, 12, 0.9, 0.1, [0.15, 0.3, 0.7], ry); }
+      { const [px, pz] = at(12, 3.0); b.box(px, 4.0, pz, 13, 0.5, 6, WH, ry); }                           // козырёк с баннером
+      for (const a of [-17, -7, 7, 17]) { const [px, pz] = at(a, 5.6); b.cyl(px, 0, pz, 0.2, 4.0, WH, 6); }
+      { const [px, pz] = at(0, 0.5); b.box(px, 0, pz, 22, 0.35, 8, [0.62, 0.6, 0.56], ry); }                // ступени и площадка
+      // вывеска на парапете
+      const [sx, sz] = at(0, 0.25); sign(b, "O'ZBEKENERGO AJ", sx, TOP + 0.2, sz, nx, nz, 0.26, BLUE, "neon", 0.2);
+    }
+    // фонтан: каменная чаша, бортик, струи
+    { const R = 7.5; // бассейн — водоём OSM, здесь только струи
+      b.cyl(fx, -0.6, fz, 0.6, 4.6, [0.92, 0.95, 1], 8); to(b, "cool");
+      for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; b.beam(fx + Math.cos(a) * (R - 0.8), -0.6, fz + Math.sin(a) * (R - 0.8), fx + Math.cos(a) * (R - 2.6), 2.4, fz + Math.sin(a) * (R - 2.6), 0.18, [0.9, 0.94, 1]); to(b, "cool"); } }
+  };
+  // ---------------- гостиница City Palace (Амира Темура, 15) ----------------
+  // 17-этажная башня (60 м) из бирюзово-зелёного стекла с «пилообразным» планом: на каждом
+  // выступе — белое вертикальное ребро, наверху — более светлая стеклянная корона с белым парапетом.
+  // У входа — портик на белых колоннах с изогнутой зелёной кровлей и вывеской CITY PALACE,
+  // рядом — ресторан «Кристал Гарден» под стеклянным куполом. Ночью рёбра горят белыми линиями.
+  M.city_palace = (b, o) => {
+    const Q = localParts(o), tw = Q.reduce((a, v) => (v.h > a.h ? v : a)), low = Q.filter((q) => q !== tw);
+    const GL = [0.36, 0.62, 0.6], GLL = [0.56, 0.78, 0.76], WH = [0.94, 0.95, 0.95], GRN = [0.3, 0.55, 0.42];
+    const p = tw.p, H = tw.h, n = p.length;
+    b.loft(offset(p, -0.4), 0, offset(p, -0.4), 6, [0.24, 0.3, 0.3], "glow");
+    band(b, p, 0.2, 6, 0.8, WH);
+    b.winRing(p, 6.8, H - 5, GL, 106);
+    b.loft(p, H - 5, p, H, GLL); band(b, p, 0.15, H, 1.4, WH); cap(b, p, H + 1.4, [0.55, 0.58, 0.6]);
+    for (let y = 6.8 + 3.1 * 3; y < H - 5; y += 3.1 * 4) band(b, p, 0.12, y, 0.25, [0.82, 0.9, 0.9]);
+    for (let i = 0; i < n; i++) { // белые рёбра на выпуклых углах
+      const a = p[(i + n - 1) % n], c = p[i], e = p[(i + 1) % n];
+      const cr = (c[0] - a[0]) * (e[1] - c[1]) - (c[1] - a[1]) * (e[0] - c[0]);
+      if (cr <= 0) continue;
+      b.box(c[0], 6.8, c[1], 0.6, H + 1.2 - 6.8, 0.6, WH, 0); to(b, "cool");
+    }
+    // пристройки: стеклянный купол ресторана и подиум с портиком
+    const sq = o.local(4, -8);
+    for (const q of low) {
+      const round = q.p.length >= 13 && q.A < 600;
+      b.winRing(q.p, 0, 5.5, [0.4, 0.5, 0.52], 107); band(b, q.p, 0.25, 5.5, 0.8, WH); cap(b, q.p, 6.3, [0.6, 0.62, 0.6]);
+      if (round) { const r = Math.sqrt(q.A / Math.PI) * 0.8; b.dome(q.cx, 6.3, q.cz, r, [0.5, 0.75, 0.8], { hk: 0.75, seg: 18, tip: false }); to(b, "glow"); continue; }
+      // портик к площади
+      let best = null;
+      for (let i = 0; i < q.p.length; i++) {
+        const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 8) continue;
+        const ux = (x1 - x0) / L, uz = (z1 - z0) / L, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+        let nx = uz, nz = -ux; if (nx * (q.cx - mx) + nz * (q.cz - mz) > 0) { nx = -nx; nz = -nz; }
+        const k = (nx * (sq[0] - mx) + nz * (sq[1] - mz)) / Math.hypot(sq[0] - mx, sq[1] - mz);
+        if (!best || k > best.k) best = { k, mx, mz, nx, nz, ux, uz, L };
+      }
+      if (best) {
+        const { mx, mz, nx, nz, ux, uz } = best, W = Math.min(16, best.L - 2), ry = Math.atan2(-uz, ux);
+        for (const s of [-1, 1]) for (const d of [3.5, 7]) b.cyl(mx + ux * s * W / 2 + nx * d, 0, mz + uz * s * W / 2 + nz * d, 0.35, 5.6, WH, 10);
+        for (let k = 0; k < 8; k++) { // изогнутая зелёная кровля навеса
+          const t0 = k / 8, t1 = (k + 1) / 8, y0 = 5.6 + Math.sin(t0 * Math.PI) * 1.4, y1 = 5.6 + Math.sin(t1 * Math.PI) * 1.4;
+          const a0 = [mx + nx * (t0 * 8.5), mz + nz * (t0 * 8.5)], a1 = [mx + nx * (t1 * 8.5), mz + nz * (t1 * 8.5)], hw = W / 2 + 1;
+          b.raw([a0[0] - ux * hw, y0, a0[1] - uz * hw, a1[0] - ux * hw, y1, a1[1] - uz * hw, a1[0] + ux * hw, y1, a1[1] + uz * hw,
+                 a0[0] - ux * hw, y0, a0[1] - uz * hw, a1[0] + ux * hw, y1, a1[1] + uz * hw, a0[0] + ux * hw, y0, a0[1] + uz * hw], GRN);
+        }
+        b.box(mx + nx * 8.5, 5.0, mz + nz * 8.5, W + 2, 0.7, 0.3, WH, ry);
+        sign(b, "CITY PALACE", mx + nx * 8.7, 5.05, mz + nz * 8.7, nx, nz, 0.11, [0.95, 0.85, 0.5], "glow", 0.08);
+      }
+    }
+  };
+
+  // ---------------- Hyatt Regency Tashkent (Навои, 1А) ----------------
+  // Белый камень и вертикальные ленты синего стекла: широкие светлые простенки чередуются с
+  // остеклёнными «колоннами» во всю высоту; плинтус из красного гранита, стеклянный первый этаж,
+  // карниз и парапет. Глухие белые угловые пилоны выше основного объёма с синим логотипом-кругом
+  // и надписью HYATT. Низкое банкетное крыло — с белой колоннадой. Ночью — подсвеченные
+  // прожекторами белые стены, светящиеся окна и логотипы.
+  M.hyatt = (b, o) => {
+    const Q = localParts(o), main = Q.reduce((a, v) => (v.h > a.h ? v : a)), wing = Q.filter((q) => q !== main);
+    const WH = [0.95, 0.94, 0.91], BLUE = [0.16, 0.3, 0.62], GRAN = [0.5, 0.32, 0.28], LOGO = [0.12, 0.3, 0.75];
+    const p = main.p, n = p.length, H = main.h;
+    b.loft(offset(p, 0.3), 0, offset(p, 0.3), 1.0, GRAN);
+    b.loft(offset(p, -0.3), 1.0, offset(p, -0.3), 5.0, [0.26, 0.3, 0.36], "glow");
+    b.winRing(p, 5.0, H - 2, BLUE, 108);
+    band(b, p, 0.4, 5.0, 0.7, WH); band(b, p, 0.5, H - 2, 1.4, WH, "lit"); band(b, p, 0.2, H - 0.6, 1.8, WH); cap(b, p, H + 1.2, [0.62, 0.62, 0.6]);
+    for (let i = 0; i < n; i++) { // широкие белые простенки — между ними синие ленты остекления
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % n], L = Math.hypot(x1 - x0, z1 - z0); if (L < 4) continue;
+      const nx = (z1 - z0) / L, nz = -(x1 - x0) / L, ry = Math.atan2(-(z1 - z0), x1 - x0), nb = Math.max(1, Math.round(L / 8));
+      for (let k = 0; k <= nb; k++) {
+        const t = k / nb, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, w = k === 0 || k === nb ? 2.4 : 4.2;
+        b.box(x + nx * 0.25, 5.7, z + nz * 0.25, w, H - 7.7, 0.5, WH, ry); to(b, "lit");
+        for (let y = 8.4; y < H - 3; y += 3.4) b.box(x + nx * 0.52, y, z + nz * 0.52, w * 0.36, 1.5, 0.06, [0.24, 0.32, 0.46], ry); // окна в простенках
+      }
+    }
+    // угловые пилоны: самые длинные рёбра — по их концам
+    const edges = [];
+    for (let i = 0; i < n; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % n]; edges.push({ i, L: Math.hypot(x1 - x0, z1 - z0) }); }
+    edges.sort((a, c) => c.L - a.L);
+    for (const e of edges.slice(0, 3)) {
+      const [x0, z0] = p[e.i], [x1, z1] = p[(e.i + 1) % n], L = e.L, ux = (x1 - x0) / L, uz = (z1 - z0) / L, nx = uz, nz = -ux, ry = Math.atan2(-uz, ux);
+      for (const t of [5, L - 5]) {
+        const x = x0 + ux * t - nx * 4.2, z = z0 + uz * t - nz * 4.2;
+        b.box(x, 0, z, 10, H + 4.5, 9, WH, ry); to(b, "lit");
+        b.box(x, H + 4.5, z, 10.6, 0.6, 9.6, WH, ry);
+        const lx = x + nx * 4.56, lz = z + nz * 4.56, disc = new THREE.CylinderGeometry(1.5, 1.5, 0.12, 18); disc.rotateX(Math.PI / 2); disc.rotateY(Math.atan2(nx, nz));
+        b.add(disc, LOGO, lx, H + 1.0, lz); to(b, "neon");
+        sign(b, "HYATT", lx, H - 1.6, lz, nx, nz, 0.26, LOGO, "neon", 0.08);
+      }
+    }
+    // банкетное крыло с колоннадой
+    for (const q of wing) {
+      b.winRing(offset(q.p, -1.6), 0, q.h - 1.6, [0.3, 0.38, 0.5], 109); b.loft(q.p, q.h - 1.6, q.p, q.h, WH, "lit"); cap(b, q.p, q.h, [0.62, 0.62, 0.6]);
+      for (let i = 0; i < q.p.length; i++) {
+        const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], L = Math.hypot(x1 - x0, z1 - z0), m = Math.floor(L / 3.6);
+        for (let k = 0; k <= m; k++) { const t = m ? k / m : 0; b.cyl(x0 + (x1 - x0) * t, 0, z0 + (z1 - z0) * t, 0.38, q.h - 1.6, WH, 8); }
+      }
+    }
+  };
+  // ---------------- квартал у дворца Романова (между сквером Амира Темура и площадью Мустакиллик) ----------------
+  // общий фасад: стены, ритм белых лопаток и витражей; li — список для лопаток (ночью подсвечены)
+  const ribbed = (b, p, y0, y1, step, w, d, glass, wall, id, li = "lit") => {
+    b.winRing(p, y0, y1, glass, id);
+    pilasters(b, p, y0, y1, step, w, d, wall, li);
+  };
+  // БЦ «Пойтахт» (Навои, 2): белые башни 65–75 м со скруглёнными торцами и вертикальными лентами
+  // синего стекла, ступенчатые объёмы, центральный корпус выше остальных, корона-парапет.
+  M.poytaxt = (b, o) => {
+    const WH = [0.95, 0.95, 0.94], BL = [0.2, 0.36, 0.66];
+    for (const q of localParts(o)) {
+      const p = q.p, H = q.h, slab = p.length <= 4;
+      b.loft(offset(p, 0.3), 0, offset(p, 0.3), 1.2, [0.5, 0.36, 0.3]);
+      b.loft(offset(p, -0.4), 1.2, offset(p, -0.4), 6, [0.26, 0.32, 0.4], "glow");
+      if (slab) { b.loft(p, 6, p, H, WH, "lit"); cap(b, p, H, [0.7, 0.7, 0.7]); continue; }      // глухие белые торцы-пилоны
+      ribbed(b, p, 6, H - 3, 3.4, 1.5, 0.6, BL, WH, 110 + p.length);
+      band(b, p, 0.4, 6, 0.8, WH); band(b, p, 0.5, H - 3, 3, WH, "lit"); cap(b, p, H, [0.62, 0.62, 0.62]);
+      band(b, p, 0.25, H + 0.6, 0.18, [0.9, 0.95, 1], "cool");                                  // ночная кромка короны
+    }
+  };
+  // Национальная библиотека им. Навои (2012): белый мрамор, высокие синие витражи со стрельчатыми
+  // завершениями между лопатками, скруглённые углы, двойной карниз и бирюзовый стеклянный купол.
+  M.nat_library = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = q.h, WH = [0.96, 0.96, 0.94], BL = [0.18, 0.32, 0.6];
+    b.loft(offset(p, 1.2), 0, offset(p, 1.2), 1.4, [0.82, 0.8, 0.76]); cap(b, offset(p, 1.2), 1.4, [0.82, 0.8, 0.76]); // стилобат
+    ribbed(b, p, 1.4, H - 4, 4.6, 1.8, 0.9, BL, WH, 114);
+    for (let i = 0; i < p.length; i++) { // стрельчатые верхушки витражей
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(L / 4.6)), ry = Math.atan2(-(z1 - z0), x1 - x0);
+      const nx = (z1 - z0) / L, nz = -(x1 - x0) / L;
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n, x = x0 + (x1 - x0) * t + nx * 0.25, z = z0 + (z1 - z0) * t + nz * 0.25;
+        b.box(x, H - 7.5, z, 1.6, 1.4, 0.3, WH, ry); b.box(x, H - 6.1, z, 0.9, 1.0, 0.3, WH, ry); }
+    }
+    band(b, p, 0.6, H - 4, 1.0, WH, "lit"); band(b, p, 0.3, H - 3, 3, WH); band(b, p, 0.8, H, 0.6, WH); cap(b, p, H + 0.6, [0.66, 0.66, 0.64]);
+    const r = Math.sqrt(q.A / Math.PI) * 0.36;
+    b.cyl(q.cx, H + 0.6, q.cz, r + 0.6, 2.4, WH, 24); b.dome(q.cx, H + 3, q.cz, r, [0.45, 0.78, 0.8], { hk: 0.7, seg: 24, tip: false }); to(b, "glow");
+  };
+  // Дворец творчества молодёжи: белый корпус, на скруглённом углу — входная ротонда из высоких
+  // колонн с синим витражом и изогнутым аттиком с надписью; ночью витражи и надпись светятся.
+  M.youth_palace = (b, o) => {
+    const Q = localParts(o), q = Q.reduce((a, v) => (v.A > a.A ? v : a)), p = q.p, H = q.h, WH = [0.96, 0.96, 0.95], BL = [0.2, 0.34, 0.6];
+    b.loft(offset(p, -1.4), 0, offset(p, -1.4), 9.5, BL, "glow");
+    for (let i = 0; i < p.length; i++) { // колоннада по периметру
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(L / 4.2));
+      for (let k = 0; k < n; k++) { const t = k / n; b.cyl(x0 + (x1 - x0) * t, 0, z0 + (z1 - z0) * t, 0.45, 9.5, WH, 10); }
+    }
+    b.loft(p, 9.5, p, H, WH, "lit"); band(b, p, 0.3, 9.5, 0.6, WH); band(b, p, 0.4, H, 0.7, WH); cap(b, p, H + 0.7, [0.7, 0.7, 0.68]);
+    for (const r of Q.filter((v) => v !== q)) { ribbed(b, r.p, 0, r.h, 3, 0.8, 0.4, BL, WH, 115); cap(b, r.p, r.h, [0.7, 0.7, 0.68]); }
+    // надпись на изогнутом аттике входной ротонды (самая «круглая» часть контура — короткие рёбра подряд)
+    let bi = 0, bs = 1e9; for (let i = 0; i < p.length; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < bs && L > 1) { bs = L; bi = i; } }
+    const [mx, mz] = p[bi]; let nx = mx - q.cx, nz = mz - q.cz; const nl = Math.hypot(nx, nz); nx /= nl; nz /= nl;
+    sign(b, "YOSHLAR IJODIYOTI SAROYI", mx + nx * 0.6, H - 4.5, mz + nz * 0.6, nx, nz, 0.14, [0.75, 0.62, 0.32], "glow", 0.1);
+  };
+  // Галерея изобразительного искусства Узбекистана: круглый павильон — белые лопатки, ленты синего
+  // стекла, карниз и рёбристый синий купол; ночью купол подсвечен.
+  M.art_gallery = (b, o) => {
+    const q = localParts(o)[0], p = q.p, R = Math.sqrt(q.A / Math.PI), WH = [0.95, 0.94, 0.9], BL = [0.2, 0.34, 0.62];
+    b.cyl(q.cx, 0, q.cz, R + 2, 0.8, [0.78, 0.76, 0.72], 28);
+    ribbed(b, p, 0.8, 12, 2.2, 0.8, 0.5, BL, WH, 116);
+    band(b, p, 0.5, 12, 1.2, WH, "lit"); cap(b, p, 13.2, [0.7, 0.7, 0.68]);
+    b.cyl(q.cx, 13.2, q.cz, R * 0.8, 1.6, WH, 24);
+    b.dome(q.cx, 14.8, q.cz, R * 0.78, [0.16, 0.42, 0.78], { hk: 0.85, seg: 20, ribs: [0.3, 0.6, 0.9], tip: false }); to(b, "lit");
+    b.cyl(q.cx, 14.8 + R * 0.66, q.cz, 0.8, 1.6, [0.95, 0.85, 0.5], 10);
+  };
+  // Монетный двор Центрального банка: строгий четырёхэтажный корпус из светлого песчаника,
+  // гранитный цоколь, лопатки и ряды окон, тяжёлый карниз.
+  M.mint = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = q.h, ST = [0.86, 0.8, 0.68];
+    b.loft(offset(p, 0.3), 0, offset(p, 0.3), 1.4, [0.46, 0.32, 0.3]);
+    b.winRing(p, 1.4, H - 1.2, ST, 117);
+    pilasters(b, p, 1.4, H - 1.2, 3.6, 0.7, 0.35, [0.9, 0.85, 0.74], "lit");
+    band(b, p, 0.4, H - 1.2, 1.2, [0.92, 0.88, 0.78]); cap(b, p, H, [0.58, 0.56, 0.54]);
+  };
+  // ---------------- Дом печати «Шарк» и УзА (Буюк Турон, 41) ----------------
+  // 20-этажная башня 1970-х: белые бетонные рёбра и ленты синего стекла, наверху — ступенчатый аттик
+  // с рёбрами; у торца — узкая белая башенка-шахта с балконами и часами. Вокруг — типографские корпуса:
+  // светлый травертин с решёткой солнцезащитных рамок, глухой коричневый цех и белый входной павильон
+  // с вывеской «SHARQ». Ночью — окна, часы и вывеска.
+  M.sharq = (b, o) => {
+    const Q = localParts(o), tw = Q.reduce((a, v) => (v.h > a.h ? v : a)), WH = [0.93, 0.93, 0.9], BL = [0.22, 0.36, 0.62];
+    const TRV = [0.86, 0.8, 0.68], BRN = [0.42, 0.3, 0.24];
+    { // башня
+      const p = tw.p, H = tw.h;
+      b.loft(offset(p, -0.5), 0, offset(p, -0.5), 5, [0.28, 0.32, 0.36], "glow");
+      b.winRing(p, 5, H - 6, BL, 118);
+      pilasters(b, p, 5, H - 6, 2.6, 0.9, 0.7, WH, "lit");
+      for (let y = 5; y < H - 6; y += 3.2) band(b, p, 0.25, y, 0.3, WH);
+      band(b, p, 0.3, H - 6, 1.2, WH);
+      b.winRing(offset(p, -1.2), H - 4.8, H, [0.85, 0.86, 0.85], 119); pilasters(b, offset(p, -1.2), H - 4.8, H, 1.4, 0.4, 0.4, WH);
+      cap(b, offset(p, -1.2), H, [0.6, 0.6, 0.6]);
+      // башенка-шахта у дальнего торца (самое длинное ребро → его конец)
+      const f = frame(tw), [sx, sz] = FP(f, f.L / 2 + 2.8, 0);
+      b.box(sx, 0, sz, 4.2, H + 9, 4.2, WH, f.ry); to(b, "lit");
+      for (let y = 8; y < H; y += 6.4) b.box(sx, y, sz, 5.4, 0.35, 5.4, WH, f.ry);              // балконы-полки
+      for (const s of [-1, 1]) { const [cx, cz] = FP(f, f.L / 2 + 2.8, s * 2.15), disc = new THREE.CylinderGeometry(1.4, 1.4, 0.15, 18); disc.rotateX(Math.PI / 2); disc.rotateY(Math.atan2(f.vx * s, f.vz * s)); b.add(disc, [0.96, 0.94, 0.86], cx, H + 5, cz, 0, true); }
+      b.cyl(sx, H + 9, sz, 0.12, 5, [0.8, 0.8, 0.82], 6);
+    }
+    // корпуса типографии
+    const sq = o.local(-860, -50); let ent = null;
+    for (const q of Q) {
+      if (q === tw) continue;
+      const p = q.p, H = q.h, blind = q.h >= 28;
+      if (blind) { b.loft(p, 0, p, H, BRN); band(b, p, 0.2, H - 1.6, 1.6, [0.5, 0.38, 0.3]); cap(b, p, H, [0.42, 0.4, 0.38]); continue; } // глухой цех
+      b.loft(offset(p, 0.25), 0, offset(p, 0.25), 1.0, [0.5, 0.36, 0.3]);
+      b.winRing(p, 1.0, H - 1, TRV, 120);
+      for (let y = 1.0 + 3.2; y < H - 1.2; y += 3.2) band(b, p, 0.55, y, 0.18, [0.92, 0.9, 0.84]);
+      pilasters(b, p, 1.0, H - 1, 1.6, 0.14, 0.55, [0.92, 0.9, 0.84]);                             // решётка солнцезащитных рамок
+      band(b, p, 0.3, H - 1, 1, TRV); cap(b, p, H, [0.56, 0.56, 0.55]);
+      const d = Math.hypot(q.cx - sq[0], q.cz - sq[1]); if (!ent || d < ent.d) ent = { q, d };
+    }
+    if (ent) { // белый входной павильон с вывеской, к стороне музея/улицы
+      const q = ent.q; let best = null;
+      for (let i = 0; i < q.p.length; i++) {
+        const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 14) continue;
+        const ux = (x1 - x0) / L, uz = (z1 - z0) / L, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2; let nx = uz, nz = -ux; if (nx * (q.cx - mx) + nz * (q.cz - mz) > 0) { nx = -nx; nz = -nz; }
+        if (Q.some((o2) => o2 !== q && o2.h > 5 && Math.hypot(o2.cx - mx - nx * 8, o2.cz - mz - nz * 8) < Math.sqrt(o2.A) / 2)) continue;
+        const k = -Math.hypot(sq[0] - mx, sq[1] - mz); if (!best || k > best.k) best = { k, mx, mz, nx, nz, ux, uz };
+      }
+      if (best) {
+        const { mx, mz, nx, nz, ux, uz } = best, ry = Math.atan2(-uz, ux), px = mx + nx * 3.5, pz = mz + nz * 3.5;
+        b.box(px, 0, pz, 16, 6.2, 7, WH, ry); to(b, "lit");
+        b.box(px + nx * 3.55, 0.3, pz + nz * 3.55, 4, 3, 0.1, [0.3, 0.32, 0.3], ry); to(b, "glow");
+        sign(b, "SHARQ", px + nx * 3.6, 4.0, pz + nz * 3.6, nx, nz, 0.22, [0.3, 0.26, 0.2], "glow", 0.08);
+      }
+    }
+  };
+
+  // ---------------- Государственный музей истории Узбекистана (бывший музей Ленина, 1970) ----------------
+  // Белый мраморный куб на стилобате: глухие стены, частые узкие вертикальные рёбра-лопатки с щелями
+  // синеватого стекла, выступающий карниз; в центре — приподнятый световой фонарь над атриумом.
+  // Широкая парадная лестница — ступени из тайла. Ночью рёбра подсвечены снизу.
+  M.history_museum = (b, o) => {
+    const Q = localParts(o), q = Q.reduce((a, v) => (v.A > a.A ? v : a)), core = Q.find((v) => v !== q), p = q.p, H = q.h, WH = [0.95, 0.95, 0.93];
+    b.loft(offset(p, 3), 0, offset(p, 3), 4, [0.78, 0.77, 0.74]); cap(b, offset(p, 3), 4, [0.72, 0.7, 0.68]);   // стилобат
+    b.loft(offset(p, -0.6), 4, offset(p, -0.6), 7, [0.24, 0.28, 0.34], "glow");                                 // остеклённый пояс входа
+    b.winRing(p, 7, H - 2.4, [0.5, 0.58, 0.68], 121);
+    pilasters(b, p, 7, H - 2.4, 1.5, 1.0, 0.5, WH, "lit");
+    band(b, p, 0.9, H - 2.4, 2.4, WH, "lit"); cap(b, p, H, [0.66, 0.66, 0.64]);
+    if (core) { b.winRing(core.p, H, core.h, [0.42, 0.54, 0.66], 122); band(b, core.p, 0.3, core.h, 0.6, WH); cap(b, core.p, core.h + 0.6, [0.6, 0.62, 0.64]); }
+  };
+  // ---------------- Мужская и Женская гимназии (Сайилгох, 35), начало XX века ----------------
+  // Ныне учебные корпуса Юридического университета. Два длинных двухэтажных корпуса из жёлто-
+  // песочного кирпича: рустованный первый этаж с лучковыми окнами, второй — высокие арочные окна
+  // с архивольтами, лопатки, межэтажный пояс, карниз с сухариками, зелёная вальмовая кровля.
+  // Посередине уличного фасада — ризалит с аттиком и входом. Ночью фасады подсвечены тёплым светом.
+  M.gymnasia = (b, o) => {
+    const SAND = [0.82, 0.71, 0.53], LT = [0.9, 0.82, 0.66], DK = [0.66, 0.55, 0.4], GL = [0.2, 0.22, 0.25], FR = [0.92, 0.9, 0.84];
+    const ROOF = [0.37, 0.54, 0.36], H = 10, F1 = 4.6;
+    const hash = (a, c) => { const s = Math.sin(a * 12.9898 + c * 78.233) * 43758.5453; return s - Math.floor(s); };
+    for (const q of localParts(o)) {
+      const f = frame(q), A = f.L / 2, B = f.W / 2, ry = f.ry;
+      const rect = (a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)], r = rect(A, B);
+      b.loft(offset(r, 0.25), 0, offset(r, 0.25), 0.9, DK);                                          // цоколь
+      b.loft(r, 0.9, r, H, SAND, "show");
+      for (let y = 1.4; y < F1 - 0.2; y += 0.55) band(b, r, 0.08, y, 0.12, LT, "show");                 // руст первого этажа
+      band(b, r, 0.25, F1 - 0.2, 0.6, LT, "show"); band(b, r, 0.35, H - 0.9, 0.5, LT, "show"); band(b, r, 0.6, H - 0.4, 0.4, LT); // пояс и карниз
+      b.hip(f.cx, H, f.cz, f.L + 1.4, f.W + 1.4, 4.2, ROOF, ry);
+      // окна по длинным и коротким фасадам
+      for (const [a0, a1, cc, nx, nz] of [[-A, A, -B, -f.vx, -f.vz], [-A, A, B, f.vx, f.vz]]) {
+        const n = Math.round((a1 - a0) / 3.4);
+        for (let k = 0; k < n; k++) {
+          const a = a0 + (a1 - a0) * (k + 0.5) / n, mid = Math.abs(a) < 7;
+          const [x, z] = FP(f, a, cc), px = (d) => [x + nx * d, z + nz * d], lit = hash(a, cc) < 0.45 ? "glow" : null;
+          { const [wx, wz] = px(0.06); b.box(wx, 1.6, wz, 1.3, 2.2, 0.1, GL, ry); if (lit) to(b, lit); }
+          { const [wx, wz] = px(0.12); b.box(wx, 3.8, wz, 1.7, 0.35, 0.16, LT, ry); to(b, "show"); }       // лучковая перемычка
+          { const [wx, wz] = px(0.06); b.box(wx, 5.3, wz, 1.3, 2.6, 0.1, GL, ry); if (lit) to(b, lit);
+            b.box(wx, 7.9, wz, 0.9, 0.35, 0.1, GL, ry); if (lit) to(b, lit); }                              // арочное окно
+          { const [wx, wz] = px(0.14); b.box(wx, 7.9, wz, 1.9, 0.6, 0.2, LT, ry); to(b, "show"); b.box(wx, 5.1, wz, 1.8, 0.18, 0.3, LT, ry); }
+          if (k % 2 === 0 && !mid) { const [lx, lz] = FP(f, a + (a1 - a0) / n / 2, cc); b.box(lx + nx * 0.12, 0.9, lz + nz * 0.12, 0.6, H - 1.4, 0.24, LT, ry); to(b, "show"); } // лопатки
+        }
+        // центральный ризалит с аттиком и входом
+        const [rx, rz] = FP(f, 0, cc);
+        b.box(rx + nx * 0.6, 0, rz + nz * 0.6, 12, H + 0.6, 1.2, SAND, ry); to(b, "show");
+        b.box(rx + nx * 0.9, H + 0.6, rz + nz * 0.9, 9, 1.8, 0.6, LT, ry); to(b, "show");
+        b.box(rx + nx * 0.9, H + 2.4, rz + nz * 0.9, 4, 0.8, 0.6, LT, ry);
+        b.box(rx + nx * 1.25, 0.9, rz + nz * 1.25, 2.2, 3.0, 0.1, [0.32, 0.22, 0.16], ry);                 // дверь
+        b.box(rx + nx * 1.9, 3.2, rz + nz * 1.9, 4.2, 0.25, 1.6, FR, ry);                                 // козырёк
+        b.box(rx + nx * 2.2, 0, rz + nz * 2.2, 5, 0.45, 2.2, DK, ry);
+      }
+      for (const s of [-1, 1]) { // торцы: по два окна в этаж
+        const [x, z] = FP(f, s * A, 0), nx = f.ux * s, nz = f.uz * s, rr = ry + Math.PI / 2;
+        for (const c of [-B * 0.45, B * 0.45]) { const wx = x + nx * 0.06 + f.vx * c, wz = z + nz * 0.06 + f.vz * c;
+          b.box(wx, 1.6, wz, 1.3, 2.2, 0.1, GL, rr); b.box(wx, 5.3, wz, 1.3, 2.9, 0.1, GL, rr); }
+      }
+    }
+  };
+  // ---------------- квартал на ул. Бухоро к югу от сквера Амира Темура ----------------
+  // Республиканская фондовая биржа «Тошкент» (Бухоро, 10): бежевый камень, огромный стрельчатый
+  // портал с витражом между коричневыми резными панелями, бирюзовый рёбристый купол с фонарём.
+  // Офис Beeline (Бухоро, 1): ленты тёмного стекла, белые пояса, жёлтая полоса и вывеска.
+  // «Узавтосаноат» (Амира Темура, 13): синий стеклянный фасад в белой раме, вывеска.
+  // Новые 18–20-этажные башни: светлый камень, остеклённые эркеры, балконные пояса, корона.
+  // Остальные — административные корпуса 1970-х: травертин, лопатки, ленточные окна, карниз.
+  M.buxoro = (b, o) => {
+    const Q = localParts(o), at = (wx, wz) => { const [x, z] = o.local(wx, wz); return Q.reduce((a, q) => (Math.hypot(q.cx - x, q.cz - z) < Math.hypot(a.cx - x, a.cz - z) ? q : a)); };
+    const domeB = at(-204, 227), lant = Q.find((q) => q !== domeB && Math.hypot(q.cx - domeB.cx, q.cz - domeB.cz) < 4);
+    const beel = at(-162, 316), avto = at(-140, 562), towers = [at(-350, 196), at(-291, 215), at(-264, 191), at(-311, 173), at(-263, 215)];
+    const STONE = [0.86, 0.8, 0.68], TRV = [0.88, 0.84, 0.74], WH = [0.95, 0.95, 0.93];
+    const front = (q, wx, wz) => { // ребро контура, обращённое к точке (для вывесок)
+      const [tx, tz] = o.local(wx, wz); let best = null;
+      for (let i = 0; i < q.p.length; i++) {
+        const [x0, z0] = q.p[i], [x1, z1] = q.p[(i + 1) % q.p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 8) continue;
+        const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2; let nx = (z1 - z0) / L, nz = -(x1 - x0) / L; if (nx * (q.cx - mx) + nz * (q.cz - mz) > 0) { nx = -nx; nz = -nz; }
+        const k = (nx * (tx - mx) + nz * (tz - mz)) / (Math.hypot(tx - mx, tz - mz) || 1); if (!best || k > best.k) best = { k, mx, mz, nx, nz, L, ux: (x1 - x0) / L, uz: (z1 - z0) / L };
+      }
+      return best;
+    };
+    for (const q of Q) {
+      if (q === lant) continue;
+      const p = q.p, H = q.h;
+      if (q === domeB) { // биржа: квадратный корпус вокруг купола
+        const R = Math.sqrt(q.A / Math.PI), [tx0, tz0] = o.local(-206, 290), dl = Math.hypot(tx0 - q.cx, tz0 - q.cz), e = { nx: (tx0 - q.cx) / dl, nz: (tz0 - q.cz) / dl }; e.ux = -e.nz; e.uz = e.nx; const ry = Math.atan2(-e.uz, e.ux), S = R + 6;
+        const sq = [[q.cx - S, q.cz - S], [q.cx + S, q.cz - S], [q.cx + S, q.cz + S], [q.cx - S, q.cz + S]].map(([x, z]) => { const dx = x - q.cx, dz = z - q.cz, c = Math.cos(-ry), s = Math.sin(-ry); return [q.cx + dx * c - dz * s, q.cz + dx * s + dz * c]; });
+        b.winRing(sq, 0, 11, STONE, 123); pilasters(b, sq, 0, 11, 4.4, 1.0, 0.4, [0.9, 0.85, 0.74]);
+        band(b, sq, 0.4, 11, 1.4, [0.9, 0.85, 0.74], "lit"); cap(b, sq, 12.4, [0.6, 0.58, 0.55]);
+        const fx = q.cx + e.nx * (S + 1.2), fz = q.cz + e.nz * (S + 1.2);
+        b.box(fx, 0, fz, 16, 14.5, 2.4, STONE, ry); to(b, "lit");                                                    // портал-пештак
+        b.box(fx + e.nx * 1.25, 0.4, fz + e.nz * 1.25, 7, 8.5, 0.1, [0.22, 0.3, 0.36], ry); to(b, "glow");
+        for (let k = 1; k <= 4; k++) { b.box(fx + e.nx * 1.25, 8.9 + (k - 1) * 0.8, fz + e.nz * 1.25, 7 * (1 - k * 0.2), 0.8, 0.1, [0.22, 0.3, 0.36], ry); to(b, "glow"); }
+        for (const s of [-1, 1]) b.box(fx + e.ux * s * 5.6 + e.nx * 1.25, 1.5, fz + e.uz * s * 5.6 + e.nz * 1.25, 3, 10, 0.12, [0.5, 0.34, 0.22], ry); // резные панели
+        sign(b, "TOSHKENT", fx + e.nx * 1.3, 12.3, fz + e.nz * 1.3, e.nx, e.nz, 0.2, [0.95, 0.78, 0.35], "glow", 0.1);
+        b.cyl(q.cx, 12.4, q.cz, R * 0.62, 2.2, STONE, 24);
+        b.dome(q.cx, 14.6, q.cz, R * 0.6, [0.3, 0.72, 0.8], { hk: 0.7, seg: 24, ribs: [0.22, 0.6, 0.7], tip: false }); to(b, "lit");
+        b.cyl(q.cx, 14.6 + R * 0.42, q.cz, 1.6, 2.6, [0.4, 0.75, 0.82], 12); b.cyl(q.cx, 17.2 + R * 0.42, q.cz, 0.3, 2.2, [0.9, 0.75, 0.35], 6);
+        continue;
+      }
+      if (q === beel) {
+        b.winRing(p, 0, H - 1, [0.24, 0.28, 0.32], 124);
+        for (let y = 4; y < H - 1; y += 3.4) band(b, p, 0.2, y, 0.7, WH);
+        band(b, p, 0.25, H - 1, 1.2, WH); cap(b, p, H + 0.2, [0.55, 0.55, 0.55]);
+        band(b, p, 0.3, 3.2, 0.6, [1, 0.8, 0.1], "neon");                                                           // жёлтая полоса
+        const e = front(q, -170, 260); sign(b, "BEELINE", e.mx + e.nx * 0.4, H - 0.8, e.mz + e.nz * 0.4, e.nx, e.nz, 0.3, [1, 0.82, 0.1], "neon", 0.1);
+        continue;
+      }
+      if (q === avto) {
+        b.loft(offset(p, -0.4), 0, offset(p, -0.4), 4.5, [0.26, 0.3, 0.36], "glow");
+        b.winRing(p, 4.5, H - 1.5, [0.3, 0.45, 0.66], 125); pilasters(b, p, 4.5, H - 1.5, 6, 0.6, 0.4, WH);
+        band(b, p, 0.3, 4.5, 0.6, WH); band(b, p, 0.35, H - 1.5, 1.5, WH, "lit"); cap(b, p, H, [0.55, 0.56, 0.58]);
+        const e = front(q, -60, 540); sign(b, "UZAVTOSANOAT", e.mx + e.nx * 0.4, H - 1.3, e.mz + e.nz * 0.4, e.nx, e.nz, 0.16, [0.2, 0.35, 0.7], "neon", 0.08);
+        continue;
+      }
+      if (towers.includes(q)) {
+        const tall = H > 30;
+        b.loft(offset(p, -0.4), 0, offset(p, -0.4), 5, [0.28, 0.32, 0.34], "glow");
+        b.winRing(p, 5, H - (tall ? 3 : 1), [0.82, 0.78, 0.7], 126 + Math.round(H));
+        pilasters(b, p, 5, H - (tall ? 3 : 1), 7.5, 2.6, 0.9, [0.4, 0.5, 0.58]);                                    // остеклённые эркеры
+        for (let y = 5 + 3.1; y < H - 3; y += 3.1) band(b, p, 0.5, y, 0.25, WH);                                       // балконные пояса
+        band(b, p, 0.3, H - (tall ? 3 : 1), tall ? 3 : 1, WH, "lit"); cap(b, p, H, [0.6, 0.6, 0.6]);
+        if (tall) band(b, p, 0.2, H + 0.2, 0.25, [0.9, 0.95, 1], "cool");
+        continue;
+      }
+      // административные корпуса 1970-х
+      b.loft(offset(p, 0.25), 0, offset(p, 0.25), 1.0, [0.5, 0.42, 0.38]);
+      b.winRing(p, 1.0, H - 1.3, TRV, 127);
+      pilasters(b, p, 1.0, H - 1.3, 3.3, 0.5, 0.45, [0.92, 0.89, 0.8]);
+      for (let y = 1.0 + 3.3; y < H - 1.5; y += 3.3) band(b, p, 0.3, y - 0.2, 0.3, [0.92, 0.89, 0.8]);
+      band(b, p, 0.45, H - 1.3, 1.3, [0.92, 0.89, 0.8], "lit"); cap(b, p, H, [0.56, 0.56, 0.55]);
+    }
+  };
+  // ---------------- бывший Ташкентский кадетский корпус (1902–1904), ныне Академия вооружённых сил ----------------
+  // Двухэтажное здание из красного жжёного кирпича в «кирпичном стиле»: цоколь из серого камня,
+  // лопатки, высокие окна с лучковыми перемычками, фигурный карниз с поясом кирпичных сухариков,
+  // зубчатый парапет и тёмная железная кровля. На середине главного (самого длинного) фасада —
+  // ризалит с восьмериком и зелёным куполом (без креста — здание военной академии).
+  M.cadet_corps = (b, o) => {
+    const q = localParts(o)[0], p = q.p, n = p.length, H = q.h;
+    const BRK = [0.62, 0.3, 0.24], BRK2 = [0.52, 0.24, 0.19], LT = [0.74, 0.4, 0.32], STN = [0.56, 0.55, 0.52], ROOF = [0.34, 0.36, 0.36];
+    b.loft(offset(p, 0.25), 0, offset(p, 0.25), 1.2, STN);
+    b.winRing(p, 1.2, H - 1.6, BRK, 128);
+    pilasters(b, p, 1.2, H - 1.6, 4.2, 0.6, 0.3, BRK2, "show");
+    band(b, p, 0.2, 5.4, 0.35, LT, "show");                                                          // межэтажный пояс
+    band(b, p, 0.3, H - 1.6, 0.5, LT, "show"); band(b, p, 0.45, H - 1.1, 0.35, BRK2); band(b, p, 0.6, H - 0.75, 0.4, LT, "show"); // карниз
+    b.loft(p, H - 0.35, p, H + 0.6, BRK); cap(b, offset(p, -0.3), H + 0.1, ROOF);
+    for (let i = 0; i < n; i++) { // зубцы парапета на углах
+      const [x, z] = p[i]; b.box(x, H - 0.3, z, 1.0, 1.9, 1.0, BRK2); b.box(x, H + 1.6, z, 1.2, 0.25, 1.2, LT);
+    }
+    // ризалит с церковью — по середине самого длинного ребра
+    const [sx, sz] = o.local(2494, -828); let bi = 0, bl = 0, bk = -1e9;   // главный фасад — к плацу
+    for (let i = 0; i < n; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % n], L = Math.hypot(x1 - x0, z1 - z0); if (L < 30) continue;
+      const k = -Math.hypot(sx - (x0 + x1) / 2, sz - (z0 + z1) / 2); if (k > bk) { bk = k; bl = L; bi = i; } }
+    const [x0, z0] = p[bi], [x1, z1] = p[(bi + 1) % n], ux = (x1 - x0) / bl, uz = (z1 - z0) / bl;
+    let nx = uz, nz = -ux; if (nx * (q.cx - (x0 + x1) / 2) + nz * (q.cz - (z0 + z1) / 2) > 0) { nx = -nx; nz = -nz; }
+    const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, ry = Math.atan2(-uz, ux);
+    b.box(mx + nx * 0.9, 0, mz + nz * 0.9, 16, H + 2.6, 2.2, BRK, ry); to(b, "show");
+    b.box(mx + nx * 1.9, H + 2.6, mz + nz * 1.9, 8, 2.4, 0.4, BRK, ry);                           // фронтон-аттик
+    b.box(mx + nx * 2.05, 0.4, mz + nz * 2.05, 3.2, 4.2, 0.1, [0.3, 0.2, 0.16], ry);                // вход
+    for (const s of [-1, 1]) b.box(mx + ux * s * 7 + nx * 2.1, 0, mz + uz * s * 7 + nz * 2.1, 1.2, H + 3.2, 1.2, BRK2, ry); // угловые лопатки
+    const cx = mx - nx * 6, cz = mz - nz * 6;
+    b.cyl(cx, H, cz, 4.6, 5.0, BRK, 8); b.cyl(cx, H + 5, cz, 4.9, 0.5, LT, 8);
+    for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2; b.box(cx + Math.cos(a) * 4.62, H + 1.4, cz + Math.sin(a) * 4.62, 0.9, 2.6, 0.1, [0.26, 0.28, 0.3], -a + Math.PI / 2); to(b, "glow"); }
+    b.dome(cx, H + 5.5, cz, 4.3, [0.3, 0.5, 0.4], { hk: 1.1, seg: 16, tip: false }); to(b, "lit");
+    b.cyl(cx, H + 10, cz, 0.7, 1.6, [0.3, 0.5, 0.4], 8);                                              // фонарик-главка без креста
   };
 })();
