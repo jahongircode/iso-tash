@@ -14,75 +14,40 @@
 
 # iso-tash — Tashkent Pixel Map
 
-A living isometric pixel-art map of the whole of Tashkent. The city is rendered as a real-time **WebGL 2** scene with **three.js**. A custom post-processing shader gives the scene its pixel-art look:
+A living isometric pixel-art map of Tashkent, Uzbekistan. Explore the city as a real-time **WebGL 2** scene powered by **three.js**, with a custom shader that adds pixel-art colours, dithering and depth outlines.
 
-- dark outlines on depth edges;
-- a limited palette with ordered dithering;
-- a camera snapped to the pixel grid, so panning does not shimmer;
-- a real sun with shadows and a day/night cycle that follows Tashkent time.
-
-Every building, road, park, river and tree comes from OpenStreetMap. The data is pre-baked into compact files that ship with the site, so the map works offline and loads fast.
-
-## Contents
-
-- [Features](#features)
-- [Performance: levels of detail](#performance-levels-of-detail)
-- [Running](#running)
-- [Controls](#controls)
-- [Project structure](#project-structure)
-- [Rebaking the data](#rebaking-the-data)
-- [Limitations](#limitations)
-- [Credits and licences](#credits-and-licences)
+Buildings, roads, parks, waterways and trees are derived from OpenStreetMap and delivered as pre-baked city tiles. The map runs locally in your browser; an internet connection is only needed for external photos, fonts and map links.
 
 ## Features
 
-- **The whole city.** About 390,000 OSM buildings with heights, windows and roof shapes (hipped and gabled roofs in the mahallas, domes on mosques). Roads have sidewalks and lane markings, and there are rails, canals, parks and about 3 million trees whose colours change with the season.
-- **A living world.** Cars brake at about 2,000 real traffic lights from OSM. Street lamps and windows light up at night, the Ferris wheel turns, and construction cranes rotate. Cars (sedans, hatchbacks, SUVs, Damas vans) follow each other with smooth acceleration and braking, slow down for turns, take turns at unsignalled junctions and never drive into each other. Traffic thins out at night; buses and marshrutkas run from about 5:30 to 23:30.
-- **28 landmarks with hand-built 3D models** placed on their real OSM footprints: Chorsu Bazaar, Kukeldash Madrasa, Hazrati Imam, NestOne, Hilton Tashkent City, Tashkent City Mall, the TV Tower, Romanov Palace, Magic City, Independence Square, Minor Mosque, Pakhtakor, Humo Arena, Milliy Stadium and more. Click one to fly there and open an info card. The card has a Wikimedia Commons photo credited to its author and licence, facts, tips and links to Google Maps.
-- **Friendship of Peoples Palace and its square.** The 1981 palace has its colonnade of white pylons with lattice screens and a crown of hexagonal capitals with lamps underneath. The square in front has a tall flagpole with a waving Uzbek flag and the memorial to the Shomahmudov family, lit warm at night.
-- **Stadiums matched against photos.** Pakhtakor has its sunken blue-and-yellow bowl, light-blue track and four lattice floodlight masts. Humo Arena has a flared media façade that glows violet at night. Milliy has its crown of white membrane "petals". All other OSM stadiums are drawn as stepped bowls with marked pitches.
-- **Detailed landmark models matched against photos.** NestOne is four stepped volumes around a core with a spire and orange stripes, and its edges glow at night. The TV Tower has three curved fin legs, a lattice shaft, two observation pods and a red-and-white antenna. Minor Mosque has white marble, turquoise friezes, a blue dome and two 56 m minarets. Romanov Palace, Magic City, Independence Square, Hilton and Tashkent City Mall were rebuilt the same way.
-- **Multi-level roads.** OSM bridges and flyovers rise above the ground on smooth ramps, with deck sides, parapets and pillars. Tunnels dip below ground with walled ramps and portals, and cars drive down into them. Each road class sits at its own height, and markings skip junctions, so roads no longer overlap. Bridges and flyovers are solid 3D structures: a thick deck with a girder underneath, concrete parapets, hammerhead piers, and retaining walls where the ramps meet the ground. The elevated metro runs on a box-girder viaduct, and tracks lie on a ballast bed. Tunnel approach walls rise as the road goes down.
-- **Railways and metro.** Where the metro comes up to cross a canal (by the TV Tower, at the Ankhor and at the Salar), it runs in a covered concrete gallery with a skylight, and enters the ground through a portal under a grassy mound. Dead-end sidings and depot tracks end in red-and-white buffer stops.
-- **Sports grounds.** About 1,450 football pitches between apartment blocks, tennis, basketball and volleyball courts from OSM, with the right surface (artificial turf, clay, hard court), markings, goals, nets, hoops and chain-link fences. Courts checked against satellite imagery are corrected in `tools/bake/pitches_extra.json` (for example the clay courts of the Yunusabad complex under the TV Tower).
-- **Public transport.** Long green articulated buses, regular green buses and white Gazelle minibuses (marshrutkas) run on major roads in the outer lane and stop at bus stops.
-- **Notable residential towers.** U-Tower, Modera Towers (two white-ribbed towers on Shota Rustaveli street, one with a slanted crown and one with a pointed two-leaf crown, on a podium with the MODERA sign; lilac edge lighting at night), Mirabad Avenue, the Kazakhstan complex, NRG Oybek, Xon Saroy Sayram, the experimental Zhemchug (Pearl) house the National Bank (NBU) tower Tashkent International Airport (terminal, control tower and parked Uzbekistan Airways airliners), Piramit Tower with its diagrid, the Uzbekistan Banking Association tower, the International Business Center, the Oliy Majlis Legislative Chamber and the Tashkent City bank towers (SQB, BoMI, Asaka Bank, Aloqa Bank), the IT Park Uzbekistan campus (two pairs of 94 m mirror-glass towers on curved podiums with white canopies, IT PARK / UZBEKISTAN lettering and the green logo, a row of flags on the plaza, and the second-phase 72 m towers and round congress hall), the Center for Islamic Civilization by Hazrati Imam (cross-plan marble block around four garden courtyards, four tiled pishtaq portals with guldasta minarets, the 37.7 m Ulugbek Portal facing the square, and the 65 m turquoise dome), both sides of Hamid Olimjon square (twin ensembles of four white 18-storey towers with lace-like crenellated crowns and a curved arcaded podium with a media facade; at night the floor bands run through the colour spectrum, the crowns glow warm and the podium shows a blue-violet LED wave), the "infinity sign" cable-stayed footbridge over the Ankhor canal at Navruz park (a white A-shaped pylon standing in the canal, a fan of 24 stays, a straight upper deck and two looping ramps that pass low over the water; at night the deck edges glow with white LED strips, the stays sparkle with blue-violet light beads and the pylon is floodlit), the Trilliant business park on Shahrisabz street (a blue-glass office tower with a glass crown, an office tower with champagne fins rising above the roof and the 17-storey InterContinental hotel with a golden grid and signage, all on a podium with bronze louvres; at night warm 3000K lines glow in the hotel louvres and the office crowns and corners are edge-lit), the historic brick building of Westminster International University on Istiqbol street (a red granite plinth, lesenes and cross-pattern belts, arched ground-floor windows, a stepped cornice with brick posts and a wrought-iron rail, a clock tower on the corner and an arched entrance porch; floodlit warm at night), and Tashkent railway station (a pishtaq portal with a pointed arch, carved girih panels and the VOKZAL sign, colonnaded wings with blue glazing and TOSHKENT signs, plus a Talgo 250 Afrosiyob high-speed train standing at the covered platform; at night the glazing glows and the signs shine blue), the former Uzbekenergo building on Istiqlol street by Amir Temur square (a 1970s modernist comb block behind a sun-shading grid of ledges and fins, a blue entrance portal with the O'ZBEKENERGO AJ sign and a fountain in front), the City Palace hotel (a teal glass sawtooth tower with white ribs that glow at night, a glass-domed restaurant and a green curved portico) and the Hyatt Regency Tashkent (white stone with full-height blue glazing strips, corner pylons with the HYATT logo and a colonnaded banquet wing), and the quarter by the Romanov Palace: the Poytaxt business centre (white towers with blue glass strips), the Alisher Navoi National Library (white marble, tall blue windows, turquoise glass dome), the Palace of Youth Creativity (white colonnade and curved entrance), the Fine Arts Gallery (a round pavilion with a ribbed blue dome) and the Central Bank Mint, the Sharq press house and UzA tower on Buyuk Turon street (white ribs and blue glass, a slender clock shaft, travertine printing blocks with a sun-shading grid and the SHARQ entrance pavilion) and the State Museum of History of Uzbekistan (the former Lenin Museum: a white marble cube of narrow fins on a stylobate), the former Men's and Women's Gymnasiums on Sayilgoh street, now Tashkent State University of Law (sand-coloured brick, rusticated ground floor, arched upper windows, central risalits and green hipped roofs; floodlit warm at night), and the Buxoro street quarter south of Amir Temur square (the Toshkent stock exchange with its pointed-arch portal and turquoise dome, the Beeline office with a yellow band and sign, the blue-glass Uzavtosanoat building, new 18-20-storey towers with glazed bays and the surrounding 1970s travertine office blocks), and the former Tashkent Cadet Corps (1902-1904, now the Armed Forces Academy on Parkent street: red brick with lesenes, segmental windows, a corbelled cornice with corner merlons and a green dome over the main front), and the JW Marriott Tashkent in Tashkent City (a 128 m dark-blue glass tower whose base flows out in curved silver louvres into the entrance canopy with the JW MARRIOTT sign; blue edge lines and warm-lit louvres at night) have detailed models built on their real OSM footprints. They are part of the city, not entries in the places list.
-- **Night lighting.** Hilton, Tashkent City Mall and Nest One have neon strips that cycle through the colours of the Uzbek flag. The TV Tower is floodlit in warm gold at night, with cool-white lights twinkling along the shaft and pods.
-- **Terrain relief.** The ground follows the real relief of the city from a 50 m elevation grid (SRTM): the valleys of the Bozsu, Ankhor and Salar canals, the terraces of the Chirchik and the hills read as slopes with hill shading. Local relief is exaggerated ×3 so it shows on mostly flat Tashkent; the overall slope of the city is kept as is. Roads, water and parks lie on the terrain, buildings and landmark models stand on it with a plinth on slopes, bridge decks run straight from bank to bank over the valleys, and cars drive up and down the slopes. Canals and rivers flow in concrete channels 2–3 m below the embankment (ponds about 1 m), with sloped walls, a wet strip at the waterline and a light kerb along the top; bridge piers go down to the water.
-- **Detailed roads and real crosswalks.** Roads have light kerbs, a darker gutter strip along the kerb and solid white edge lines on main roads, all breaking at junctions. About 5,000 pedestrian crossings come from OSM (`highway=crossing`: zebra, signalled and marked; unmarked ones are skipped) and are drawn as zebras across the nearest road, with stop lines in front of signalled crossings.
-- **Green mahallas.** Every private house sits in its own garden plot (hovli) with grass and the odd vegetable bed, and every tree has a patch of lawn under its crown, so old-city quarters read green instead of bare ground at every zoom level, including the far-view texture.
-- **Minimap** (top right), with a frame showing the current view.
-- **"Where am I" box** (top left), showing the mahalla or quarter, district and city.
-- **Guided tour**, a time-of-day switch (auto, day, night, cycle) and quality presets.
+- **A city at full scale.** Around 390,000 buildings, millions of trees, detailed roads, canals, parks, railways and sports grounds.
+- **Landmarks you can explore.** 28 hand-built landmark models sit on their real map footprints, including the TV Tower, Chorsu Bazaar, Hazrati Imam, NestOne, Hilton Tashkent City, Humo Arena and more. Select a landmark to fly to it and open a card with facts, links and an attributed photo.
+- **A working transport network.** Cars follow the road graph, react to roughly 2,000 mapped traffic lights and handle turns and junctions. Buses and marshrutkas serve major roads; metro and railway infrastructure is represented across the city.
+- **Real streets and terrain.** Bridges, flyovers and tunnels follow their mapped routes. The scene includes elevated metro sections, pedestrian crossings, canals and terrain shaped by elevation data.
+- **A city that feels alive.** Windows and street lamps light up at night, trees change with the season, traffic thins after dark, and selected landmarks have custom night lighting and moving details.
+- **Easy exploration.** Use the minimap, location panel, guided tour and day/night or quality controls to move around the city.
 
-## Performance: levels of detail
+## Performance
 
-The map is built to run on weak devices. It uses the same LOD techniques as games:
+The renderer uses multiple levels of detail (LOD) to keep a city-sized scene responsive:
 
-| Zoom | What is drawn |
+| View | Rendering |
 |---|---|
-| Close | Full 3D with real-time shadows, including tree shadows |
-| Mid | Low-poly tree crowns (8 triangles instead of about 30); shadows switch off |
-| Far | Each tile is one pre-drawn texture (an impostor) holding ground, roads, water, tree crowns and low roofs. Shadows come from a height map. Only tall buildings and landmarks stay 3D. |
+| Close | Detailed geometry and real-time shadows |
+| Mid | Simplified tree crowns; shadows are reduced |
+| Far | Pre-rendered tile textures for ground, roads, water and low vegetation; tall buildings and landmarks remain 3D |
 
-Impostor textures are rasterised in a Web Worker with OffscreenCanvas. Levels switch with hysteresis, and the previous level stays visible until the next one is ready, so zooming never shows holes.
+Tiles are loaded only when visible. Web Workers decode tile data and build geometry; OffscreenCanvas rasterises far-view textures. Instancing, merged meshes, frustum culling and quality presets help reduce GPU and CPU work.
 
-At far zoom, triangles dropped from about 15.5 million to about 0.3 million per frame, roughly 40 times fewer. This was measured at 1600×900 on the highest preset.
+At far zoom, the project reports reducing the scene from roughly 15.5 million to 0.3 million triangles per frame (about 40× fewer), measured at 1600×900 on the highest preset.
 
-Other optimisations:
+## Getting started
 
-- **Cells inside tiles:** the worker sorts each tile's triangles into a 5 × 5 grid of ~370 m cells and sends a table of cell ranges and bounding spheres; trees are split into the same cells. Each cell is its own mesh, so three.js skips cells outside the view and outside the shadow camera instead of drawing the whole 1.8 km tile. Close up this cut the load from about 6 million to about 0.8 million triangles per frame. The worker also precomputes tree heights and lone-tree flags, so adding a tile takes ~20 ms on the main thread instead of ~100 ms.
-- **Tiles:** the city is split into 651 pre-baked tiles of about 1.8 × 1.8 km each. They are binary, use varint and delta encoding, and are deflate-compressed. Only visible tiles load, nearest first.
-- **Background work:** tiles are decoded and built into geometry in Web Workers. Meshes are uploaded to the GPU with a per-frame time budget, so loading doesn't stutter.
-- **Rendering:** each tile is a few large merged meshes. Trees, cars and traffic lights use instancing.
-- **Memory:** unused tiles and unused detail levels are unloaded.
-- **Quality presets:** "Eco", "Normal" and "Max". They set pixel size, FPS, shadows, the number of cars, tile limits and impostor resolution. "Auto" picks one for the device.
+1. Clone or download the repository.
+2. Open `index.html` in a WebGL 2-capable browser.
+3. Or run `start-server.bat` to start a local static server (requires Python 3).
 
-## Running
-
-Open `index.html` in a browser. It works straight from disk via `file://`. You can also run `start-server.bat`, which needs Python 3, or any static web server.
-
-You need a browser with WebGL 2: a recent Chrome, Edge, Firefox or Safari. The internet is only needed for card photos, fonts and Google Maps links.
+Recent versions of Chrome, Edge, Firefox or Safari are recommended. The map itself works from local files; external photos, fonts and Google Maps links require internet access.
 
 ## Controls
 
@@ -90,77 +55,43 @@ You need a browser with WebGL 2: a recent Chrome, Edge, Firefox or Safari. The i
 |---|---|---|
 | Pan | Drag | WASD / arrow keys |
 | Zoom | Wheel / pinch, double-click | `+` / `−` |
-| Rotate 90° | ⟲ ⟳ buttons | `Q` / `E` |
+| Rotate 90° | On-screen buttons | `Q` / `E` |
 | Open a landmark | Click its model, label or list item | — |
 | Close panels | — | `Esc` |
 
 ## Project structure
 
 ```
-index.html, css/style.css
-js/config.js        settings and quality presets
-js/terrain.js       elevation grid: height lookups for the camera, trees, models and cars
-js/scene.js         camera, pixel-art post shader, lighting, input
-js/geo-worker.js    worker: tile decoding → 3D geometry, far-LOD impostor raster
-js/tiles.js         tile loading/unloading, LOD switching, materials, trees
-js/models.js        landmark model builder, stadiums
-js/models-detail.js detailed landmark models
-js/models-decor.js  detailed residential towers (no info cards)
-js/traffic.js       road graph, cars, traffic lights
-js/city.js          day/night, frame loop
-js/landmarks.js     landmark texts
-js/ui.js, areas.js, minimap.js, photos.js, data.js, main.js
-lib/                three.js r149, earcut 2.2.4
-data/t/X_Y.js       pre-baked city tiles
-data/               index, landmark placement, districts, minimap, terrain (elevation grid)
-tools/bake/         data baking scripts (Python 3 + numpy + Pillow)
+index.html, css/style.css   app entry point and styles
+js/scene.js                 camera, lighting and pixel-art shader
+js/geo-worker.js            tile decoding and far-LOD textures
+js/tiles.js                 tile loading, LOD and rendering
+js/models*.js               landmark, stadium and tower models
+js/traffic.js                road graph, vehicles and traffic lights
+js/city.js, js/ui.js         scene loop, city state and interface
+lib/                         three.js r149, earcut 2.2.4
+data/                        pre-baked city tiles and map metadata
+tools/bake/                  Python data preparation scripts
 ```
 
-## Rebaking the data
+## Updating map data
 
-To refresh the map from OSM, for example once more of New Tashkent is mapped, run:
-
-```
-python tools/bake/fetch_tiles.py raw        # vector tiles: land, roads, water, places
-python tools/bake/fetch_osm.py osm/bld      # all OSM buildings (Overpass)
-python tools/bake/fetch_extra.py osm        # traffic lights, trees, district boundaries
-python tools/bake/bake.py raw osm data      # build data/
-python tools/bake/seams.py data             # bridge/tunnel heights across tile edges
-python tools/bake/pitches.py fetch osm/pitches.json   # pitches and courts (Overpass)
-python tools/bake/pitches.py bake osm/pitches.json data
-python tools/bake/greenery.py data           # once: drop trees clipping buildings, plant yards, parks, vacant lots
-python tools/bake/greenery.py data --yards   # once: dense microdistrict yards around 3+ storey blocks
-python tools/bake/botanic.py data          # botanical garden: arboretum zones, species trees, hides OSM boxes under garden models
-python tools/bake/patches.py data          # spot fixes from satellite/panoramas (land class, building colours, stray trees)
-python tools/bake/terrain.py data          # elevation grid from Terrain Tiles (SRTM) -> data/terrain.js
-python tools/bake/crossings.py fetch osm/crossings.json   # pedestrian crossings (Overpass)
-python tools/bake/crossings.py bake osm/crossings.json data
-```
-
-Landmark placement is defined in `tools/bake/landmarks_spec.json`.
-
-Default wall and roof colours (used when OSM has no `building:colour` / `roof:colour`) live in `tools/bake/palette.py`. Roof colours were sampled from satellite imagery of the old-city mahallas, Chilanzar panel blocks and the centre. To apply a changed palette to the already baked tiles without re-downloading OSM, run:
-
-```
-python tools/bake/recolor.py data
-```
+The city data is baked from OpenStreetMap, vector tiles and elevation sources. The scripts in `tools/bake/` fetch source data, build the tile dataset and apply specialised passes for roads, greenery, pitches, crossings and terrain. Landmark placement is maintained in `tools/bake/landmarks_spec.json`; default building and roof colours are in `tools/bake/palette.py`.
 
 ## Limitations
 
-- Tashkent has no open LoD2 building models, so ordinary houses are generated from their OSM footprints and a set of rules. Where OSM has no height or levels, the height is estimated.
-- New Tashkent is still mostly empty in OSM.
-- Opening hours and prices on the cards change over time and may be out of date.
+- Ordinary buildings are generated from OSM footprints and tags; heights may be estimated where source data is missing.
+- New Tashkent is still sparsely mapped in OpenStreetMap.
+- Opening hours and prices shown on information cards may become outdated.
 
 ## Credits and licences
 
-The original iso-tash application source code is licensed under the MIT License. See [LICENSE](LICENSE). This applies to original project code and artwork only; it does not replace the separate licences for third-party components or source datasets.
+The original iso-tash application source code is licensed under the [MIT License](LICENSE). This does not change the licences of third-party software or source data.
 
 - Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), licensed under ODbL 1.0. OSM-derived datasets remain under ODbL.
-- Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema).
-- Buildings, traffic lights, trees and boundaries: Overpass API (maps.mail.ru mirror).
-- Elevation: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) on the AWS Open Data Registry (Terrarium format, originally made by Mapzen / [Tilezen](https://github.com/tilezen/joerd)). In the Tashkent area they come from SRTM (NASA/USGS, public domain); lower zooms also use GMTED2010 (USGS) and ETOPO1 (NOAA). See the [Terrain Tiles attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
-- [three.js](https://threejs.org) is MIT-licensed; [earcut](https://github.com/mapbox/earcut) is ISC-licensed. Their original notices remain applicable.
-- Model references: photos on Wikimedia Commons and Wikipedia are used only as references and are not shipped.
-- Card photos: Wikimedia Commons and Wikipedia; the author and licence are shown under each photo.
-- Fonts: Inter, Pixelify Sans and Press Start 2P (Google Fonts, OFL).
-- Style reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
+- Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema); buildings, trees, traffic lights and boundaries are sourced through the Overpass API (maps.mail.ru mirror).
+- Elevation: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) from the AWS Open Data Registry. Tashkent-area data includes SRTM (NASA/USGS); lower zooms also use GMTED2010 (USGS) and ETOPO1 (NOAA). See [Tilezen attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
+- [three.js](https://threejs.org) is MIT-licensed; [earcut](https://github.com/mapbox/earcut) is ISC-licensed. Their notices remain applicable.
+- Landmark reference and card photos: Wikimedia Commons and Wikipedia; photo authors and licences are shown with the images.
+- Fonts: Inter, Pixelify Sans and Press Start 2P (SIL Open Font License).
+- Visual reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
