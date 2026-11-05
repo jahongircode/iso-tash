@@ -19,6 +19,10 @@
 //  квартал на ул. Бухоро: биржа «Тошкент» с куполом, Beeline, «Узавтосаноат», новые башни;
 //  бывший Ташкентский кадетский корпус (ныне Академия вооружённых сил) из красного кирпича с куполом;
 //  JW Marriott Tashkent: башня синего стекла с изогнутыми ламелями основания и навесом;
+//  партия 1 важных зданий: Русский драмтеатр, Федерация профсоюзов, Музей искусств, Консерватория,
+//  медресе Абдулазиз-хана, мавзолей Юнус-хана, Wyndham, Lotte City Hotel Tashkent Palace;
+//  партия 2: Центробанк, «Голубые купола», ДК железнодорожников, Кауфманский приют, мавзолей Каффаль
+//  Шаши, Исламская академия, ТГЭУ, Национальный театр драмы, Институт востоковедения, Банковская академия;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -2056,4 +2060,294 @@
     const [sx, sz] = FP(f, 0, side * (B + CD + 0.35));
     sign(b, "JW MARRIOTT", sx, CY + 0.2, sz, nx, nz, 0.15, [0.98, 0.95, 0.88], "glow", 0.1);
   };
+  // ======================= важные здания города: партия 1 =======================
+  // общий помощник: ориентированный прямоугольник корпуса и фасад, обращённый к точке (wx, wz)
+  const box4 = (f, a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)];
+  const faceTowards = (o, f, wx, wz) => { const [x, z] = o.local(wx, wz), dv = (x - f.cx) * f.vx + (z - f.cz) * f.vz, du = (x - f.cx) * f.ux + (z - f.cz) * f.uz;
+    return Math.abs(dv) / (f.W || 1) > Math.abs(du) / (f.L || 1) ? { ax: "v", s: Math.sign(dv) || 1 } : { ax: "u", s: Math.sign(du) || 1 }; };
+  // колоннада вдоль фасада: n колонн высотой hc на расстоянии d от стены
+  const colonnade = (b, f, side, A, B, d, hc, n, col, r = 0.5) => {
+    for (let k = 0; k < n; k++) { const a = -A + 2 * A * (k + 0.5) / n, [x, z] = FP(f, a, side * (B + d)); b.cyl(x, 0, z, r, hc, col, 10); }
+  };
+
+  // Русский академический театр драмы (ул. Зарафшан): светлый камень, глубокий портик из высоких
+  // колонн во всю высоту, тёмное остекление фойе, аттик с названием; ночью колонны подсвечены.
+  M.drama_theatre = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = q.h, ST = [0.88, 0.84, 0.74];
+    const r = box4(f, A, B);
+    b.winRing(r, 0, H - 2, ST, 132); pilasters(b, r, 0.6, H - 2, 4.5, 0.9, 0.35, [0.92, 0.89, 0.8]);
+    band(b, r, 0.4, H - 2, 2, ST, "lit"); cap(b, r, H, [0.6, 0.58, 0.55]);
+    const t = faceTowards(o, f, -560, 40), side = t.s;
+    const [px, pz] = FP(f, 0, side * (B + 3.5));
+    b.box(px, 0, pz, f.L * 0.62, 0.6, 7.5, [0.7, 0.68, 0.64], f.ry);                                   // стилобат-ступени
+    b.box(px - f.vx * side * 1.6, 0.6, pz - f.vz * side * 1.6, f.L * 0.55, H - 3, 0.2, [0.26, 0.3, 0.36], f.ry); to(b, "glow");
+    colonnade(b, f, side, f.L * 0.27, B, 6, H - 1.5, 8, [0.95, 0.93, 0.88], 0.65); b.parts.slice(-8).forEach(() => {});
+    b.box(px, H - 1.5, pz, f.L * 0.6, 2.2, 7.6, ST, f.ry); to(b, "lit");                                  // антаблемент
+    const [sx, sz] = FP(f, 0, side * (B + 7.35)); sign(b, "TEATR", sx, H - 1.1, sz, f.vx * side, f.vz * side, 0.22, [0.85, 0.7, 0.35], "glow", 0.08);
+  };
+
+  // Федерация профсоюзов (ул. Бухоро, 24): шестиэтажный корпус 1970-х, частые вертикальные бетонные
+  // рёбра-ламели, ленты окон, тёмный стеклянный первый этаж.
+  M.trade_unions = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = q.h, C = [0.86, 0.84, 0.78];
+    b.loft(offset(p, -0.5), 0, offset(p, -0.5), 4, [0.26, 0.3, 0.34], "glow");
+    b.winRing(p, 4, H - 1.2, [0.7, 0.72, 0.72], 133);
+    pilasters(b, p, 4, H - 1.2, 1.4, 0.25, 0.8, C);
+    band(b, p, 0.6, 4, 0.6, C); band(b, p, 0.85, H - 1.2, 1.2, C, "lit"); cap(b, p, H, [0.55, 0.55, 0.55]);
+  };
+
+  // Государственный музей искусств Узбекистана (1974): над стеклянным первым этажом — объём, целиком
+  // закрытый белой ажурной решёткой с геометрическим орнаментом (гирих); ночью решётка подсвечена.
+  M.art_museum = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = q.h, WH = [0.95, 0.95, 0.93];
+    b.loft(box4(f, A - 1.5, B - 1.5), 0, box4(f, A - 1.5, B - 1.5), 4.5, [0.24, 0.3, 0.36], "glow");
+    for (const [sa, sc] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const [x, z] = FP(f, sa * (A - 1.5), sc * (B - 1.5)); b.box(x, 0, z, 1.4, 4.5, 1.4, WH, f.ry); }
+    const r = box4(f, A, B);
+    b.loft(offset(r, -0.6), 4.5, offset(r, -0.6), H, [0.5, 0.48, 0.44]);                              // стена за решёткой
+    b.loft(r, 4.5, r, 5.1, WH); b.loft(r, H - 0.8, r, H, WH); cap(b, r, H, [0.66, 0.66, 0.64]);
+    for (let i = 0; i < 4; i++) { // решётка: ромбы из диагональных планок
+      const [x0, z0] = r[i], [x1, z1] = r[(i + 1) % 4], L = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / L, uz = (z1 - z0) / L, nx = uz, nz = -ux;
+      const step = 2.4, y0 = 5.1, y1 = H - 0.8, hh = y1 - y0;
+      for (let t = -hh; t < L; t += step) for (const dir of [1, -1]) {
+        let a0 = t, a1 = t + hh; const c0 = Math.max(0, a0), c1 = Math.min(L, a1); if (c1 <= c0) continue;
+        const ya = y0 + (c0 - a0), yb = y0 + (c1 - a0);
+        const ta = dir > 0 ? c0 : L - c0, tb = dir > 0 ? c1 : L - c1;
+        b.beam(x0 + ux * ta + nx * 0.15, ya, z0 + uz * ta + nz * 0.15, x0 + ux * tb + nx * 0.15, yb, z0 + uz * tb + nz * 0.15, 0.18, WH, "lit", 0.12);
+      }
+    }
+  };
+
+  // Государственная консерватория (2002): белый камень, высокие арочные порталы с синими витражами,
+  // колоннада по фасаду и большой бирюзовый купол на барабане над концертным залом.
+  M.conservatory = (b, o) => {
+    const Q = localParts(o), q = Q.reduce((a, v) => (v.A > a.A ? v : a)), p = q.p, H = q.h, WH = [0.94, 0.93, 0.9], BL = [0.2, 0.36, 0.62];
+    b.winRing(p, 0, H - 2.5, BL, 134);
+    pilasters(b, p, 0, H - 2.5, 3.4, 1.2, 0.6, WH, "lit");
+    band(b, p, 0.5, H - 2.5, 1.0, WH, "lit"); band(b, p, 0.7, H - 1.5, 1.5, WH); cap(b, p, H, [0.66, 0.66, 0.64]);
+    for (let i = 0; i < p.length; i++) { // арочные завершения окон
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 6) continue;
+      const nx = (z1 - z0) / L, nz = -(x1 - x0) / L, ry = Math.atan2(-(z1 - z0), x1 - x0), n = Math.round(L / 3.4);
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n, x = x0 + (x1 - x0) * t + nx * 0.3, z = z0 + (z1 - z0) * t + nz * 0.3; b.box(x, H - 5, z, 2, 0.8, 0.3, WH, ry); b.box(x, H - 4.2, z, 1.2, 0.6, 0.3, WH, ry); }
+    }
+    const R = Math.min(14, Math.sqrt(q.A) * 0.2);
+    b.cyl(q.cx, H, q.cz, R + 0.8, 4, WH, 24); b.cyl(q.cx, H + 4, q.cz, R + 1.2, 0.6, WH, 24);
+    b.dome(q.cx, H + 4.6, q.cz, R, P.turq, { hk: 0.85, seg: 24, ribs: [0.12, 0.5, 0.6], tip: false }); to(b, "lit");
+    b.cyl(q.cx, H + 4.6 + R * 0.84, q.cz, 1.2, 2, WH, 12); b.cyl(q.cx, H + 6.6 + R * 0.84, q.cz, 0.2, 2.4, P.gold, 6);
+    for (const r of Q.filter((v) => v !== q)) { b.winRing(r.p, 0, r.h, BL, 135); band(b, r.p, 0.4, r.h - 1, 1, WH); cap(b, r.p, r.h, [0.66, 0.66, 0.64]); }
+  };
+
+  // Медресе Абдулазиз-хана (XVII в.): жжёный кирпич, двор с худжрами, высокий портал-пештак с
+  // изразцовым обрамлением и сталактитовой нишей, угловые гульдасты, купола над угловыми залами.
+  M.abdulaziz_madrasa = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = Math.max(8, q.h * 0.7), BR = [0.78, 0.64, 0.48];
+    const r = box4(f, A, B), ri = box4(f, A - 7, B - 7);
+    b.loft(r, 0, r, H, BR); b.loft(ri, 0, ri, H, BR); b.loft(r, H, ri, H, [0.72, 0.6, 0.46]);   // корпус вокруг открытого двора
+    cap(b, ri, 0.05, [0.62, 0.56, 0.46]);                                                                 // двор
+    for (const s of [-1, 1]) for (let k = 0; k < Math.floor(A / 2.6); k++) { const a = -A + 3 + k * 5.2, [x, z] = FP(f, a, s * (B + 0.05)); b.box(x, 1, z, 2.2, 3.4, 0.15, P.niche, f.ry); } // ниши худжр
+    const t = faceTowards(o, f, -3300, 520);
+    const ry = t.ax === "v" ? f.ry : f.ry + Math.PI / 2, [px, pz] = t.ax === "v" ? FP(f, 0, t.s * (B + 1)) : FP(f, t.s * (A + 1), 0);
+    b.pishtaq(px, pz, 12, 3, H + 7, BR, P.cobalt, ry + (t.s > 0 ? 0 : Math.PI));
+    for (const [sa, sc] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const [x, z] = FP(f, sa * (A - 0.8), sc * (B - 0.8)); b.cyl(x, 0, z, 1.0, H + 3, BR, 10); b.cyl(x, H + 3, z, 1.1, 0.6, P.turq, 10);
+      const [dx, dz] = FP(f, sa * (A - 4), sc * (B - 4)); b.cyl(dx, H, dz, 3, 1.2, BR, 14); b.dome(dx, H + 1.2, dz, 2.8, P.turq, { hk: 0.9, seg: 14, tip: false });
+    }
+  };
+
+  // Мавзолей Юнус-хана (XV в.): кирпичный кубический объём с высоким порталом, восьмигранный барабан
+  // и купол; ночью подсвечен тёплым.
+  M.yunus_khan = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = Math.max(5, f.L / 2), B = Math.max(5, f.W / 2), H = 9, BR = [0.8, 0.65, 0.48];
+    b.box(f.cx, 0, f.cz, A * 2, H, B * 2, BR, f.ry); to(b, "show");
+    b.pishtaq(...FP(f, 0, B + 0.6), Math.min(9, A * 1.6), 1.6, H + 4, BR, P.cobalt, f.ry);
+    b.cyl(f.cx, H, f.cz, Math.min(A, B) * 0.7, 3, BR, 8); to(b, "show");
+    b.dome(f.cx, H + 3, f.cz, Math.min(A, B) * 0.66, [0.75, 0.62, 0.48], { hk: 1.05, seg: 16, tip: false });
+  };
+
+  // Wyndham Tashkent (Амира Темура, 7/8): десятиэтажный отель — светлый травертин, глубокие
+  // вертикальные проёмы с синим стеклом, стеклянное лобби, вывеска на крыше.
+  M.wyndham = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = q.h, ST = [0.86, 0.82, 0.74];
+    b.loft(offset(p, -0.5), 0, offset(p, -0.5), 5, [0.26, 0.3, 0.36], "glow");
+    b.winRing(p, 5, H - 2, [0.24, 0.36, 0.56], 136);
+    pilasters(b, p, 5, H - 2, 3.2, 1.3, 0.7, ST);
+    for (let y = 5 + 3.1; y < H - 2; y += 3.1) band(b, p, 0.5, y, 0.3, ST);
+    band(b, p, 0.6, H - 2, 2, ST, "lit"); cap(b, p, H, [0.56, 0.56, 0.56]);
+    const f = frame(q), [sx, sz] = FP(f, 0, f.W / 2 + 0.7);
+    sign(b, "WYNDHAM", sx, H - 1.6, sz, f.vx, f.vz, 0.22, [0.95, 0.92, 0.85], "glow", 0.1);
+  };
+
+  // Lotte City Hotel Tashkent Palace (бывшая гостиница «Ташкент», 1958): сталинский неоклассицизм —
+  // жёлто-песочные стены, рустованный низ, арочные лоджии, карниз с балюстрадой, угловая башенка
+  // с ротондой и шпилем над главным корпусом.
+  M.lotte_palace = (b, o) => {
+    const Q = localParts(o), YE = [0.88, 0.76, 0.5], LT = [0.95, 0.9, 0.78], top = Q.reduce((a, v) => (v.h > a.h ? v : a));
+    for (const q of Q) {
+      const p = q.p, H = q.h;
+      b.loft(offset(p, 0.2), 0, offset(p, 0.2), 4, [0.76, 0.66, 0.5]);
+      for (let y = 0.5; y < 4; y += 0.6) band(b, p, 0.25, y, 0.1, [0.7, 0.6, 0.44]);                // руст
+      b.winRing(p, 4, H - 1.8, YE, 137); pilasters(b, p, 4, H - 1.8, 4.2, 0.8, 0.35, LT, "show");
+      band(b, p, 0.3, 4, 0.5, LT); band(b, p, 0.6, H - 1.8, 1.0, LT, "show"); band(b, p, 0.3, H - 0.8, 0.9, LT); cap(b, p, H + 0.1, [0.5, 0.42, 0.36]);
+    }
+    const r = Math.min(4.5, Math.sqrt(top.A) * 0.25);
+    b.cyl(top.cx, top.h, top.cz, r, 3.5, LT, 12); b.columns(top.cx, top.cz, top.h + 3.5, r * 0.85, 10, 0.25, 3, LT);
+    b.cyl(top.cx, top.h + 6.5, top.cz, r + 0.3, 0.6, LT, 12); b.cone(top.cx, top.h + 7.1, top.cz, r * 0.6, 7, P.gold, 10);
+  };
+
+  // ======================= важные здания города: партия 2 =======================
+  // ребро контура, обращённое к мировой точке (wx, wz) — для главного фасада сложных контуров
+  const frontEdge = (o, p, wx, wz, minL = 10) => {
+    const [tx, tz] = o.local(wx, wz); let best = null;
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < minL) continue;
+      const nx = (z1 - z0) / L, nz = -(x1 - x0) / L, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      const s = ((tx - mx) * nx + (tz - mz) * nz) / (Math.hypot(tx - mx, tz - mz) || 1) + L * 0.004;
+      if (!best || s > best.s) best = { s, x0, z0, x1, z1, L, nx, nz, mx, mz, ry: Math.atan2(-(z1 - z0), x1 - x0) };
+    }
+    return best;
+  };
+  // портик на ребре e: стилобат, n колонн высотой hc, антаблемент; возвращает функцию точки (вдоль, наружу)
+  const portico = (b, e, w, d, hc, n, col, ent, r = 0.55) => {
+    const ux = (e.x1 - e.x0) / e.L, uz = (e.z1 - e.z0) / e.L, at = (t, k) => [e.mx + ux * t + e.nx * k, e.mz + uz * t + e.nz * k];
+    let [x, z] = at(0, d / 2); b.box(x, 0, z, w + 1, 0.6, d + 0.6, k3(col, 0.82), e.ry);
+    [x, z] = at(0, 0.15); b.box(x, 0.6, z, w * 0.8, hc - 1, 0.2, [0.24, 0.28, 0.34], e.ry); to(b, "glow");
+    for (let k = 0; k < n; k++) { const [cx, cz] = at(-w / 2 + w * (k + 0.5) / n, d - 0.9); b.cyl(cx, 0.6, cz, r, hc - 0.6, col, 10); to(b, "lit"); }
+    [x, z] = at(0, d / 2); b.box(x, hc, z, w + 0.6, ent, d + 0.4, col, e.ry); to(b, "lit");
+    return at;
+  };
+
+  // Центральный банк (ул. Ислама Каримова, 6): монументальный корпус — белый камень, частые
+  // пилястры во всю высоту, синее остекление, тёмный стеклянный первый этаж, колонный портик
+  // главного входа, стеклянный световой фонарь атриума и надпись на аттике.
+  M.central_bank = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = 30, WH = [0.93, 0.92, 0.88];
+    const r = box4(f, A, B);
+    b.loft(offset(r, -0.6), 0, offset(r, -0.6), 5, [0.22, 0.27, 0.33], "glow");
+    b.winRing(r, 5, H - 3, [0.22, 0.36, 0.58], 140);
+    pilasters(b, r, 0, H - 3, 3.3, 1.1, 0.9, WH);
+    for (let y = 5 + 3.4; y < H - 3; y += 3.4) band(b, r, 0.45, y, 0.25, WH);
+    band(b, r, 0.9, H - 3, 3, WH, "lit"); band(b, r, 1.2, H - 0.6, 0.6, [0.82, 0.8, 0.76]); cap(b, r, H, [0.6, 0.6, 0.6]);
+    const ri = box4(f, A * 0.45, B * 0.4); // фонарь атриума
+    b.loft(ri, H, offset(ri, -B * 0.25), H + 4, [0.5, 0.66, 0.78], "glow"); cap(b, offset(ri, -B * 0.25), H + 4, [0.6, 0.72, 0.82]);
+    const e = frontEdge(o, r, 0, 0);
+    const at = portico(b, e, Math.min(30, e.L * 0.5), 6, 16, 8, WH, 2.2, 0.8);
+    const [sx, sz] = at(0, 1.0); sign(b, "MARKAZIY BANK", sx, H - 2.3, sz, e.nx, e.nz, 0.2, [0.9, 0.75, 0.4], "glow", 0.12);
+  };
+
+  // «Голубые купола» (кафе, 1970, арх. В. Муратов): одноэтажный остеклённый павильон под плоской
+  // белой плитой с мозаичным фризом, над ней — бирюзовые ребристые купола на барабанах.
+  M.blue_domes = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), p = q.p, WH = [0.94, 0.93, 0.9];
+    b.loft(offset(p, -0.8), 0, offset(p, -0.8), 4.2, [0.3, 0.4, 0.46], "glow");
+    pilasters(b, p, 0, 4.2, 3, 0.5, 0.5, WH);
+    b.loft(offset(p, 0.8), 4.2, offset(p, 0.8), 5.4, WH); band(b, p, 0.9, 4.5, 0.6, [0.2, 0.5, 0.66]); cap(b, offset(p, 0.8), 5.4, [0.8, 0.8, 0.78]);
+    const n = 3, R = Math.min(5.2, f.W * 0.28, f.L * 0.13);
+    for (let k = 0; k < n; k++) {
+      const a = (k - (n - 1) / 2) * f.L * 0.3, [x, z] = FP(f, a, 0), rr = k === 1 ? R * 1.15 : R;
+      b.cyl(x, 5.4, z, rr + 0.4, 1.8, WH, 24); b.cyl(x, 6.6, z, rr + 0.5, 0.4, [0.2, 0.5, 0.66], 24);
+      b.dome(x, 7.2, z, rr, P.turq, { hk: 0.75, seg: 24, ribs: [0.2, 0.62, 0.72], tip: false }); to(b, "neon"); // ночью купола светятся бирюзой
+      b.cyl(x, 5.4, z, rr + 0.45, 0.3, [0.95, 0.85, 0.6], 24); to(b, "warm");
+    }
+  };
+
+  // Дворец культуры железнодорожников: сталинский неоклассицизм — кремовые стены, пилястры,
+  // карниз и аттик, колонный портик к привокзальной площади.
+  M.railway_palace = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 13, CR = [0.9, 0.82, 0.64], LT = [0.96, 0.93, 0.84];
+    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1.2, [0.7, 0.62, 0.5]);
+    b.winRing(p, 1.2, H - 2, CR, 141); pilasters(b, p, 1.2, H - 2, 3.6, 0.8, 0.3, LT);
+    band(b, p, 0.3, 1.2, 0.4, LT); band(b, p, 0.6, H - 2, 1.0, LT, "show"); b.loft(p, H - 1, p, H + 0.4, CR); band(b, p, 0.2, H + 0.4, 0.4, LT); cap(b, p, H + 0.8, [0.5, 0.44, 0.38]);
+    const e = frontEdge(o, p, 584, 2196, 14), w = Math.min(22, e.L * 0.8);
+    portico(b, e, w, 5, H - 1, 6, LT, 2.4, 0.7);
+    const tx = e.mx + e.nx * 2.5, tz = e.mz + e.nz * 2.5;
+    b.box(tx, H + 1.4, tz, w * 0.5, 2.2, 5, LT, e.ry); b.box(tx, H + 3.6, tz, w * 0.25, 1.2, 4, CR, e.ry); // аттик
+  };
+
+  // Здание бывшего Кауфманского детского приюта (1880-е, ныне Юридический университет): двухэтажный
+  // дом из красного кирпича с белыми наличниками, лопатками, поясами и фигурным аттиком над входом.
+  M.kaufman_house = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 9, BR = [0.68, 0.36, 0.28], WH = [0.93, 0.9, 0.84];
+    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1.0, [0.56, 0.52, 0.48]);
+    b.winRing(p, 1.0, H - 1.2, BR, 142);
+    pilasters(b, p, 1.0, H - 1.2, 3.2, 0.25, 0.2, WH);
+    pilasters(b, p, 1.0, H - 1.2, 12, 0.9, 0.35, k3(BR, 0.85));
+    band(b, p, 0.25, 4.6, 0.4, WH); band(b, p, 0.4, H - 1.2, 0.9, WH, "show"); cap(b, p, H - 0.3, [0.42, 0.44, 0.46]);
+    const e = frontEdge(o, p, -250, -160, 8);
+    b.box(e.mx + e.nx * 0.3, H - 0.3, e.mz + e.nz * 0.3, 8, 2.4, 0.8, BR, e.ry); b.box(e.mx + e.nx * 0.3, H + 2.1, e.mz + e.nz * 0.3, 4, 1.0, 0.8, WH, e.ry);
+    b.box(e.mx + e.nx * 0.6, 0, e.mz + e.nz * 0.6, 3, 3, 0.3, [0.4, 0.28, 0.2], e.ry);
+  };
+
+  // Мавзолей Каффаль Шаши (1541–42, комплекс Хазрати Имам): кирпичный портально-купольный объём,
+  // высокий пештак с изразцами, бирюзовый ребристый купол на высоком барабане и малый купол позади.
+  M.kaffal_shashi = (b, o) => {
+    const q = localParts(o)[0], f = { cx: q.cx, cz: q.cz, ux: 1, uz: 0, vx: 0, vz: 1, ry: 0 }, BR = [0.8, 0.66, 0.5];
+    b.box(f.cx, 0, f.cz, 20, 9, 16, BR, 0); to(b, "show");
+    b.pishtaq(...FP(f, 0, 8.6), 11, 2.2, 15, BR, P.cobalt, 0);
+    for (const s of [-1, 1]) { const [x, z] = FP(f, s * 5.6, 9.4); b.cyl(x, 0, z, 0.7, 15.5, BR, 10); b.cyl(x, 15.5, z, 0.8, 0.6, P.turq, 10); }
+    const [mx, mz] = FP(f, 0, 1); b.cyl(mx, 9, mz, 5, 4, BR, 16); b.cyl(mx, 12.2, mz, 5.1, 0.8, P.cobalt, 16);
+    b.dome(mx, 13, mz, 4.8, P.turq, { hk: 1.1, seg: 18, ribs: [0.18, 0.56, 0.66], tip: false }); to(b, "lit");
+    const [rx, rz] = FP(f, 0, -5); b.cyl(rx, 9, rz, 3, 1.2, BR, 14); b.dome(rx, 10.2, rz, 2.9, [0.76, 0.62, 0.48], { hk: 0.9, seg: 14, tip: false });
+  };
+
+  // Международная Исламская академия (ул. А. Кадыри, 11): белый корпус с поясами и бирюзовым фризом,
+  // портал-пештак с изразцами на главном фасаде, бирюзовый купол над залом.
+  M.islamic_academy = (b, o) => {
+    const q = localParts(o)[0], p = q.p, f = frame(q), H = 14, WH = [0.93, 0.91, 0.86];
+    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1, [0.72, 0.68, 0.6]);
+    b.winRing(p, 1, H - 1.6, WH, 143); pilasters(b, p, 1, H - 1.6, 3.4, 0.7, 0.5, WH);
+    band(b, p, 0.5, H - 1.6, 1.0, P.turq); band(b, p, 0.6, H - 0.6, 0.6, WH, "lit"); cap(b, p, H, [0.62, 0.62, 0.6]);
+    const e = frontEdge(o, p, -1760, -1395, 14), px = e.mx + e.nx * 1, pz = e.mz + e.nz * 1;
+    b.pishtaq(px, pz, 13, 2.4, H + 6, WH, P.cobalt, Math.atan2(e.nx, e.nz)); to(b, "lit");
+    const [dx, dz] = FP(f, 0, 0), R = Math.min(7, f.W * 0.16);
+    b.cyl(dx, H, dz, R + 0.5, 3, WH, 20); b.dome(dx, H + 3, dz, R, P.turq, { hk: 0.95, seg: 20, ribs: [0.16, 0.54, 0.64] });
+  };
+
+  // Ташкентский государственный экономический университет (ул. Ислама Каримова, 49): длинный
+  // учебный корпус с поясами и лентами окон и высотная башня с частыми рёбрами и вывеской.
+  M.tsue = (b, o) => {
+    const Q = localParts(o), WH = [0.9, 0.89, 0.85], GL = [0.24, 0.38, 0.56];
+    for (const q of Q) {
+      const p = q.p, H = q.h, tall = H > 30;
+      b.loft(offset(p, -0.5), 0, offset(p, -0.5), 4, [0.24, 0.29, 0.34], "glow");
+      b.winRing(p, 4, H - 1.5, GL, tall ? 145 : 144);
+      pilasters(b, p, 4, H - 1.5, tall ? 2.6 : 4.5, tall ? 0.6 : 0.8, tall ? 0.7 : 0.4, WH);
+      if (!tall) for (let y = 4 + 3.6; y < H - 1.5; y += 3.6) band(b, p, 0.45, y, 0.7, WH);
+      band(b, p, 0.6, H - 1.5, 1.5, WH, "lit"); cap(b, p, H, [0.58, 0.58, 0.58]);
+      if (tall) { const f = frame(q); b.box(f.cx, H, f.cz, f.L * 0.5, 3, f.W * 0.5, WH, f.ry);
+        const [sx, sz] = FP(f, 0, f.W / 2 + 0.75); sign(b, "TDIU", sx, H - 1.3, sz, f.vx, f.vz, 0.3, [0.4, 0.75, 0.95], "glow", 0.1); }
+    }
+  };
+
+  // Национальный академический театр драмы (ул. Навои): светлый камень и синее остекление, ротонда
+  // фойе с колоннадой и бирюзовым куполом, сценическая коробка, карнизы с подсветкой.
+  M.nat_drama = (b, o) => {
+    const Q = localParts(o), WH = [0.93, 0.91, 0.86], GL = [0.24, 0.36, 0.56];
+    for (const q of Q) {
+      const p = q.p, H = q.h, round = p.length > 14 && q.A < 260;
+      if (round) {
+        const R = Math.sqrt(q.A / Math.PI);
+        b.cyl(q.cx, 0, q.cz, R - 0.6, H - 2, GL, 24); to(b, "glow");
+        b.columns(q.cx, q.cz, 0, R + 0.3, 16, 0.45, H - 2, WH); b.cyl(q.cx, H - 2, q.cz, R + 1, 2, WH, 24); to(b, "lit");
+        b.dome(q.cx, H, q.cz, R * 0.9, P.turq, { hk: 0.55, seg: 24, ribs: [0.18, 0.56, 0.66], tip: false }); to(b, "lit");
+        continue;
+      }
+      b.winRing(p, 0, H - 2, H > 20 ? WH : GL, 146);
+      pilasters(b, p, 0, H - 2, H > 20 ? 6 : 3.2, 0.9, 0.6, WH);
+      band(b, p, 0.7, H - 2, 2, WH, "lit"); cap(b, p, H, [0.6, 0.6, 0.6]);
+    }
+  };
+
+  // Институт востоковедения и Банковско-финансовая академия: корпуса 1970–80-х — светлый бетон,
+  // ленточные окна между поясами, широкие рёбра лестничных клеток, тёмный цоколь.
+  const institute = (b, o, H0, seed) => {
+    for (const q of localParts(o)) {
+      const p = q.p, H = Math.max(H0, q.h), WH = [0.86, 0.84, 0.78];
+      b.loft(offset(p, 0.1), 0, offset(p, 0.1), 1, [0.5, 0.48, 0.45]);
+      b.winRing(p, 1, H - 1, [0.4, 0.5, 0.58], seed);
+      for (let y = 1 + 3.4; y < H - 1; y += 3.4) band(b, p, 0.4, y - 1.1, 1.1, WH);
+      pilasters(b, p, 1, H - 1, 14, 2.2, 0.6, WH);
+      band(b, p, 0.5, H - 1, 1, WH, "lit"); cap(b, p, H, [0.55, 0.55, 0.55]);
+    }
+  };
+  M.oriental_inst = (b, o) => institute(b, o, 22, 147);
+  M.bank_academy = (b, o) => institute(b, o, 13, 148);
 })();

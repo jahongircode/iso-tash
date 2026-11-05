@@ -867,6 +867,7 @@ window.TPM_GEO_WORKER = function () {
       u += L;
     }
     const RC2 = [rr, rg, rb], Aabs = Math.abs(A) / 2;
+    if (DETAIL) facadeDetail(G, fp, n, h, mh, mb, roof, sgn, Aabs, [wr, wg, wb], kind, id);
     if (roof === 1 || roof === 2 || roof === 3) {
       const o = obb(fp);
       // скатная крыша — только над (почти) прямоугольным домом: над Г-образным или неровным контуром
@@ -907,6 +908,7 @@ window.TPM_GEO_WORKER = function () {
     const base = G.vc;
     for (let i = 0; i < n; i++) G.v(fp[i * 2], h, fp[i * 2 + 1], 0, 1, 0, rr, rg, rb, 255, -1, -1);
     for (let i = 0; i < idx.length; i += 3) G.tri(base + idx[i], base + idx[i + 2], base + idx[i + 1]);
+    if (DETAIL && roof === 0) roofDetail(G, fp, n, h, Aabs, RC2, kind, id);
     if (roof === 4 || roof === 5) { // купол (мечети)
       const o = obb(fp);
       const cx = o ? o.cx : 0, cz = o ? o.cz : 0, R = Math.max(1.5, (o ? Math.min(o.L, o.Wd) : 6) * 0.34);
@@ -917,6 +919,82 @@ window.TPM_GEO_WORKER = function () {
       // круглое здание (цирк, павильоны) — пологий купол вместо плоской крыши
       let P = 0, cx = 0, cz = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n; P += Math.hypot(fp[j * 2] - fp[i * 2], fp[j * 2 + 1] - fp[i * 2 + 1]); cx += fp[i * 2]; cz += fp[i * 2 + 1]; }
       if (4 * Math.PI * Aabs / (P * P) > 0.86) dome(G, cx / n, h, cz / n, Math.sqrt(Aabs / Math.PI) * 0.94, 0.32, [clamp(rr * 0.6 + 70), clamp(rg * 0.6 + 74), clamp(rb * 0.6 + 80)]);
+    }
+  }
+  // ---------- детализация типовых зданий (ближний план) ----------
+  // Каждое обычное здание карты получает узнаваемые детали по типу:
+  //  • все капитальные дома — тёмный цоколь и карниз-пояс по верху стен;
+  //  • панельные/кирпичные жилые дома (apartments или длинный «пластинчатый» корпус 9–16 м шириной,
+  //    3–16 этажей, как в Чиланзаре и Юнусабаде) — стояки лоджий на длинных фасадах (выступающие
+  //    колонны с поэтажными плитами), козырьки подъездов с дверями;
+  //  • магазины, офисы, общественные здания — витринное остекление первого этажа с козырьком.
+  // Все детали — несколько треугольников на секцию; при отдалении их съедает дальний план.
+  let DETAIL = true;
+  const LOGGIA = [[238, 236, 228], [206, 214, 222], [236, 224, 206]]; // светлые лоджии: белые, голубоватые, песочные
+  function facadeDetail(G, fp, n, h, mh, mb, roof, sgn, Aabs, W, kind, id) {
+    if (h < 4.5 || mh > 0.5 || kind === 4 || kind === 7 || kind === 9 || kind === 5 || kind === 8) return;
+    const o = obb(fp); if (!o) return;
+    const rect = Aabs / (o.L * o.Wd) > 0.7;
+    const panel = (kind === 2 || (kind === 0 && h >= 9 && h <= 52 && o.Wd >= 9 && o.Wd <= 20 && o.L / o.Wd > 1.6)) && rect && n <= 16;
+    const shop = (kind === 3 || kind === 6) && h < 40;
+    const plinth = [W[0] * 0.62, W[1] * 0.6, W[2] * 0.58], belt = [clamp(W[0] * 1.08 + 8), clamp(W[1] * 1.08 + 8), clamp(W[2] * 1.08 + 8)];
+    const floors = Math.max(1, Math.round(h / 3.0)), fh = h / floors;
+    const fc = (pts, col) => face(G, pts.reverse(), col, 255); // обход вершин — лицом наружу
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n; let x0 = fp[i * 2], z0 = fp[i * 2 + 1], x1 = fp[j * 2], z1 = fp[j * 2 + 1];
+      const L = Math.hypot(x1 - x0, z1 - z0); if (L < 2.5) continue;
+      if (sgn < 0) { [x0, x1] = [x1, x0]; [z0, z1] = [z1, z0]; }
+      const ux = (x1 - x0) / L, uz = (z1 - z0) / L, nx = uz, nz = -ux; // нормаль наружу
+      const P = (t, d, y) => [x0 + ux * t + nx * d, y, z0 + uz * t + nz * d];
+      // цоколь и карниз
+      fc([P(0, 0.08, mb), P(L, 0.08, mb), P(L, 0.08, Math.min(0.9, h * 0.15)), P(0, 0.08, Math.min(0.9, h * 0.15))], plinth);
+      if (h >= 6) fc([P(0, 0.12, h - 0.45), P(L, 0.12, h - 0.45), P(L, 0.12, h), P(0, 0.12, h)], belt);
+      // длинные фасады панельных домов: лоджии и подъезды
+      const longSide = L > 16;
+      if (panel && longSide) {
+        const step = 6.4, cols = Math.floor((L - 2) / step), c0 = (L - cols * step) / 2, LC = LOGGIA[id % 3], dk = [LC[0] * 0.55, LC[1] * 0.55, LC[2] * 0.58];
+        const front = ((hash(id, i) & 1) === 0); // подъезды — на одной стороне (по хэшу)
+        for (let c = 0; c < cols; c++) {
+          const t = c0 + c * step + step / 2;
+          if (front && c % 4 === 1) continue; // промежуток под подъезд
+          const w = 2.8, d = 1.15, y0 = fh, y1 = h - 0.5;
+          if (y1 - y0 < 2) continue;
+          const a = t - w / 2, b2 = t + w / 2;
+          fc([P(a, d, y0), P(b2, d, y0), P(b2, d, y1), P(a, d, y1)], LC);                 // лицо лоджий
+          fc([P(a, 0, y0), P(a, d, y0), P(a, d, y1), P(a, 0, y1)], dk);                    // боковины
+          fc([P(b2, d, y0), P(b2, 0, y0), P(b2, 0, y1), P(b2, d, y1)], dk);
+          fc([P(a, 0, y1), P(b2, 0, y1), P(b2, d, y1), P(a, d, y1)], LC);                  // верх
+          for (let f = 1; f < floors; f++) { const y = fh * (f + 1) - 1.25; if (y > y1 - 0.6) break;  // остекление лоджии (тёмная лента)
+            fc([P(a + 0.2, d + 0.02, y), P(b2 - 0.2, d + 0.02, y), P(b2 - 0.2, d + 0.02, y + 1.3), P(a + 0.2, d + 0.02, y + 1.3)], [58, 70, 86]); }
+        }
+        if (front) for (let c = 1; c < cols; c += 4) { // подъезд: дверь, козырёк на стойках
+          const t = c0 + c * step + step / 2;
+          fc([P(t - 0.8, 0.04, 0), P(t + 0.8, 0.04, 0), P(t + 0.8, 0.04, 2.3), P(t - 0.8, 0.04, 2.3)], [92, 70, 54]);
+          fc([P(t - 1.6, 0, 2.7), P(t + 1.6, 0, 2.7), P(t + 1.6, 1.6, 2.7), P(t - 1.6, 1.6, 2.7)], [150, 150, 146]);
+          fc([P(t - 1.6, 1.6, 2.5), P(t + 1.6, 1.6, 2.5), P(t + 1.6, 1.6, 2.75), P(t - 1.6, 1.6, 2.75)], [130, 130, 126]);
+        }
+      } else if (shop && L > 8) { // витрины и козырёк первого этажа
+        const y1 = Math.min(3.6, h * 0.45);
+        fc([P(0.6, 0.05, 0.5), P(L - 0.6, 0.05, 0.5), P(L - 0.6, 0.05, y1), P(0.6, 0.05, y1)], [54, 66, 80]);
+        fc([P(0.3, 0, y1 + 0.1), P(L - 0.3, 0, y1 + 0.1), P(L - 0.3, 0.9, y1 + 0.1), P(0.3, 0.9, y1 + 0.1)], belt);
+      }
+    }
+  }
+  // надстройки плоских крыш: машинные отделения лифтов и выходы на кровлю, вентблоки, кондиционеры
+  function roofDetail(G, fp, n, h, Aabs, RC, kind, id) {
+    if (h < 6 || Aabs < 60 || kind === 4 || kind === 9 || kind === 7) return;
+    const o = obb(fp); if (!o || o.Wd < 6) return;
+    if (Aabs / (o.L * o.Wd) < 0.8) return;
+    const box = [clamp(RC[0] * 1.15 + 18), clamp(RC[1] * 1.15 + 18), clamp(RC[2] * 1.15 + 18)], grey = [150, 152, 156];
+    const R = (a, b) => [o.cx + o.ux * a + o.vx * b, o.cz + o.uz * a + o.vz * b];
+    if (h >= 15) { // лифтовые надстройки — по одной на ~25 м длины
+      const k = Math.max(1, Math.round(o.L / 25));
+      for (let i = 0; i < k; i++) { const a = -o.L / 2 + o.L * (i + 0.5) / k, [x, z] = R(a, (hash(id, i) % 3 - 1) * o.Wd * 0.12); prism(G, x, z, o.ux, o.uz, 2.4, 1.8, h, h + 2.6, box); }
+    }
+    const m = Math.min(6, Math.floor(Aabs / 220) + 1); // вентблоки и кондиционеры
+    for (let i = 0; i < m; i++) {
+      const a = ((hash(id, i + 11) % 1000) / 1000 - 0.5) * (o.L - 3), b = ((hash(i + 5, id) % 1000) / 1000 - 0.5) * (o.Wd - 3), [x, z] = R(a, b);
+      prism(G, x, z, o.ux, o.uz, 0.7, 0.5, h, h + 0.9, grey);
     }
   }
   // Цех / склад: ленточное остекление под карнизом, подъёмные ворота на длинных стенах,
@@ -1107,6 +1185,7 @@ window.TPM_GEO_WORKER = function () {
     const ground = new Geo(false, true), roads = new Geo(false, true), water = new Geo(false, true), bld = new Geo(true), wmask = new Geo(false, true);
     const WP = [], WL = []; // водоёмы и русла тайла — для набережных
     const T = msg.tileM, far = msg.lod === 2;
+    DETAIL = !far;
     TILEM = T;
     OX = msg.ox || 0; OZ = msg.oz || 0;
     // линия для трафика: точки не реже 20 м, высота — абсолютная (рельеф или опорная прямая моста)
