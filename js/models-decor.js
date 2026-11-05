@@ -28,6 +28,8 @@
 //  партия 4: посольства Франции, Беларуси, Индонезии и Индии, гостиница Navruz, мавзолеи Зайнуддина и
 //  Чапан-ата, медресе Муйи Мубарак, Химико-технологический институт, Духовная семинария;
 //  партия 5: Конгресс-холл Tashkent City, ТЦ Next, Mega Planet, Riviera и Compass, Алайский базар, Южный вокзал;
+//  партия 6: Министерство инвестиций, Дворец музыки, Chorsu Plaza, рынок Бешагач, БЦ Grand Trade и «Миссури»,
+//  гостиницы Aura и Rakat Plaza, «Тошшахартрансхизмат», «Суперцентр»;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -2624,4 +2626,60 @@
     sign(b, "JANUBIY VOKZAL", sx, 16.3, sz, e.nx, e.nz, 0.16, [0.95, 0.95, 0.95], "glow", 0.1);
     b.cyl(sx, 12.5, sz, 1.4, 0.3, [0.95, 0.95, 0.9], 16); to(b, "glow");
   };
+
+  // ======================= офисы, гостиницы, рынки: партия 6 =======================
+  // офисный центр / гостиница: стеклянное лобби, фасад с поясами или рёбрами, светящийся карниз, вывеска
+  const office = (b, o, st, wx, wz) => {
+    const Q = localParts(o);
+    Q.forEach((q, i) => {
+      const p = q.p, H = st.h || q.h;
+      b.loft(offset(p, -0.5), 0, offset(p, -0.5), 4.5, [0.26, 0.32, 0.38], "glow");
+      b.winRing(p, 4.5, H - 1.5, st.glass, st.seed + i);
+      if (st.fins) pilasters(b, p, 4.5, H - 1.5, st.fins, 0.35, 0.9, st.trim);
+      if (st.bands) for (let y = 4.5 + 3.3; y < H - 1.5; y += 3.3) band(b, p, 0.4, y - 0.5, 0.5, st.trim);
+      band(b, p, 0.4, 4.5, 0.5, st.trim); band(b, p, 0.6, H - 1.5, 1.5, st.trim, "lit"); cap(b, p, H, [0.56, 0.56, 0.58]);
+      if (i === 0 && st.name) { const e = frontEdge(o, p, wx, wz, 10);
+        sign(b, st.name, e.mx + e.nx * 0.9, H - 1.2, e.mz + e.nz * 0.9, e.nx, e.nz, st.px || 0.22, st.signCol || [0.95, 0.95, 0.95], "glow", 0.1); }
+    });
+  };
+  const UZ = [[0.1, 0.55, 0.85], [0.97, 0.97, 0.97], [0.12, 0.62, 0.32]];
+
+  // Министерство инвестиций, промышленности и торговли (у сквера Амира Темура): белый камень,
+  // вертикальные пилястры, синее остекление, флаг у входа.
+  M.min_invest = (b, o) => {
+    office(b, o, { glass: [0.24, 0.38, 0.58], trim: [0.92, 0.91, 0.87], fins: 3.2, seed: 180 }, 0, 0);
+    const q = localParts(o)[0], e = frontEdge(o, q.p, 0, 0, 10); flagPole(b, e.mx + e.nx * 4, 0, e.mz + e.nz * 4, 11, UZ);
+  };
+  // Дворец музыки (Государственная филармония): каменный зал, стеклянное фойе за колонным портиком.
+  M.music_palace = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 15, ST = [0.9, 0.86, 0.78];
+    b.winRing(p, 0, H - 2, ST, 181); pilasters(b, p, 0, H - 2, 4.5, 1.2, 0.5, [0.95, 0.93, 0.88]);
+    band(b, p, 0.6, H - 2, 2, [0.95, 0.93, 0.88], "lit"); cap(b, p, H, [0.58, 0.58, 0.58]);
+    const f = frame(q); b.box(f.cx, H, f.cz, f.L * 0.45, 5, f.W * 0.5, ST, f.ry); // сценическая коробка
+    const e = frontEdge(o, p, 2529, 620, 14); portico(b, e, Math.min(26, e.L * 0.7), 5, H - 2, 8, [0.96, 0.95, 0.9], 2, 0.6);
+  };
+  M.chorsu_plaza = (b, o) => mall(b, o, { name: "CHORSU PLAZA", wall: [0.86, 0.8, 0.7], trim: [0.94, 0.92, 0.86], accent: [0.25, 0.75, 0.8], signCol: [0.95, 0.9, 0.7], seed: 182, px: 0.3 }, -3500, -1549);
+  M.supercenter = (b, o) => mall(b, o, { name: "SUPER", wall: [0.9, 0.88, 0.84], trim: [0.8, 0.8, 0.8], accent: [0.95, 0.3, 0.25], signCol: [0.95, 0.3, 0.25], seed: 183, px: 0.35 }, 475, -880);
+
+  // Рынок Бешагач: крытый торговый зал с арками и бирюзовым фризом под широким пологим куполом.
+  M.beshagach = (b, o) => {
+    const q = localParts(o)[0], p = q.p, f = frame(q), SA = [0.9, 0.84, 0.72];
+    b.loft(p, 0, p, 10, SA); pilasters(b, p, 0, 8.5, 4, 3, 0.15, P.niche); band(b, p, 0.3, 8.5, 1.5, P.turq); cap(b, p, 10, [0.62, 0.58, 0.52]);
+    // центр купола — самая удалённая от стен точка внутри контура (контур с вырезами)
+    const inP = (x, z) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, zi] = p[i], [xj, zj] = p[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+    const dE = (x, z) => { let m = 1e9; for (let i = 0; i < p.length; i++) { const [ax, az] = p[i], [bx, bz] = p[(i + 1) % p.length], dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); m = Math.min(m, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return m; };
+    let cx = f.cx, cz = f.cz, best = 0;
+    for (let i = 0; i <= 30; i++) for (let j = 0; j <= 30; j++) { const x = q.x0 + (q.x1 - q.x0) * i / 30, z = q.z0 + (q.z1 - q.z0) * j / 30; if (!inP(x, z)) continue; const d = dE(x, z); if (d > best) { best = d; cx = x; cz = z; } }
+    const R = best * 0.9; b.cyl(cx, 10, cz, R + 0.5, 3, SA, 28); b.cyl(cx, 12.6, cz, R + 0.7, 0.5, P.cobalt, 28);
+    b.dome(cx, 13, cz, R, P.turq, { hk: 0.5, seg: 28, ribs: [0.18, 0.56, 0.66], tip: false }); to(b, "lit");
+    b.cyl(cx, 13 + R * 0.5, cz, 2, 2.5, [0.5, 0.66, 0.78], 12); to(b, "glow");
+    const e = frontEdge(o, p, -2650, 807, 10);
+    sign(b, "BESHYOGOCH", e.mx + e.nx * 0.6, 9, e.mz + e.nz * 0.6, e.nx, e.nz, 0.2, [0.95, 0.9, 0.7], "glow", 0.1);
+  };
+  M.grand_trade = (b, o) => office(b, o, { glass: [0.22, 0.34, 0.46], trim: [0.86, 0.86, 0.86], bands: true, seed: 184, h: 22, name: "GRAND TRADE", signCol: [0.95, 0.8, 0.4] }, -840, 1000);
+  M.missouri = (b, o) => office(b, o, { glass: [0.2, 0.3, 0.42], trim: [0.82, 0.8, 0.76], fins: 2.4, seed: 185, h: 20, name: "MISSOURI" }, 1324, -830);
+  M.aura_hotel = (b, o) => office(b, o, { glass: [0.86, 0.8, 0.7], trim: [0.95, 0.92, 0.86], fins: 3.4, seed: 186, h: 24, name: "AURA", signCol: [0.95, 0.8, 0.45], px: 0.4 }, 782, 1700);
+  M.rakat_plaza = (b, o) => office(b, o, { glass: [0.3, 0.42, 0.56], trim: [0.9, 0.86, 0.78], bands: true, seed: 187, h: 26, name: "RAKAT PLAZA", signCol: [0.95, 0.85, 0.55] }, -3094, 3350);
+  // «Тошшахартрансхизмат»: десятиэтажное офисное здание 1980-х — бетонные вертикальные рёбра и ленты окон.
+  M.transx = (b, o) => office(b, o, { glass: [0.36, 0.46, 0.54], trim: [0.84, 0.82, 0.76], fins: 1.6, bands: true, seed: 188 }, 0, 0);
 })();
