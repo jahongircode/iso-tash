@@ -1,14 +1,38 @@
-# iso-tash — Tashkent Pixel Map 3D
+<div align="center">
+  <img src="assets/readme-banner.png" alt="ISO-TASH, a pixel-art view of Tashkent at sunset" width="100%" />
+</div>
 
-A living isometric pixel-art map of the whole of Tashkent
-The city is a real 3D scene (WebGL, three.js). It is rendered at low resolution, and a post-processing shader turns it into pixel art:
+<div align="center">
+
+[![WebGL 2](https://img.shields.io/badge/WebGL-2-blue)](https://www.khronos.org/webgl/)
+[![Three.js r149](https://img.shields.io/badge/Three.js-r149-black)](https://threejs.org/)
+[![Python 3](https://img.shields.io/badge/Python-3-blue)](https://www.python.org/)
+[![OpenStreetMap data](https://img.shields.io/badge/map%20data-OpenStreetMap-7ebc6f)](https://www.openstreetmap.org/copyright)
+[![MIT (code)](https://img.shields.io/badge/code-MIT-green)](LICENSE)
+
+</div>
+
+# iso-tash — Tashkent Pixel Map
+
+A living isometric pixel-art map of the whole of Tashkent. The city is rendered as a real-time **WebGL 2** scene with **three.js**. A custom post-processing shader gives the scene its pixel-art look:
 
 - dark outlines on depth edges;
 - a limited palette with ordered dithering;
-- a camera snapped to the pixel grid, so panning doesn't shimmer;
-- a real sun with shadows, and a day/night cycle that follows Tashkent time.
+- a camera snapped to the pixel grid, so panning does not shimmer;
+- a real sun with shadows and a day/night cycle that follows Tashkent time.
 
 Every building, road, park, river and tree comes from OpenStreetMap. The data is pre-baked into compact files that ship with the site, so the map works offline and loads fast.
+
+## Contents
+
+- [Features](#features)
+- [Performance: levels of detail](#performance-levels-of-detail)
+- [Running](#running)
+- [Controls](#controls)
+- [Project structure](#project-structure)
+- [Rebaking the data](#rebaking-the-data)
+- [Limitations](#limitations)
+- [Credits and licences](#credits-and-licences)
 
 ## Features
 
@@ -129,14 +153,14 @@ python tools/bake/recolor.py data
 
 ## Credits and licences
 
-- Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL.
+The original iso-tash application source code is licensed under the MIT License. See [LICENSE](LICENSE). This applies to original project code and artwork only; it does not replace the separate licences for third-party components or source datasets.
+
+- Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), licensed under ODbL 1.0. OSM-derived datasets remain under ODbL.
 - Vector tiles: [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema).
 - Buildings, traffic lights, trees and boundaries: Overpass API (maps.mail.ru mirror).
-- Elevation: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) on the AWS Open Data Registry (Terrarium format, originally made by Mapzen / [Tilezen](https://github.com/tilezen/joerd)). In the Tashkent area they come from **SRTM** (NASA/USGS, public domain); lower zooms also use **GMTED2010** (USGS) and **ETOPO1** (NOAA). See the [Terrain Tiles attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
-- [three.js](https://threejs.org) (MIT) and [earcut](https://github.com/mapbox/earcut) (ISC).
-- Model references: photos on Wikimedia Commons and Wikipedia (used only as references; they are not shipped).
+- Elevation: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) on the AWS Open Data Registry (Terrarium format, originally made by Mapzen / [Tilezen](https://github.com/tilezen/joerd)). In the Tashkent area they come from SRTM (NASA/USGS, public domain); lower zooms also use GMTED2010 (USGS) and ETOPO1 (NOAA). See the [Terrain Tiles attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
+- [three.js](https://threejs.org) is MIT-licensed; [earcut](https://github.com/mapbox/earcut) is ISC-licensed. Their original notices remain applicable.
+- Model references: photos on Wikimedia Commons and Wikipedia are used only as references and are not shipped.
 - Card photos: Wikimedia Commons and Wikipedia; the author and licence are shown under each photo.
 - Fonts: Inter, Pixelify Sans and Press Start 2P (Google Fonts, OFL).
 - Style reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
-
-All 3D models, shaders and graphics were made from scratch for this project.
