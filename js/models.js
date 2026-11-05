@@ -562,7 +562,7 @@
       float spark = step(0.55, h) * step(0.88, fract(uTime * (0.35 + h * 0.5) + h * 17.0)) * step(86.0, vLP.y) * step(vLP.y, 300.0);
       diffuseColor.rgb *= mix(vec3(1.0), vec3(0.55, 0.38, 0.22), uNight);
       totalEmissiveRadiance += uNight * (gold * 0.95 + vec3(0.8, 0.9, 1.0) * spark * 1.6);`);
-    MD.glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    MD.glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }); // стекло видно при любом обходе контура
     MD.glowMat.onBeforeCompile = (sh) => { // днём — цвет стекла, ночью — тёплый свет окон
       sh.uniforms.uNight = T.uNight;
       sh.fragmentShader = "uniform float uNight;\n" + sh.fragmentShader.replace("#include <color_fragment>",

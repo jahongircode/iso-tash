@@ -30,6 +30,8 @@
 //  партия 5: Конгресс-холл Tashkent City, ТЦ Next, Mega Planet, Riviera и Compass, Алайский базар, Южный вокзал;
 //  партия 6: Министерство инвестиций, Дворец музыки, Chorsu Plaza, рынок Бешагач, БЦ Grand Trade и «Миссури»,
 //  гостиницы Aura и Rakat Plaza, «Тошшахартрансхизмат», «Суперцентр»;
+//  уточнены по фото: Mega Planet, Конгресс-центр, Алайский базар, Южный вокзал, Центробанк, Исламабад, Исламская академия;
+//  партия 7 (по фото): Radisson Blu, Ramada, хокимият Ташкента, «Панорама», Shodlik Palace, «Самарканд Дарвоза»;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -2222,23 +2224,6 @@
     return at;
   };
 
-  // Центральный банк (ул. Ислама Каримова, 6): монументальный корпус — белый камень, частые
-  // пилястры во всю высоту, синее остекление, тёмный стеклянный первый этаж, колонный портик
-  // главного входа, стеклянный световой фонарь атриума и надпись на аттике.
-  M.central_bank = (b, o) => {
-    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = 30, WH = [0.93, 0.92, 0.88];
-    const r = box4(f, A, B);
-    b.loft(offset(r, -0.6), 0, offset(r, -0.6), 5, [0.22, 0.27, 0.33], "glow");
-    b.winRing(r, 5, H - 3, [0.22, 0.36, 0.58], 140);
-    pilasters(b, r, 0, H - 3, 3.3, 1.1, 0.9, WH);
-    for (let y = 5 + 3.4; y < H - 3; y += 3.4) band(b, r, 0.45, y, 0.25, WH);
-    band(b, r, 0.9, H - 3, 3, WH, "lit"); band(b, r, 1.2, H - 0.6, 0.6, [0.82, 0.8, 0.76]); cap(b, r, H, [0.6, 0.6, 0.6]);
-    const ri = box4(f, A * 0.45, B * 0.4); // фонарь атриума
-    b.loft(ri, H, offset(ri, -B * 0.25), H + 4, [0.5, 0.66, 0.78], "glow"); cap(b, offset(ri, -B * 0.25), H + 4, [0.6, 0.72, 0.82]);
-    const e = frontEdge(o, r, 0, 0);
-    const at = portico(b, e, Math.min(30, e.L * 0.5), 6, 16, 8, WH, 2.2, 0.8);
-    const [sx, sz] = at(0, 1.0); sign(b, "MARKAZIY BANK", sx, H - 2.3, sz, e.nx, e.nz, 0.2, [0.9, 0.75, 0.4], "glow", 0.12);
-  };
 
   // «Голубые купола» (кафе, 1970, арх. В. Муратов): одноэтажный остеклённый павильон под плоской
   // белой плитой с мозаичным фризом, над ней — бирюзовые ребристые купола на барабанах.
@@ -2295,18 +2280,6 @@
     const [rx, rz] = FP(f, 0, -5); b.cyl(rx, 9, rz, 3, 1.2, BR, 14); b.dome(rx, 10.2, rz, 2.9, [0.76, 0.62, 0.48], { hk: 0.9, seg: 14, tip: false });
   };
 
-  // Международная Исламская академия (ул. А. Кадыри, 11): белый корпус с поясами и бирюзовым фризом,
-  // портал-пештак с изразцами на главном фасаде, бирюзовый купол над залом.
-  M.islamic_academy = (b, o) => {
-    const q = localParts(o)[0], p = q.p, f = frame(q), H = 14, WH = [0.93, 0.91, 0.86];
-    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1, [0.72, 0.68, 0.6]);
-    b.winRing(p, 1, H - 1.6, WH, 143); pilasters(b, p, 1, H - 1.6, 3.4, 0.7, 0.5, WH);
-    band(b, p, 0.5, H - 1.6, 1.0, P.turq); band(b, p, 0.6, H - 0.6, 0.6, WH, "lit"); cap(b, p, H, [0.62, 0.62, 0.6]);
-    const e = frontEdge(o, p, -1760, -1395, 14), px = e.mx + e.nx * 1, pz = e.mz + e.nz * 1;
-    b.pishtaq(px, pz, 13, 2.4, H + 6, WH, P.cobalt, Math.atan2(e.nx, e.nz)); to(b, "lit");
-    const [dx, dz] = FP(f, 0, 0), R = Math.min(7, f.W * 0.16);
-    b.cyl(dx, H, dz, R + 0.5, 3, WH, 20); b.dome(dx, H + 3, dz, R, P.turq, { hk: 0.95, seg: 20, ribs: [0.16, 0.54, 0.64] });
-  };
 
   // Ташкентский государственный экономический университет (ул. Ислама Каримова, 49): длинный
   // учебный корпус с поясами и лентами окон и высотная башня с частыми рёбрами и вывеской.
@@ -2407,7 +2380,7 @@
   // Courtyard by Marriott Tashkent (пр. Амира Темура): два десятиэтажных корпуса — светлый камень,
   // вертикальные полосы остекления, стеклянный первый этаж с навесом и вывеска на крыше.
   M.courtyard = (b, o) => {
-    const Q = localParts(o), ST = [0.88, 0.84, 0.76], GL = [0.28, 0.4, 0.54];
+    const Q = localParts(o), ST = [0.94, 0.94, 0.92], GL = [0.34, 0.36, 0.4];
     Q.forEach((q, i) => {
       const p = q.p, H = 32 - i * 3;
       b.loft(offset(p, -0.5), 0, offset(p, -0.5), 4.5, [0.26, 0.3, 0.36], "glow");
@@ -2442,20 +2415,6 @@
     const [mx, mz] = FP(f, -f.L / 2 - 2, -f.W / 2 + 1.5); b.minaret(mx, mz, 1.1, 15, BR, P.turq);
   };
 
-  // Мечеть Исламабад (Сергели): современная соборная мечеть — белый камень, аркада стрельчатых
-  // проёмов, пештак главного входа, большой бирюзовый купол и два минарета; ночью подсвечена.
-  M.islamabad = (b, o) => {
-    const q = localParts(o)[0], p = q.p, f = frame(q), H = 12, WH = [0.95, 0.93, 0.88];
-    b.loft(offset(p, 0.2), 0, offset(p, 0.2), 1, [0.72, 0.7, 0.64]);
-    b.winRing(p, 1, H - 1.5, WH, 154); pilasters(b, p, 1, H - 1.5, 3.4, 0.9, 0.5, WH, "lit");
-    band(b, p, 0.5, H - 1.5, 1, P.turq); band(b, p, 0.6, H - 0.5, 0.5, WH); cap(b, p, H, [0.64, 0.64, 0.62]);
-    const R = Math.min(11, f.W * 0.28);
-    b.cyl(f.cx, H, f.cz, R + 0.6, 4, WH, 24); to(b, "lit"); b.cyl(f.cx, H + 3.6, f.cz, R + 0.8, 0.6, P.cobalt, 24);
-    b.dome(f.cx, H + 4.2, f.cz, R, P.turq, { hk: 1.05, seg: 24, ribs: [0.16, 0.54, 0.64] }); to(b, "lit");
-    const e = frontEdge(o, p, -4263, -4060, 12);
-    b.pishtaq(e.mx + e.nx, e.mz + e.nz, 14, 2.4, H + 7, WH, P.cobalt, Math.atan2(e.nx, e.nz)); to(b, "lit");
-    for (const s of [-1, 1]) { const [mx, mz] = FP(f, s * (f.L / 2 + 2.5), -f.W / 2 + 3); b.minaret(mx, mz, 1.8, 36, WH, P.turq); }
-  };
 
   // Дом-музей Тамары Ханум: одноэтажный особняк с белёными стенами, деревянной верандой на столбиках
   // и четырёхскатной железной кровлей.
@@ -2569,63 +2528,15 @@
     });
   };
 
-  // Конгресс-холл Tashkent City (2021): белый объём, обнесённый по периметру частой колоннадой
-  // тонких колонн во всю высоту, за ней — синее остекление; широкая плита кровли с выносом.
-  M.congress_hall = (b, o) => {
-    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = 24, WH = [0.95, 0.94, 0.9];
-    const r = box4(f, A - 4, B - 4);
-    b.loft(r, 0, r, H - 2, [0.3, 0.42, 0.56], "glow"); b.winRing(r, 0.5, H - 2.5, [0.3, 0.42, 0.56], 170);
-    b.loft(box4(f, A + 0.5, B + 0.5), 0, box4(f, A + 0.5, B + 0.5), 0.8, [0.82, 0.8, 0.76]);              // стилобат
-    const ro = box4(f, A, B);
-    b.loft(ro, H - 2, ro, H, WH); to(b, "lit"); cap(b, ro, H, [0.7, 0.7, 0.7]);
-    for (let i = 0; i < 4; i++) {
-      const [x0, z0] = ro[i], [x1, z1] = ro[(i + 1) % 4], L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 4.2);
-      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n; b.cyl(x0 + (x1 - x0) * t, 0.8, z0 + (z1 - z0) * t, 0.45, H - 2.8, WH, 8); to(b, "lit"); }
-    }
-    b.loft(box4(f, A * 0.5, B * 0.5), H, box4(f, A * 0.42, B * 0.42), H + 3, [0.86, 0.86, 0.84]); cap(b, box4(f, A * 0.42, B * 0.42), H + 3, [0.66, 0.66, 0.66]);
-  };
 
   // ТРК Next (Чиланзар): белые панели, оранжевый световой пояс, высокий витраж входа и вывеска NEXT.
-  M.next_mall = (b, o) => mall(b, o, { name: "NEXT", wall: [0.92, 0.92, 0.9], trim: [0.82, 0.82, 0.8], accent: [1.0, 0.5, 0.12], signCol: [1.0, 0.55, 0.15], seed: 171, rib: 7, px: 0.6 }, -2480, 1510);
-  // ТРЦ Mega Planet (Юнусабад): синие и белые панели, синий световой пояс, вывеска MEGA PLANET.
-  M.mega_planet = (b, o) => mall(b, o, { name: "MEGA PLANET", wall: [0.3, 0.42, 0.66], trim: [0.92, 0.92, 0.9], accent: [0.3, 0.6, 1.0], signCol: [0.95, 0.95, 0.95], seed: 172, px: 0.4 }, 943, -6330);
+  M.next_mall = (b, o) => mall(b, o, { name: "NEXT", wall: [0.92, 0.92, 0.9], trim: [0.82, 0.82, 0.8], accent: [0.9, 0.12, 0.12], signCol: [0.92, 0.12, 0.12], seed: 171, rib: 7, px: 0.6 }, -2480, 1510);
   // ТРЦ Riviera (Себзар): светлый травертин, ленты стекла, золотистый пояс, вывеска RIVIERA.
-  M.riviera = (b, o) => mall(b, o, { name: "RIVIERA", wall: [0.88, 0.84, 0.74], trim: [0.94, 0.92, 0.86], accent: [0.95, 0.75, 0.35], glass: [0.3, 0.44, 0.58], signCol: [0.95, 0.85, 0.55], seed: 173, px: 0.45 }, -2092, -3120);
+  M.riviera = (b, o) => mall(b, o, { name: "RIVIERA", wall: [0.88, 0.84, 0.74], trim: [0.94, 0.92, 0.86], accent: [0.95, 0.45, 0.85], glass: [0.3, 0.44, 0.58], signCol: [0.95, 0.95, 0.95], seed: 173, px: 0.45 }, -2092, -3120);
   // ТРЦ Compass (Сергели): крупный корпус, тёмно-синие панели с белыми рёбрами, бирюзовый пояс, вывеска COMPASS.
-  M.compass_mall = (b, o) => mall(b, o, { name: "COMPASS", wall: [0.22, 0.3, 0.42], trim: [0.9, 0.9, 0.9], accent: [0.2, 0.85, 0.85], signCol: [0.95, 0.95, 0.95], seed: 174, rib: 8, px: 0.6 }, 4133, 7900);
+  M.compass_mall = (b, o) => mall(b, o, { name: "COMPASS", wall: [0.86, 0.87, 0.9], trim: [0.7, 0.72, 0.76], accent: [0.3, 0.5, 0.95], signCol: [0.2, 0.42, 0.85], seed: 174, rib: 8, px: 0.6 }, 4133, 7900);
 
-  // Алайский базар: торговые корпуса с аркадами стрельчатых арок, бирюзовыми порталами входов,
-  // рядами малых куполов-фонарей на кровле и вывеской OLOY BOZORI.
-  M.oloy_bozori = (b, o) => {
-    const Q = localParts(o), SA = [0.9, 0.84, 0.72];
-    Q.forEach((q, i) => {
-      const p = q.p, f = frame(q), H = i === 0 ? 10 : 12;
-      b.loft(p, 0, p, H, SA); to(b, "show");
-      pilasters(b, p, 0, H - 1.5, 4, 3, 0.15, P.niche);                       // арочные проёмы
-      band(b, p, 0.3, H - 1.5, 1.5, P.turq); cap(b, p, H, [0.62, 0.58, 0.52]);
-      const nx = Math.max(1, Math.round(f.L / 16)), nz = Math.max(1, Math.round(f.W / 16));
-      for (let a = 0; a < nx; a++) for (let c = 0; c < nz; c++) {
-        const [x, z] = FP(f, -f.L / 2 + f.L * (a + 0.5) / nx, -f.W / 2 + f.W * (c + 0.5) / nz), R = Math.min(5, f.W / nz * 0.3);
-        b.cyl(x, H, z, R + 0.3, 1.2, SA, 14); b.dome(x, H + 1.2, z, R, P.turq, { hk: 0.8, seg: 14, tip: false }); to(b, "lit");
-      }
-      if (i === 0) { const e = frontEdge(o, p, 380, -848, 14);
-        b.pishtaq(e.mx + e.nx * 0.8, e.mz + e.nz * 0.8, 12, 1.6, H + 5, SA, P.cobalt, Math.atan2(e.nx, e.nz));
-        sign(b, "OLOY BOZORI", e.mx + e.nx * 1.8, H + 3.3, e.mz + e.nz * 1.8, e.nx, e.nz, 0.22, [0.95, 0.9, 0.7], "glow", 0.1); }
-    });
-  };
 
-  // Южный вокзал: вытянутое здание вокзала — светлые стены, высокий остеклённый зал ожидания по центру,
-  // часы на фронтоне и вывеска JANUBIY VOKZAL.
-  M.south_station = (b, o) => {
-    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, WH = [0.93, 0.91, 0.85];
-    const r = box4(f, A, B); b.winRing(r, 0, 9, WH, 175); pilasters(b, r, 0, 9, 4, 0.8, 0.4, WH); band(b, r, 0.5, 9, 1, WH, "lit"); cap(b, r, 10, [0.56, 0.56, 0.56]);
-    const c = box4(f, A * 0.25, B + 0.6);
-    b.loft(c, 0, c, 16, [0.32, 0.46, 0.6], "glow"); b.loft(offset(c, 0.4), 16, offset(c, 0.4), 18, WH); to(b, "lit"); cap(b, offset(c, 0.4), 18, [0.6, 0.6, 0.6]);
-    const e = frontEdge(o, r, -4440, 5700, 20);
-    const sx = e.mx + e.nx * 1.4, sz = e.mz + e.nz * 1.4;
-    sign(b, "JANUBIY VOKZAL", sx, 16.3, sz, e.nx, e.nz, 0.16, [0.95, 0.95, 0.95], "glow", 0.1);
-    b.cyl(sx, 12.5, sz, 1.4, 0.3, [0.95, 0.95, 0.9], 16); to(b, "glow");
-  };
 
   // ======================= офисы, гостиницы, рынки: партия 6 =======================
   // офисный центр / гостиница: стеклянное лобби, фасад с поясами или рёбрами, светящийся карниз, вывеска
@@ -2682,4 +2593,407 @@
   M.rakat_plaza = (b, o) => office(b, o, { glass: [0.3, 0.42, 0.56], trim: [0.9, 0.86, 0.78], bands: true, seed: 187, h: 26, name: "RAKAT PLAZA", signCol: [0.95, 0.85, 0.55] }, -3094, 3350);
   // «Тошшахартрансхизмат»: десятиэтажное офисное здание 1980-х — бетонные вертикальные рёбра и ленты окон.
   M.transx = (b, o) => office(b, o, { glass: [0.36, 0.46, 0.54], trim: [0.84, 0.82, 0.76], fins: 1.6, bands: true, seed: 188 }, 0, 0);
+
+  // ======================= уточнения по фотографиям =======================
+  // четырёхугольник (две грани) в список raw
+  const quad = (arr, a, b, c, d) => arr.push(...a, ...b, ...c, ...a, ...c, ...d);
+
+  // ТРЦ Mega Planet (Юнусабад, ул. Ахмада Дониша) — сверено с дневными и ночными фотографиями:
+  //  • главный объём: графитово-серебристые металлические панели со швами, скруглённые торцы и
+  //    скруглённая верхняя кромка; объём нависает над первым этажом на сером навесе со светодиодной линией;
+  //  • первый этаж — витрины магазинов с вывесками, стеклянный вход в красной раме;
+  //  • юго-западный угол — стеклянный блок (зеленоватое стекло, этажи светятся ночью) в толстой красной
+  //    раме; через него перекинуты красные лопасти, которые огибают скруглённую кромку и уходят на крышу;
+  //  • западный фасад — второй скруглённый объём из тёмно-синих панелей с вывеской MAKRO и светло-серая
+  //    башня на северо-западном углу со столбцом вывесок арендаторов и красной надписью MEGAPLANET;
+  //  • на южном фасаде — сине-красное кольцо-логотип, красная надпись MEGA PLANET и медиаэкран;
+  //  • перед входом — площадь с фонтанами и пальмами; на крыше — флаг, вентблоки и световые фонари.
+  //  Ночью светятся лопасти, рама, вывески и логотип (красный неон), этажи стеклянного блока, витрины и навес.
+  M.mega_planet = (b, o) => {
+    const H = 24, R = 4, GR = [0.47, 0.48, 0.51], JT = [0.4, 0.41, 0.44], RED = [0.78, 0.05, 0.06], NV = [0.15, 0.19, 0.32];
+    // углы корпуса по OSM (мировые метры) → локальные
+    const SW = o.local(904.3, -6233.6), SE = o.local(979.8, -6215.0), NW = o.local(919.2, -6294.1);
+    const L = Math.hypot(SE[0] - SW[0], SE[1] - SW[1]), D = Math.hypot(NW[0] - SW[0], NW[1] - SW[1]);
+    const ux = (SE[0] - SW[0]) / L, uz = (SE[1] - SW[1]) / L;
+    let ix = (NW[0] - SW[0]) / D, iz = (NW[1] - SW[1]) / D;                                  // внутрь от южного фасада
+    const P = (t, k) => [SW[0] + ux * t + ix * k, SW[1] + uz * t + iz * k];                     // t — вдоль фасада, k — вглубь
+    const P3 = (t, k, y) => { const [x, z] = P(t, k); return [x, y, z]; };
+    const ry = Math.atan2(-uz, ux), nS = [-ix, -iz], nW = [-ux, -uz];                          // наружные нормали юга и запада
+    // скругление углов многоугольника
+    const fillet = (pts, rr, seg = 6) => {
+      const out = [], n = pts.length;
+      for (let i = 0; i < n; i++) {
+        const a = pts[(i + n - 1) % n], c = pts[i], e = pts[(i + 1) % n], r0 = rr[i];
+        if (!r0) { out.push(c); continue; }
+        const l1 = Math.hypot(a[0] - c[0], a[1] - c[1]), l2 = Math.hypot(e[0] - c[0], e[1] - c[1]), d = Math.min(r0, l1 * 0.45, l2 * 0.45);
+        const p0 = [c[0] + (a[0] - c[0]) / l1 * d, c[1] + (a[1] - c[1]) / l1 * d], p1 = [c[0] + (e[0] - c[0]) / l2 * d, c[1] + (e[1] - c[1]) / l2 * d];
+        for (let s = 0; s <= seg; s++) { const t = s / seg, m = 1 - t; out.push([m * m * p0[0] + 2 * m * t * c[0] + t * t * p1[0], m * m * p0[1] + 2 * m * t * c[1] + t * t * p1[1]]); }
+      }
+      return out;
+    };
+    let F = fillet([P(0, 0), P(L, 0), P(L, D), P(0, D)], [3, 10, 10, 2]);
+    if (area(F) < 0) F.reverse();
+    // скруглённая масса: стены до H-r, затем четверть круга внутрь
+    const mass = (poly, y0, h, r, col, list = "parts") => {
+      b.loft(poly, y0, poly, h - r, col, list);
+      for (let i = 0; i < 6; i++) { const t0 = i / 6 * Math.PI / 2, t1 = (i + 1) / 6 * Math.PI / 2;
+        b.loft(offset(poly, -r * (1 - Math.cos(t0))), h - r + r * Math.sin(t0), offset(poly, -r * (1 - Math.cos(t1))), h - r + r * Math.sin(t1), col, list); }
+      cap(b, offset(poly, -r), h, k3(col, 0.92));
+    };
+
+    // ---- первый этаж: витрины, стойки, вывески магазинов, навес со светодиодной линией ----
+    const G = offset(F, -1.2);
+    b.loft(G, 0, G, 6, [0.18, 0.22, 0.27], "glow");
+    pilasters(b, G, 0, 6, 4.2, 0.3, 0.3, [0.24, 0.25, 0.27]);
+    band(b, G, 0.05, 4.4, 0.2, [0.2, 0.2, 0.22]);
+    const SHOP = [[0.95, 0.55, 0.15], [0.9, 0.85, 0.8], [0.2, 0.55, 0.9], [0.9, 0.2, 0.25], [0.95, 0.8, 0.2], [0.3, 0.75, 0.4]];
+    for (let t = 22, i = 0; t < L - 8; t += 6.5, i++) { const [x, z] = P(t, 1.05); b.box(x, 4.6, z, 3, 0.8, 0.25, SHOP[i % SHOP.length], ry); to(b, "glow"); }
+    b.loft(offset(F, 0.8), 6, offset(F, 0.8), 7.2, [0.36, 0.37, 0.4]);
+    band(b, F, 0.85, 5.95, 0.15, [0.95, 0.95, 0.95], "cool");
+    // главный вход в центре фасада: стеклянный тамбур в красной раме
+    { const t = L * 0.52, [x, z] = P(t, -0.2); b.box(x, 0, z, 8, 5.4, 1.6, [0.3, 0.44, 0.52], ry); to(b, "glow");
+      for (const s of [-1, 1]) { const [fx, fz] = P(t + s * 4.1, -0.3); b.box(fx, 0, fz, 0.5, 5.8, 1.8, RED, ry); to(b, "neon"); }
+      const [tx, tz] = P(t, -0.3); b.box(tx, 5.4, tz, 8.7, 0.5, 1.8, RED, ry); to(b, "neon"); }
+
+    // ---- главный объём: металлические панели со швами, скруглённая кромка ----
+    mass(F, 7.2, H, R, GR, "lit");                                                            // ночью фасад подсвечен прожекторами
+    for (let y = 8.8; y < H - R; y += 1.6) band(b, F, 0.02, y, 0.09, JT);                    // горизонтальные швы панелей
+    pilasters(b, F, 7.2, H - R, 3.2, 0.08, 0.04, JT);                                         // вертикальные швы
+
+    // ---- стеклянный угловой блок (юго-запад) в красной раме с лопастями ----
+    const BT = 17, BK = 15, GLs = [0.22, 0.42, 0.4];
+    const face = (pa, pb, n, y0, y1, col, list) => { const arr = [], o2 = 0.6;
+      const A0 = [pa[0] + n[0] * o2, y0, pa[1] + n[1] * o2], B0 = [pb[0] + n[0] * o2, y0, pb[1] + n[1] * o2], A1 = [A0[0], y1, A0[2]], B1 = [B0[0], y1, B0[2]];
+      arr.push(...A0, ...B0, ...B1, ...A0, ...B1, ...A1); b.raw(arr, col, list); };
+    face(P(0.5, 0), P(BT, 0), nS, 7.2, H - 1.2, GLs, "glow");
+    face(P(0, 0.5), P(0, BK), nW, 7.2, H - 1.2, GLs, "glow");
+    for (let y = 9.6; y < H - 2; y += 3.6) {                                                  // перекрытия этажей за стеклом
+      const a = P3(0.5, -0.75, y), c = P3(BT, -0.75, y); b.beam(...a, ...c, 0.35, [0.3, 0.34, 0.34], "warm", 0.12);
+      const a2 = [P(-0.75, 0.5)[0], y, P(-0.75, 0.5)[1]], c2 = [P(-0.75, BK)[0], y, P(-0.75, BK)[1]]; b.beam(...a2, ...c2, 0.35, [0.3, 0.34, 0.34], "warm", 0.12);
+    }
+    // красная рама: вертикали на концах блока, низ и верх по контуру
+    const fr = (a, c) => { b.beam(...a, ...c, 1.0, RED, "neon", 1.0); };
+    fr(P3(BT, -0.9, 6.6), P3(BT, -0.9, H - 0.6)); fr([P(-0.9, BK)[0], 6.6, P(-0.9, BK)[1]], [P(-0.9, BK)[0], H - 0.6, P(-0.9, BK)[1]]);
+    fr(P3(0, -0.9, 7.0), P3(BT, -0.9, 7.0)); fr([P(-0.9, 0)[0], 7.0, P(-0.9, 0)[1]], [P(-0.9, BK)[0], 7.0, P(-0.9, BK)[1]]);
+    fr(P3(0, -0.6, H - 0.4), P3(BT, -0.6, H - 0.4)); fr([P(-0.6, 0)[0], H - 0.4, P(-0.6, 0)[1]], [P(-0.6, BK)[0], H - 0.4, P(-0.6, BK)[1]]);
+    fr(P3(-0.9, -0.9, 6.6), P3(-0.9, -0.9, H - 0.6));                                          // угловая стойка
+    // лопасти: вертикаль у фасада, дуга через скругление кромки и полоса по крыше
+    const fin = (base, n) => {
+      const pt = (d, y) => [base[0] + n[0] * d, y, base[1] + n[1] * d], Rf = R + 1.6; let prev = pt(1.6, 7.2);
+      const pts = [pt(1.6, H - R)];
+      for (let s = 1; s <= 5; s++) { const th = s / 5 * Math.PI / 2; pts.push(pt(-R + Rf * Math.cos(th), H - R + Rf * Math.sin(th))); }
+      pts.push(pt(-R - 7, H + 1.6));
+      for (const q of pts) { b.beam(...prev, ...q, 0.7, RED, "neon", 0.5); prev = q; }
+    };
+    for (const t of [3, 7, 11, 15]) fin(P(t, 0), nS);
+    for (const k of [4, 8, 12]) fin(P(0, k), nW);
+
+    // ---- западный тёмно-синий объём и серая башня с вывесками ----
+    const lobe = fillet([P(-1.5, BK + 2), P(-1.5, D - 11), P(1, D - 11), P(1, BK + 2)], [1.5, 1.5, 0, 0]);
+    if (area(lobe) < 0) lobe.reverse();
+    mass(lobe, 6, H - 1, 2.5, NV);
+    for (let y = 8; y < H - 4; y += 2) band(b, lobe, 0.02, y, 0.08, [0.12, 0.15, 0.25]);
+    { const [x, z] = P(-1.6, (BK + D - 11) / 2); sign(b, "MAKRO", x, H - 8, z, nW[0], nW[1], 0.35, [0.95, 0.95, 0.95], "glow", 0.12);
+      b.box(x, H - 5, z, 2.2, 2, 0.2, [0.95, 0.75, 0.15], Math.atan2(nW[0], nW[1])); to(b, "glow"); }
+    const tw = [P(-5, D - 10), P(-5, D + 1), P(4, D + 1), P(4, D - 10)];
+    if (area(tw) < 0) tw.reverse();
+    b.loft(tw, 0, tw, H + 5, [0.71, 0.72, 0.74]); cap(b, tw, H + 5, [0.6, 0.6, 0.62]);
+    band(b, tw, 0.05, H + 4.4, 0.6, [0.6, 0.61, 0.63]);
+    const TEN = [[0.95, 0.95, 0.95], [0.2, 0.5, 0.95], [0.95, 0.7, 0.2], [0.9, 0.25, 0.3], [0.3, 0.8, 0.5], [0.95, 0.95, 0.95], [0.55, 0.35, 0.85]];
+    for (let i = 0; i < TEN.length; i++) { const [x, z] = P(-5.1, D - 4.5); b.box(x, 6.5 + i * 2.3, z, 4.5, 1.5, 0.25, TEN[i], Math.atan2(nW[0], nW[1])); to(b, "glow"); }
+    { const [x, z] = P(-5.15, D - 4.5); sign(b, "MEGAPLANET", x, H + 1.2, z, nW[0], nW[1], 0.16, RED, "neon", 0.1); }
+
+    // ---- логотип-кольцо (синяя и красная половины), надпись и медиаэкран на южном фасаде ----
+    const tl = L * 0.76, yl = H - 7.5, Rl = 2.3;
+    for (let i = 0; i < 20; i++) {
+      const a0 = i / 20 * Math.PI * 2, a1 = (i + 1) / 20 * Math.PI * 2, q = (a) => P3(tl + Math.cos(a) * Rl, -0.35, yl + Math.sin(a) * Rl);
+      b.beam(...q(a0), ...q(a1), 0.55, i < 10 ? [0.15, 0.35, 0.9] : RED, "neon", 0.3);
+    }
+    { const [x, z] = P(tl, -0.3); sign(b, "MEGA PLANET", x, H - 12.3, z, nS[0], nS[1], 0.32, RED, "neon", 0.15);
+      const [mx, mz] = P(tl, -0.45); b.box(mx, 7.4, mz, 6.5, 4.2, 0.4, [0.4, 0.5, 0.85], ry); to(b, "cool");
+      b.box(mx, 7.2, mz, 7.1, 4.6, 0.3, [0.15, 0.15, 0.17], ry); }
+
+    // ---- крыша: флаг, вентблоки, световые фонари ----
+    { const [fx, fz] = P(L * 0.45, D * 0.4); flagPole(b, fx, H, fz, 8, UZ); }
+    for (let i = 0; i < 6; i++) { const [x, z] = P(L * (0.25 + 0.1 * i), D * 0.65); b.box(x, H, z, 3.2, 1.6, 2.2, [0.6, 0.6, 0.62], ry); }
+    for (let i = 0; i < 3; i++) { const [x, z] = P(L * (0.35 + 0.15 * i), D * 0.3); b.box(x, H, z, 6, 1.2, 4, [0.5, 0.64, 0.74], ry); to(b, "glow"); }
+
+    // ---- площадь перед входом: фонтаны и пальмы ----
+    for (const t of [L * 0.62, L * 0.7, L * 0.88]) {
+      const [x, z] = P(t, -6); b.cyl(x, 0, z, 1.8, 0.5, [0.62, 0.62, 0.64], 16); b.cyl(x, 0.45, z, 1.6, 0.08, [0.45, 0.7, 0.85], 16);
+      b.cyl(x, 0.5, z, 0.12, 2.6, [0.85, 0.93, 1.0], 6); to(b, "cool");
+    }
+    for (const t of [L * 0.42, L * 0.66, L * 0.82]) {
+      const [x, z] = P(t, -4.5); b.cyl(x, 0, z, 0.22, 6.5, [0.5, 0.38, 0.26], 6, 0.15);
+      for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2; b.beam(x, 6.5, z, x + Math.cos(a) * 2.6, 5.4, z + Math.sin(a) * 2.6, 0.5, [0.2, 0.5, 0.25], "parts", 0.08); }
+    }
+  };
+
+  // Международный конгресс-центр Tashkent City (2021) — сверено с фотографиями:
+  //  • первый этаж — сплошное сине-зелёное остекление со стойками;
+  //  • над ним стены-экраны из белой ажурной решётки с геометрическим орнаментом (гирих); верх стен
+  //    волнистый: низко у заднего торца, поднимается к главному фасаду;
+  //  • по верху стен — гладкий белый карниз; у главного фасада он закручивается вверх, как гребень волны;
+  //  • главный фасад: огромная белая арка-козырёк с рёбрами снизу, под ней — стеклянная стена во всю
+  //    высоту с входом; по бокам — решётчатые крылья; перед входом — каменная стенка с бронзовой надписью
+  //    TASHKENT CITY CONGRESS CENTRE и ряд флагов.
+  //  Ночью решётка светится тёплым золотом изнутри, стекло и белые карнизы подсвечены.
+  M.congress_hall = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, WH = [0.94, 0.94, 0.93], GLc = [0.24, 0.44, 0.5], HOLE = [0.34, 0.36, 0.4];
+    // главный фасад — торец (по оси u), обращённый к бульвару Tashkent City
+    const [tx, tz] = o.local(-2400, -200), sF = ((tx - f.cx) * f.ux + (tz - f.cz) * f.uz) >= 0 ? 1 : -1;
+    const Q3 = (u, v, y) => { const [x, z] = FP(f, u * sF, v); return [x, y, z]; };            // u растёт к главному фасаду
+    const hU = (u) => { const s = (u / A + 1) / 2; return 17 + 6 * s * s + 1.4 * Math.sin(Math.PI * 2 * s * 1.5); };
+    const hF = hU(A), Ha = hF + 4, G0 = 7;
+    const quad4 = (arr, a, b2, c, d) => arr.push(...a, ...b2, ...c, ...a, ...c, ...d);
+    // ---- первый этаж: остекление и стойки ----
+    const g = box4(f, A - 0.8, B - 0.8);
+    b.loft(g, 0, g, G0, GLc, "glow"); pilasters(b, g, 0, G0, 2.6, 0.18, 0.25, [0.62, 0.64, 0.66]);
+    band(b, g, 0.05, G0 - 0.4, 0.4, [0.6, 0.62, 0.64]);
+    // ---- кровля с волной ----
+    const roof = [], N = 36;
+    for (let i = 0; i < N; i++) { const u0 = -A + 2 * A * i / N, u1 = -A + 2 * A * (i + 1) / N;
+      quad4(roof, Q3(u0, -B, hU(u0) - 0.3), Q3(u1, -B, hU(u1) - 0.3), Q3(u1, B, hU(u1) - 0.3), Q3(u0, B, hU(u0) - 0.3)); }
+    b.raw(roof, [0.78, 0.79, 0.8]);
+    for (let i = 0; i < 5; i++) { const u = -A * 0.7 + A * 1.2 * i / 4; b.beam(...Q3(u, -B * 0.55, hU(u) - 0.2), ...Q3(u, B * 0.55, hU(u) - 0.2), 2.4, [0.55, 0.68, 0.78], "glow", 0.5); } // световые фонари
+    for (let i = 0; i < 4; i++) { const [x, z] = FP(f, -A * 0.8 * sF, -B * 0.6 + B * 0.4 * i); b.box(x, hU(-A * 0.8) - 0.3, z, 3, 1.6, 2.4, [0.62, 0.62, 0.64], f.ry); }
+    // ---- решётчатые стены: белый экран и ромбы-просветы (ночью светятся) ----
+    const wall = [], holes = [], step = 1.7;
+    const lattice = (P0, P1, len, top) => { // P(t, y) вдоль стены; top(t) — верх стены
+      for (let i = 0; i < N; i++) { const t0 = len * i / N, t1 = len * (i + 1) / N; quad4(wall, P0(t0, G0), P0(t1, G0), P0(t1, top(t1)), P0(t0, top(t0))); }
+      for (let t = step; t < len - step / 2; t += step) for (let r = 0, y = G0 + 1.2; y < top(t) - 1; y += step * 0.75, r++) {
+        const tt = t + (r % 2 ? step / 2 : 0); if (tt > len - 0.6) continue; const s = r % 2 ? 0.42 : 0.62;
+        const c = P1(tt, y), up = P1(tt, y + s), dn = P1(tt, y - s), lf = P1(tt - s, y), rt = P1(tt + s, y);
+        holes.push(...lf, ...dn, ...rt, ...lf, ...rt, ...up); void c;
+      }
+    };
+    for (const sv of [-1, 1]) { // длинные боковые стены
+      const P0 = (t, y) => Q3(-A + t, sv * B, y), P1 = (t, y) => Q3(-A + t, sv * (B + 0.06), y);
+      lattice(P0, P1, 2 * A, (t) => hU(-A + t));
+    }
+    { const P0 = (t, y) => Q3(-A, -B + t, y), P1 = (t, y) => Q3(-A - 0.06, -B + t, y); lattice(P0, P1, 2 * B, () => hU(-A)); } // задний торец
+    for (const sv of [-1, 1]) { // крылья главного фасада
+      const w0 = B * 0.58, P0 = (t, y) => Q3(A, sv * (w0 + t), y), P1 = (t, y) => Q3(A + 0.06, sv * (w0 + t), y);
+      lattice(P0, P1, B - w0, (t) => hF - 1.5 * (t / (B - w0)));
+    }
+    b.raw(wall, WH, "lit"); b.raw(holes, HOLE, "warm");
+    // ---- белый карниз по верху стен и «гребни» у главного фасада ----
+    const rim = (pts, w = 1.3) => { for (let i = 0; i < pts.length - 1; i++) { b.beam(...pts[i], ...pts[i + 1], w, WH, "lit", 1.1); } };
+    for (const sv of [-1, 1]) {
+      const pts = []; for (let i = 0; i <= N; i++) { const u = -A + 2 * A * i / N; pts.push(Q3(u, sv * (B + 0.4), hU(u))); }
+      for (let k = 1; k <= 5; k++) { const a = k / 5 * Math.PI * 0.55; pts.push(Q3(A + Math.sin(a) * 5, sv * (B + 0.4), hF + (1 - Math.cos(a)) * 5)); } // завиток
+      rim(pts);
+    }
+    rim([Q3(-A - 0.4, -B, hU(-A)), Q3(-A - 0.4, B, hU(-A))]);
+    // ---- главный фасад: арка-козырёк, стекло под ней, рёбра ----
+    const aV = (v) => { const s = Math.min(1, Math.abs(v) / (B * 0.78)); return 6 + (Ha - 6) * Math.pow(Math.cos(s * Math.PI / 2), 0.8); };
+    const glass = [], canopy = [], M2 = 24;
+    for (let i = 0; i < M2; i++) {
+      const v0 = -B * 0.78 + 1.56 * B * i / M2, v1 = -B * 0.78 + 1.56 * B * (i + 1) / M2;
+      if (Math.abs(v0) < B * 0.62 && Math.abs(v1) < B * 0.62) quad4(glass, Q3(A + 0.2, v0, 0), Q3(A + 0.2, v1, 0), Q3(A + 0.2, v1, aV(v1) - 0.8), Q3(A + 0.2, v0, aV(v0) - 0.8));
+      quad4(canopy, Q3(A + 3, v0, aV(v0)), Q3(A + 3, v1, aV(v1)), Q3(A - 7, v1, Math.max(aV(v1), hU(A - 7))), Q3(A - 7, v0, Math.max(aV(v0), hU(A - 7))));
+      b.beam(...Q3(A + 3, v0, aV(v0) - 0.3), ...Q3(A + 3, v1, aV(v1) - 0.3), 1.6, WH, "lit", 0.8);                        // кромка арки
+      if (i % 2 === 0) b.beam(...Q3(A + 2.8, v0, aV(v0) - 0.5), ...Q3(A - 6, v0, Math.max(aV(v0), hU(A - 6)) - 0.5), 0.25, [0.82, 0.82, 0.84], "parts", 0.35); // рёбра снизу
+    }
+    b.raw(glass, GLc, "glow"); b.raw(canopy, WH, "lit");
+    for (let v = -B * 0.58; v <= B * 0.58; v += 3) b.beam(...Q3(A + 0.3, v, 0), ...Q3(A + 0.3, v, aV(v) - 0.8), 0.18, [0.62, 0.64, 0.66], "parts", 0.3); // стойки витража
+    { const [x, z] = FP(f, (A + 0.4) * sF, 0); b.box(x, 0, z, 6, 4.2, 0.4, [0.5, 0.56, 0.6], f.ry + Math.PI / 2); } // вход
+    // ---- стенка с надписью и флаги перед главным фасадом ----
+    const nx = f.ux * sF, nz = f.uz * sF;
+    { const [x, z] = FP(f, (A + 16) * sF, 0); b.box(x, 0, z, 44, 2.4, 0.9, [0.6, 0.6, 0.58], Math.atan2(nx, nz));
+      sign(b, "TASHKENT CITY CONGRESS CENTRE", x + nx * 0.5, 0.8, z + nz * 0.5, nx, nz, 0.2, [0.62, 0.36, 0.2], "warm", 0.08); }
+    for (const v of [-B * 0.9, -B * 0.75, B * 0.75, B * 0.9]) { const [x, z] = FP(f, (A + 10) * sF, v); flagPole(b, x, 0, z, 12, UZ); }
+  };
+
+  // Алайский базар: главный павильон под высоким арочным сводом; торцы свода — огромные полукруглые
+  // витражи с веерной решёткой, обрамлённые бирюзовыми арками; стены с арочными проёмами.
+  const vaultHall = (b, q, H0, Kmax, SA, sign_) => {
+    const f = frame(q), A = f.L / 2, B = f.W / 2, Rv = B * 0.95, K = Math.min(Kmax, Rv), N = 16, arr = [];
+    b.loft(q.p, 0, q.p, H0, SA); pilasters(b, q.p, 0, H0 - 1.4, 4, 3, 0.15, P.niche); band(b, q.p, 0.3, H0 - 1.4, 1.4, P.turq); cap(b, q.p, H0, [0.62, 0.58, 0.52]);
+    const pt = (u, th) => { const [x, z] = FP(f, u, Rv * Math.cos(th)); return [x, H0 + K * Math.sin(th), z]; };
+    for (let i = 0; i < N; i++) { const t0 = Math.PI * i / N, t1 = Math.PI * (i + 1) / N; quad(arr, pt(-A, t0), pt(A, t0), pt(A, t1), pt(-A, t1)); }
+    b.raw(arr, [0.82, 0.86, 0.84]);
+    for (let u = -A + 6; u < A - 3; u += 6) for (let i = 0; i < N; i++) { const a = pt(u, Math.PI * i / N), c = pt(u, Math.PI * (i + 1) / N); b.beam(a[0], a[1], a[2], c[0], c[1], c[2], 0.35, [0.3, 0.6, 0.62]); } // рёбра свода
+    for (const s of [-1, 1]) { // торцевые витражи
+      const u = s * (A + 0.05), fan = [];
+      for (let i = 0; i < N; i++) { const a = pt(u, Math.PI * i / N), c = pt(u, Math.PI * (i + 1) / N), [cx, cz] = FP(f, u, 0); fan.push(cx, H0, cz, ...a, ...c); }
+      b.raw(fan, [0.36, 0.52, 0.6], "glow");
+      const [cx, cz] = FP(f, u * 1.002, 0);
+      for (let i = 0; i <= 8; i++) { const a = pt(u * 1.004, Math.PI * i / 8); b.beam(cx, H0, cz, a[0], a[1], a[2], 0.25, [0.95, 0.95, 0.92]); to(b, "lit"); }
+      for (let i = 0; i < N; i++) { const a = pt(u * 1.006, Math.PI * i / N), c = pt(u * 1.006, Math.PI * (i + 1) / N); b.beam(a[0], a[1], a[2], c[0], c[1], c[2], 0.7, P.turq); }
+      if (sign_ && s > 0) sign(b, sign_, cx + f.ux * 0.8, H0 - 1.2, cz + f.uz * 0.8, f.ux, f.uz, 0.22, [0.95, 0.9, 0.7], "glow", 0.1);
+    }
+  };
+  M.oloy_bozori = (b, o) => { const Q = localParts(o), SA = [0.94, 0.9, 0.82]; vaultHall(b, Q[0], 9, 13, SA, "OLOY BOZORI"); if (Q[1]) vaultHall(b, Q[1], 8, 7, SA); };
+
+  // Южный вокзал (после реконструкции): светлый корпус с синим остеклением, кровля — ряд высоких
+  // стрельчатых фронтонов-шатров по всему фасаду, белые рамы, вывеска TOSHKENT JANUBIY VOKZAL.
+  M.south_station = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H0 = 9, WH = [0.95, 0.95, 0.93], GL = [0.3, 0.46, 0.62];
+    const r = box4(f, A, B); b.winRing(r, 0, H0, GL, 175); pilasters(b, r, 0, H0, 4.5, 0.6, 0.4, WH); band(b, r, 0.4, H0 - 0.8, 0.8, WH, "lit");
+    const n = Math.max(3, Math.round(f.L / 10)), w = f.L / n, Hp = 9, roof = [], glass = [];
+    for (let k = 0; k < n; k++) {
+      const a = -A + w * k, c = a + w, m = a + w / 2, P3 = (u, v, y) => { const [x, z] = FP(f, u, v); return [x, y, z]; };
+      quad(roof, P3(a, -B, H0), P3(a, B, H0), P3(m, B, H0 + Hp), P3(m, -B, H0 + Hp)); quad(roof, P3(m, -B, H0 + Hp), P3(m, B, H0 + Hp), P3(c, B, H0), P3(c, -B, H0));
+      for (const s of [-1, 1]) { const v = s * (B + 0.05); glass.push(...P3(a + 0.6, v, H0), ...P3(c - 0.6, v, H0), ...P3(m, v, H0 + Hp - 1));
+        const p0 = P3(a, v * 1.002, H0), p1 = P3(m, v * 1.002, H0 + Hp), p2 = P3(c, v * 1.002, H0);
+        b.beam(...p0, ...p1, 0.5, WH); to(b, "lit"); b.beam(...p1, ...p2, 0.5, WH); to(b, "lit"); }
+    }
+    b.raw(roof, [0.88, 0.9, 0.92]); b.raw(glass, GL, "glow");
+    const e = frontEdge(o, r, -4440, 5700, 20);
+    sign(b, "TOSHKENT JANUBIY VOKZAL", e.mx + e.nx * 0.8, H0 - 0.6, e.mz + e.nz * 0.8, e.nx, e.nz, 0.13, [0.2, 0.4, 0.75], "glow", 0.1);
+  };
+
+  // Центральный банк (ул. Ислама Каримова, 6): высотный корпус из песочного камня, по фасадам —
+  // ряды выступающих полуцилиндрических эркеров из тёмно-синего стекла во всю высоту, увенчанных
+  // арочными завершениями; ступенчатый венец, колонный вход и надпись.
+  M.central_bank = (b, o) => {
+    const q = localParts(o)[0], f = frame(q), A = f.L / 2, B = f.W / 2, H = 56, ST = [0.86, 0.77, 0.6], GL = [0.14, 0.24, 0.42];
+    const r = box4(f, A, B);
+    b.loft(offset(r, -0.6), 0, offset(r, -0.6), 6, [0.22, 0.27, 0.33], "glow");
+    b.winRing(r, 6, H - 4, ST, 140); band(b, r, 0.6, 6, 0.8, ST); band(b, r, 0.8, H - 4, 4, ST, "lit");
+    const r2 = box4(f, A - 4, B - 4); b.loft(r2, H, r2, H + 4, ST); cap(b, r2, H + 4, [0.6, 0.58, 0.54]); cap(b, r, H, [0.6, 0.58, 0.54]);
+    for (const [ax, len, side] of [["u", f.L, 1], ["u", f.L, -1], ["v", f.W, 1], ["v", f.W, -1]]) {
+      const n = Math.max(2, Math.floor(len / 10));
+      for (let k = 0; k < n; k++) {
+        const t = -len / 2 + len * (k + 0.5) / n, [x, z] = ax === "u" ? FP(f, t, side * B) : FP(f, side * A, t);
+        b.cyl(x, 6, z, 3, H - 10, GL, 14); to(b, "glow");
+        b.cyl(x, H - 4, z, 3.2, 1, ST, 14); b.dome(x, H - 3, z, 3.2, ST, { hk: 0.8, seg: 14, tip: false });
+      }
+    }
+    const e = frontEdge(o, r, 0, 0); portico(b, e, Math.min(24, e.L * 0.4), 5, 12, 6, [0.92, 0.88, 0.8], 1.8, 0.7);
+    sign(b, "MARKAZIY BANK", e.mx + e.nx * 1.2, H - 2.2, e.mz + e.nz * 1.2, e.nx, e.nz, 0.2, [0.9, 0.75, 0.4], "glow", 0.12);
+  };
+
+  // Мечеть Исламабад (2023): белый мрамор, резной портал с ажурной нишей, зелёные купола — большой
+  // центральный и малые по углам, четыре стройных минарета с балконами-шерефе.
+  M.islamabad = (b, o) => {
+    const q = localParts(o)[0], p = q.p, f = frame(q), H = 13, WH = [0.97, 0.96, 0.93], GR = [0.24, 0.62, 0.52];
+    b.loft(offset(p, 0.2), 0, offset(p, 0.2), 1, [0.8, 0.78, 0.74]);
+    b.winRing(p, 1, H - 1.5, WH, 154); pilasters(b, p, 1, H - 1.5, 3.4, 0.9, 0.5, WH, "lit");
+    band(b, p, 0.6, H - 1.5, 1.5, WH, "lit"); cap(b, p, H, [0.7, 0.7, 0.68]);
+    const R = Math.min(11, f.W * 0.27);
+    b.cyl(f.cx, H, f.cz, R + 0.6, 4, WH, 24); to(b, "lit");
+    b.dome(f.cx, H + 4, f.cz, R, GR, { hk: 1.0, seg: 24 }); to(b, "lit");
+    for (const [sa, sc] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const [dx, dz] = FP(f, sa * f.L * 0.27, sc * f.W * 0.27); b.cyl(dx, H, dz, 3.2, 1.5, WH, 14); b.dome(dx, H + 1.5, dz, 3, GR, { hk: 0.9, seg: 14, tip: false });
+      const [mx, mz] = FP(f, sa * (f.L / 2 + 2), sc * (f.W / 2 + 2)); b.minaret(mx, mz, 1.6, 50, WH, WH, "cone");
+      b.cyl(mx, 50 * 0.62, mz, 2.4, 0.8, WH, 12); to(b, "lit");                                                      // балкон-шерефе
+    }
+    const e = frontEdge(o, p, -4263, -4060, 12);
+    b.pishtaq(e.mx + e.nx, e.mz + e.nz, 16, 2.6, H + 9, WH, [0.85, 0.85, 0.82], Math.atan2(e.nx, e.nz)); to(b, "lit");
+  };
+
+  // Международная Исламская академия: трёх-четырёхэтажный корпус из охристого кирпича с арочными
+  // окнами, поясами и высоким арочным порталом входа с изразцовым обрамлением.
+  M.islamic_academy = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 15, OC = [0.86, 0.73, 0.5], LT = [0.93, 0.85, 0.68];
+    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1, [0.6, 0.52, 0.42]);
+    b.winRing(p, 1, H - 1.6, OC, 143); pilasters(b, p, 1, H - 1.6, 3.6, 0.8, 0.35, LT);
+    band(b, p, 0.4, 5.2, 0.4, LT); band(b, p, 0.4, 9.2, 0.4, LT); band(b, p, 0.6, H - 1.6, 1.6, LT, "show"); cap(b, p, H, [0.56, 0.5, 0.44]);
+    const e = frontEdge(o, p, -1760, -1395, 14);
+    b.pishtaq(e.mx + e.nx, e.mz + e.nz, 12, 2.4, H + 4, OC, [0.25, 0.48, 0.7], Math.atan2(e.nx, e.nz)); to(b, "show");
+  };
+
+  // ======================= партия 7 (по фотографиям) =======================
+  // Radisson Blu (Амира Темура, 88): тёмно-синий стеклянный фасад с золотистыми горизонтальными
+  // поясами, золотой венец и золотой навес входа с вывеской.
+  M.radisson = (b, o) => {
+    const Q = localParts(o), GL = [0.12, 0.2, 0.4], GO = [0.85, 0.68, 0.36];
+    Q.forEach((q) => {
+      const p = q.p, H = q.h > 15 ? 30 : 13;
+      b.loft(offset(p, -0.3), 0, offset(p, -0.3), H - 1.5, GL, "glow");
+      for (let y = 4; y < H - 2; y += 3.3) band(b, p, 0.2, y, 0.35, GO);
+      pilasters(b, p, 0, H - 1.5, 6, 0.4, 0.3, [0.3, 0.36, 0.5]);
+      band(b, p, 0.5, H - 1.8, 1.8, GO, "warm"); cap(b, p, H, [0.4, 0.42, 0.46]);
+    });
+    const q = Q.reduce((a, v) => (v.h > a.h ? v : a)), e = frontEdge(o, q.p, 520, -2600, 8);
+    b.box(e.mx + e.nx * 3, 4, e.mz + e.nz * 3, Math.min(14, e.L * 0.7), 0.7, 6, GO, e.ry); to(b, "warm");
+    sign(b, "RADISSON BLU", e.mx + e.nx * 6.1, 4.1, e.mz + e.nz * 6.1, e.nx, e.nz, 0.13, [0.95, 0.95, 0.95], "glow", 0.08);
+  };
+
+  // Ramada Tashkent (бывшая гостиница 1970-х): 12-этажная башня из бежевого камня с частыми коричневыми
+  // вертикальными рёбрами и тяжёлым выступающим венцом; низкое крыло с зелёной неоновой полосой и вывеской.
+  M.ramada = (b, o) => {
+    const Q = localParts(o), BE = [0.84, 0.74, 0.6], BR = [0.46, 0.33, 0.24];
+    for (const q of Q) {
+      const p = q.p;
+      if (q.h > 20) {
+        const H = 40; b.winRing(p, 0, H - 3, BE, 190); pilasters(b, p, 3, H - 3, 2.2, 0.5, 0.7, BR);
+        b.loft(offset(p, 1.2), H - 3, offset(p, 1.2), H, BR); to(b, "lit"); cap(b, offset(p, 1.2), H, [0.4, 0.34, 0.3]);
+        const f = frame(q), [sx, sz] = FP(f, 0, f.W / 2 + 1.3); sign(b, "RAMADA", sx, H - 2.2, sz, f.vx, f.vz, 0.3, [0.9, 0.15, 0.15], "neon", 0.1);
+      } else {
+        const H = 7; b.loft(offset(p, -0.4), 0, offset(p, -0.4), H - 1, [0.3, 0.36, 0.4], "glow");
+        b.loft(p, H - 1, p, H, [0.92, 0.9, 0.86]); band(b, p, 0.3, H - 0.6, 0.4, [0.2, 0.85, 0.35], "neon"); cap(b, p, H, [0.56, 0.56, 0.56]);
+      }
+    }
+  };
+
+  // Хокимият города Ташкента (ул. Ислама Каримова, 51): светлый камень и синее остекление, центральный
+  // ризалит с колоннами и навесом над входом, флаг перед зданием.
+  M.hokimiyat = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 20, ST = [0.9, 0.86, 0.78];
+    b.loft(offset(p, 0.15), 0, offset(p, 0.15), 1.2, [0.64, 0.6, 0.54]);
+    b.winRing(p, 1.2, H - 2, [0.3, 0.46, 0.64], 191); pilasters(b, p, 1.2, H - 2, 3.6, 1.2, 0.5, ST);
+    band(b, p, 0.6, H - 2, 2, ST, "lit"); cap(b, p, H, [0.58, 0.58, 0.58]);
+    const e = frontEdge(o, p, -2646, 0, 14);
+    portico(b, e, Math.min(22, e.L * 0.35), 5, 10, 6, [0.95, 0.93, 0.88], 1.6, 0.6);
+    const ux = (e.x1 - e.x0) / e.L, uz = (e.z1 - e.z0) / e.L;
+    b.box(e.mx + e.nx * 0.6, 10, e.mz + e.nz * 0.6, Math.min(22, e.L * 0.35), H - 8, 1.2, ST, e.ry);                // ризалит
+    flagPole(b, e.mx + e.nx * 14, 0, e.mz + e.nz * 14, 14, UZ);
+  };
+
+  // Дворец кино им. Навои («Панорама», 1964): белый барабан зала, обнесённый частыми складками
+  // бетонных рёбер-«гармошки», на стеклянном основании; рядом — низкое остеклённое фойе.
+  M.panorama = (b, o) => {
+    const Q = localParts(o), WH = [0.95, 0.94, 0.9];
+    for (const q of Q) {
+      if (q.h > 12) {
+        const R = Math.sqrt(q.A / Math.PI), H = 20, N = 56, pts = [];
+        for (let i = 0; i < N; i++) { const a = Math.PI * 2 * i / N, r = i % 2 ? R - 1.6 : R; pts.push([q.cx + Math.cos(a) * r, q.cz + Math.sin(a) * r]); }
+        if (area(pts) < 0) pts.reverse();
+        b.cyl(q.cx, 0, q.cz, R - 1.8, 3.2, [0.28, 0.36, 0.42], 28); to(b, "glow");
+        b.loft(pts, 3.2, pts, H, WH); to(b, "lit"); cap(b, pts, H, [0.78, 0.78, 0.76]);
+      } else {
+        const p = q.p; b.loft(offset(p, -0.5), 0, offset(p, -0.5), 6, [0.3, 0.4, 0.46], "glow");
+        b.loft(offset(p, 0.8), 6, offset(p, 0.8), 7, WH); cap(b, offset(p, 0.8), 7, [0.7, 0.7, 0.7]);
+        const e = frontEdge(o, p, -1700, -860, 10); sign(b, "PANORAMA", e.mx + e.nx * 1.0, 6.1, e.mz + e.nz * 1.0, e.nx, e.nz, 0.13, [0.95, 0.85, 0.5], "glow", 0.08);
+      }
+    }
+  };
+
+  // Shodlik Palace (ул. Пахтакор, 5): 12-этажная пластина — белые стены, сплошные горизонтальные ленты
+  // балконов песочного цвета, вывеска на крыше.
+  M.shodlik = (b, o) => {
+    const q = localParts(o)[0], p = q.p, H = 37, f = frame(q);
+    b.loft(offset(p, -0.4), 0, offset(p, -0.4), 4, [0.3, 0.36, 0.42], "glow");
+    b.winRing(p, 4, H - 1, [0.95, 0.94, 0.9], 192);
+    for (let y = 4 + 2.6; y < H - 1; y += 3) band(b, p, 1.0, y, 0.35, [0.82, 0.72, 0.56]);
+    band(b, p, 0.4, H - 1, 1, [0.82, 0.72, 0.56], "lit"); cap(b, p, H, [0.56, 0.56, 0.56]);
+    b.box(f.cx, H, f.cz, f.L * 0.4, 0.4, 0.3, [0.5, 0.5, 0.5], f.ry);
+    sign(b, "SHODLIK", f.cx + f.vx * 0.2, H + 0.4, f.cz + f.vz * 0.2, f.vx, f.vz, 0.4, [0.95, 0.85, 0.45], "glow", 0.1);
+  };
+
+  // ТРЦ «Самарканд Дарвоза» (ул. Каратош, 5А): корпуса из бежевого камня с большими синими витражами,
+  // круглая стеклянная ротонда главного входа под венцом с красной надписью.
+  M.samarqand_darvoza = (b, o) => {
+    const Q = localParts(o), BE = [0.9, 0.84, 0.72], GL = [0.2, 0.42, 0.72];
+    for (const q of Q) {
+      const round = q.p.length > 12 && q.A < 600;
+      if (round) {
+        const R = Math.sqrt(q.A / Math.PI), H = 30;
+        b.cyl(q.cx, 0, q.cz, R - 0.3, H - 3, GL, 24); to(b, "glow");
+        for (let k = 0; k < 16; k++) { const a = Math.PI * 2 * k / 16; b.box(q.cx + Math.cos(a) * R, 0, q.cz + Math.sin(a) * R, 0.5, H - 3, 0.5, BE); }
+        b.cyl(q.cx, H - 3, q.cz, R + 0.6, 3, BE, 24); to(b, "lit");
+        const [tx, tz] = o.local(-4056, -732), dx = tx - q.cx, dz = tz - q.cz, dl = Math.hypot(dx, dz) || 1;
+        sign(b, "SAMARQAND DARVOZA", q.cx + dx / dl * (R + 0.8), H - 2.4, q.cz + dz / dl * (R + 0.8), dx / dl, dz / dl, 0.13, [0.9, 0.12, 0.15], "neon", 0.1);
+      } else {
+        const p = q.p, H = q.h;
+        b.loft(offset(p, -0.4), 0, offset(p, -0.4), H - 2, GL, "glow");
+        pilasters(b, p, 0, H - 2, 7, 3.2, 0.5, BE);
+        for (let y = 5.5; y < H - 2; y += 5.5) band(b, p, 0.4, y, 0.6, BE);
+        band(b, p, 0.6, H - 2, 2, BE, "lit"); cap(b, p, H, [0.6, 0.58, 0.56]);
+      }
+    }
+  };
 })();
