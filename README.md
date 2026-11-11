@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/readme-banner.png" alt="ISO-TASH, a pixel-art view of Tashkent at sunset" width="100%" />
+  <img src="assets/readme-banner.png" alt="PixelTashkent: a living 3D pixel-art map of Tashkent, Hazrati Imam at dusk" width="100%" />
 </div>
 
 <div align="center">
