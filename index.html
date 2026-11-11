@@ -18,11 +18,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2026111101">
+  <link rel="stylesheet" href="css/style.css?v=2026111103">
 </head>
 <body>
   <div id="stage">
-    <canvas id="world" aria-label="Пиксельная карта Ташкента"></canvas>
+    <canvas id="world" aria-label="Пиксельная карта Ташкента" data-i18n-aria="mapAria"></canvas>
     <div id="labels"></div>
   </div>
 
@@ -32,12 +32,12 @@
       <img class="logo-icon" src="assets/logo.svg" alt="" width="44" height="44">
       <div>
         <h1><span class="w1">Pixel</span><span class="w2">Tashkent</span></h1>
-        <p>Живая 3D-карта Ташкента</p>
+        <p data-i18n="tagline">Живая 3D-карта Ташкента</p>
       </div>
     </div>
     <button id="btn-places" class="places-btn" aria-expanded="false" aria-controls="places">
       <svg class="pi" viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h4v1h1v1h1v3h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-3h1v-1h1zM3 2v2h2v-2z"/></svg>
-      <span class="pb-txt">Места<span class="pb-more"> на карте</span></span>
+      <span class="pb-txt"><span data-i18n="places">Места</span><span class="pb-more" data-i18n="placesMore"> на карте</span></span>
       <span id="places-count" class="pb-count"></span>
       <span class="pb-arrow" aria-hidden="true">▸</span>
     </button>
@@ -45,28 +45,28 @@
 
   <!-- где я: квартал / район -->
   <section id="where" class="px-panel" aria-live="polite">
-    <div id="where-name">Ташкент</div>
+    <div id="where-name" data-i18n="city">Ташкент</div>
     <div id="where-district"></div>
-    <div id="where-city">Ташкент</div>
+    <div id="where-city" data-i18n="city">Ташкент</div>
   </section>
 
   <!-- мини-карта -->
   <section id="minimap" class="px-panel">
-    <canvas id="mm" width="124" height="78" aria-label="Мини-карта Ташкента"></canvas>
-    <span class="mm-title">Ташкент</span>
+    <canvas id="mm" width="124" height="78" aria-label="Мини-карта Ташкента" data-i18n-aria="mmAria"></canvas>
+    <span class="mm-title" data-i18n="city">Ташкент</span>
   </section>
 
   <!-- список мест -->
   <aside id="places" class="px-panel">
     <div class="pl-head">
       <svg class="pi" viewBox="0 0 8 8" width="18" height="18" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h4v1h1v1h1v3h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-3h1v-1h1zM3 2v2h2v-2z"/></svg>
-      <h2>Места</h2>
+      <h2 data-i18n="placesTitle">Места</h2>
       <span id="pl-count" class="pl-count"></span>
-      <button id="places-close" class="x" aria-label="Закрыть">✕</button>
+      <button id="places-close" class="x" aria-label="Закрыть" data-i18n-aria="close">✕</button>
     </div>
     <label class="search-box">
       <svg viewBox="0 0 8 8" width="14" height="14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h3v1h1v3h-1v1h-3v-1h-1v-3h1zM1 1v3h3v-3zM5 5h1v1h1v1h1v1h-1v-1h-1v-1h-1z"/></svg>
-      <input id="search" type="search" placeholder="Поиск: базар, мечеть, парк…" autocomplete="off">
+      <input id="search" type="search" placeholder="Поиск: базар, мечеть, парк…" data-i18n-ph="search" autocomplete="off">
     </label>
     <div id="cats"></div>
     <div id="list"></div>
@@ -74,7 +74,7 @@
 
   <!-- карточка места -->
   <article id="card" class="px-panel" aria-live="polite">
-    <button id="card-close" class="x" aria-label="Закрыть">✕</button>
+    <button id="card-close" class="x" aria-label="Закрыть" data-i18n-aria="close">✕</button>
     <figure id="card-photo" hidden><img alt="" decoding="async"><figcaption></figcaption></figure>
     <div id="card-art"></div>
     <div class="card-head">
@@ -87,34 +87,40 @@
     </div>
     <p id="card-desc"></p>
     <div id="card-facts"></div>
-    <div class="tip"><b>Совет</b><span id="card-tip"></span></div>
+    <div class="tip"><b data-i18n="tip">Совет</b><span id="card-tip"></span></div>
     <div class="card-actions">
-      <a id="card-gmaps" class="px-btn gold" target="_blank" rel="noopener">Google Maps ↗</a>
-      <a id="card-route" class="px-btn" target="_blank" rel="noopener">Маршрут ↗</a>
+      <a id="card-gmaps" class="px-btn gold" target="_blank" rel="noopener" data-i18n="gmaps">Google Maps ↗</a>
+      <a id="card-route" class="px-btn" target="_blank" rel="noopener" data-i18n="route">Маршрут ↗</a>
     </div>
     <div class="card-nav">
-      <button id="card-prev" class="px-btn">◀ Пред.</button>
-      <button id="card-next" class="px-btn">След. ▶</button>
+      <button id="card-prev" class="px-btn" data-i18n="prev">◀ Пред.</button>
+      <button id="card-next" class="px-btn" data-i18n="next">След. ▶</button>
     </div>
-    <p class="note">Часы работы и цены могут меняться — уточняйте перед визитом.</p>
+    <p class="note" data-i18n="note">Часы работы и цены могут меняться — уточняйте перед визитом.</p>
   </article>
 
   <!-- инструменты -->
   <div id="tools">
-    <button id="btn-settings" class="px-btn icon" title="Настройки">⚙</button>
+    <button id="btn-settings" class="px-btn icon" title="Настройки" data-i18n-title="settings" aria-label="Настройки" data-i18n-aria="settings">⚙</button>
     <div class="tool-list px-panel">
-      <button id="btn-time" class="tool"><span>Время</span><b>Авто</b></button>
-      <button id="btn-anim" class="tool"><span>Анимация</span><b>Вкл</b></button>
-      <button id="btn-q" class="tool"><span>Качество</span><b>Авто</b></button>
+      <button id="btn-lang" class="tool" aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu"><span data-i18n="language">Язык</span><b>Русский <i class="dd">▾</i></b></button>
+      <div id="lang-menu" class="lang-menu" role="menu" hidden>
+        <button class="lang-opt" role="menuitemradio" data-lang="ru"><span class="code">RU</span>Русский</button>
+        <button class="lang-opt" role="menuitemradio" data-lang="en"><span class="code">EN</span>English</button>
+        <button class="lang-opt" role="menuitemradio" data-lang="uz"><span class="code">UZ</span>O'zbekcha</button>
+      </div>
+      <button id="btn-time" class="tool"><span data-i18n="time">Время</span><b>Авто</b></button>
+      <button id="btn-anim" class="tool"><span data-i18n="anim">Анимация</span><b>Вкл</b></button>
+      <button id="btn-q" class="tool"><span data-i18n="quality">Качество</span><b>Авто</b></button>
     </div>
   </div>
   <div id="zoom">
-    <button id="zin" class="px-btn icon" aria-label="Приблизить" title="Приблизить">+</button>
-    <button id="zout" class="px-btn icon" aria-label="Отдалить" title="Отдалить">−</button>
-    <button id="rotl" class="px-btn icon" aria-label="Повернуть влево" title="Повернуть (Q)">⟲</button>
-    <button id="rotr" class="px-btn icon" aria-label="Повернуть вправо" title="Повернуть (E)">⟳</button>
+    <button id="zin" class="px-btn icon" aria-label="Приблизить" title="Приблизить" data-i18n-aria="zoomIn" data-i18n-title="zoomIn">+</button>
+    <button id="zout" class="px-btn icon" aria-label="Отдалить" title="Отдалить" data-i18n-aria="zoomOut" data-i18n-title="zoomOut">−</button>
+    <button id="rotl" class="px-btn icon" aria-label="Повернуть влево" title="Повернуть влево (Q)" data-i18n-aria="rotL" data-i18n-title="rotL">⟲</button>
+    <button id="rotr" class="px-btn icon" aria-label="Повернуть вправо" title="Повернуть вправо (E)" data-i18n-aria="rotR" data-i18n-title="rotR">⟳</button>
   </div>
-  <div id="compass" class="px-panel" title="Компас: красная стрелка указывает на север">
+  <div id="compass" class="px-panel" title="Компас: красная стрелка указывает на север" data-i18n-title="compass">
     <svg viewBox="0 0 48 48" width="48" height="48" shape-rendering="crispEdges" aria-hidden="true">
       <g id="rose">
         <polygon points="18,4 30,4 38,10 44,18 44,30 38,38 30,44 18,44 10,38 4,30 4,18 10,10" fill="#2f2620" stroke="#4b3d31" stroke-width="2"/>
@@ -126,7 +132,7 @@
         <polygon points="24,42 24,24 28,24" fill="#c9bb9e"/>
         <rect x="22" y="22" width="4" height="4" fill="#ffcf4a"/>
         <rect x="23" y="23" width="2" height="2" fill="#1a1512"/>
-        <text x="24" y="15" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="6" fill="#ffcf4a" class="nl">С</text>
+        <text x="24" y="15" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="6" fill="#ffcf4a" class="nl" data-i18n="compassN">С</text>
       </g>
     </svg>
   </div>
@@ -134,40 +140,42 @@
   <footer id="hud">
     <div id="clock">--:--</div>
     <div id="stats">
-      <span class="st" title="Зданий в кадре"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#ffcf4a" d="M3 0h2v1h1v1h1v1h1v1h-1v4h-2v-2h-2v2h-2v-4h-1v-1h1v-1h1v-1h1z"/></svg><b id="st-b">0</b> <span id="st-b-w">зданий</span></span>
-      <span class="st" title="Машин на улицах в кадре"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3fb0c4" d="M2 1h4v1h1v2h1v2h-1v1h-1v-1h-4v1h-1v-1h-1v-2h1v-2h1zM2 2v2h4v-2z"/></svg><b id="st-c">0</b> <span id="st-c-w">машин</span></span>
+      <span class="st" title="Зданий в кадре" data-i18n-title="statB"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#ffcf4a" d="M3 0h2v1h1v1h1v1h1v1h-1v4h-2v-2h-2v2h-2v-4h-1v-1h1v-1h1v-1h1z"/></svg><b id="st-b">0</b> <span id="st-b-w">зданий</span></span>
+      <span class="st" title="Машин на улицах в кадре" data-i18n-title="statC"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3fb0c4" d="M2 1h4v1h1v2h1v2h-1v1h-1v-1h-4v1h-1v-1h-1v-2h1v-2h1zM2 2v2h4v-2z"/></svg><b id="st-c">0</b> <span id="st-c-w">машин</span></span>
     </div>
     <div id="status" style="display:none"></div>
   </footer>
-  <div id="attr">Данные © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · рельеф: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">SRTM / Terrain Tiles</a> · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></div>
+  <div id="attr"><span data-i18n="data">Данные</span> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · <span data-i18n="relief">рельеф</span>: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">SRTM / Terrain Tiles</a> · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></div>
   <div id="toast"></div>
 
-  <noscript><p class="nojs">Для работы карты включите JavaScript.</p></noscript>
-  <p id="nogl" class="nojs" hidden>Браузер не поддерживает WebGL — обновите браузер или включите аппаратное ускорение.</p>
+  <noscript><p class="nojs" data-i18n="noJS">Для работы карты включите JavaScript.</p></noscript>
+  <p id="nogl" class="nojs" hidden data-i18n="noGL">Браузер не поддерживает WebGL — обновите браузер или включите аппаратное ускорение.</p>
 
-  <script src="lib/three.min.js?v=2026111101"></script>
-  <script src="lib/earcut-src.js?v=2026111101"></script>
-  <script src="js/config.js?v=2026111101"></script>
-  <script src="js/terrain.js?v=2026111101"></script>
-  <script src="js/landmarks.js?v=2026111101"></script>
-  <script src="js/data.js?v=2026111101"></script>
-  <script src="js/geo-worker.js?v=2026111101"></script>
-  <script src="js/scene.js?v=2026111101"></script>
-  <script src="js/tiles.js?v=2026111101"></script>
-  <script src="js/models.js?v=2026111101"></script>
-  <script src="js/models-detail.js?v=2026111101"></script>
-  <script src="js/models-decor.js?v=2026111101"></script>
-  <script src="js/traffic.js?v=2026111101"></script>
-  <script src="js/city.js?v=2026111101"></script>
-  <script src="js/areas.js?v=2026111101"></script>
-  <script src="js/minimap.js?v=2026111101"></script>
-  <script src="js/photos.js?v=2026111101"></script>
-  <script src="js/ui.js?v=2026111101"></script>
-  <script src="data/index.js?v=2026111101"></script>
-  <script src="data/lm.js?v=2026111101"></script>
-  <script src="data/terrain.js?v=2026111101"></script>
-  <script src="data/areas.js?v=2026111101"></script>
-  <script src="data/minimap.js?v=2026111101"></script>
-  <script src="js/main.js?v=2026111101"></script>
+  <script src="lib/three.min.js?v=2026111103"></script>
+  <script src="lib/earcut-src.js?v=2026111103"></script>
+  <script src="js/config.js?v=2026111103"></script>
+  <script src="js/terrain.js?v=2026111103"></script>
+  <script src="js/landmarks.js?v=2026111103"></script>
+  <script src="js/i18n.js?v=2026111103"></script>
+  <script src="js/i18n-places.js?v=2026111103"></script>
+  <script src="js/data.js?v=2026111103"></script>
+  <script src="js/geo-worker.js?v=2026111103"></script>
+  <script src="js/scene.js?v=2026111103"></script>
+  <script src="js/tiles.js?v=2026111103"></script>
+  <script src="js/models.js?v=2026111103"></script>
+  <script src="js/models-detail.js?v=2026111103"></script>
+  <script src="js/models-decor.js?v=2026111103"></script>
+  <script src="js/traffic.js?v=2026111103"></script>
+  <script src="js/city.js?v=2026111103"></script>
+  <script src="js/areas.js?v=2026111103"></script>
+  <script src="js/minimap.js?v=2026111103"></script>
+  <script src="js/photos.js?v=2026111103"></script>
+  <script src="js/ui.js?v=2026111103"></script>
+  <script src="data/index.js?v=2026111103"></script>
+  <script src="data/lm.js?v=2026111103"></script>
+  <script src="data/terrain.js?v=2026111103"></script>
+  <script src="data/areas.js?v=2026111103"></script>
+  <script src="data/minimap.js?v=2026111103"></script>
+  <script src="js/main.js?v=2026111103"></script>
 </body>
 </html>

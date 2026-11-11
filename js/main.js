@@ -4,7 +4,7 @@
 (function () {
   const S = TPM.scene, UI = TPM.ui, T = TPM.tiles;
   async function boot() {
-    if (!window.THREE) { document.body.innerHTML = "<p class='nojs'>Не удалось загрузить three.js</p>"; return; }
+    if (!window.THREE) { document.body.innerHTML = "<p class='nojs'>" + TPM.i18n.t("noThree") + "</p>"; return; }
     const canvas = document.getElementById("world");
     try { S.init(canvas); } catch (e) { document.getElementById("nogl").hidden = false; return; }
     await TPM.terrain.init();
@@ -19,7 +19,7 @@
     document.body.classList.add("ready");
     UI.fromHash();
     TPM.DB.open();
-    UI.status("Загружаю кварталы…", true);
+    UI.status(TPM.i18n.t("loading"), true);
     const iv = setInterval(() => { if (!T.isBusy()) { UI.status(""); clearInterval(iv); } }, 400);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();

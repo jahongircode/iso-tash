@@ -19,8 +19,8 @@
       src: info.thumburl || info.url,
       page: info.descriptionurl,
       title: (title || "").replace(/^File:/, ""),
-      artist: strip(m.Artist && m.Artist.value) || "неизвестен",
-      license: strip(m.LicenseShortName && m.LicenseShortName.value) || "см. страницу файла",
+      artist: strip(m.Artist && m.Artist.value) || "",
+      license: strip(m.LicenseShortName && m.LicenseShortName.value) || "",
       licenseUrl: m.LicenseUrl ? m.LicenseUrl.value : null,
     };
   }

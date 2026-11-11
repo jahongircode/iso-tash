@@ -11,6 +11,7 @@
     set(k, v) { try { localStorage.setItem("tpm3-" + k, JSON.stringify(v)); } catch (e) {} },
   };
   const UI = TPM.ui = { store };
+  const I = TPM.i18n, t = I.t;
   let labels = new Map(), activeCat = "all", query = "";
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -25,13 +26,13 @@
   UI.init = function () {
     const cats = $("#cats");
     const mk = (id, name, color) => {
-      const b = el("button", "chip" + (id === "all" ? " on" : ""), name);
+      const b = el("button", "chip" + (id === "all" ? " on" : ""), name); b.dataset.cat = id;
       if (color) b.style.setProperty("--c", color);
       b.onclick = () => { activeCat = id; cats.querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === b)); renderList(); };
       cats.appendChild(b);
     };
-    mk("all", "Все");
-    for (const id in TPM.categories) mk(id, TPM.categories[id].name, TPM.categories[id].color);
+    mk("all", t("all"));
+    for (const id in TPM.categories) mk(id, I.cat(id), TPM.categories[id].color);
     $("#search").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderList(); });
     $("#btn-places").onclick = () => togglePanel();
     $("#places-close").onclick = () => togglePanel(false);
@@ -39,7 +40,7 @@
     $("#places-count").textContent = total;
     const lay = $("#labels");
     for (const l of TPM.landmarks) {
-      const d = el("div", "lbl", `<i style="--c:${TPM.categories[l.cat].color}"></i>${esc(l.name)}`);
+      const d = el("div", "lbl", `<i style="--c:${TPM.categories[l.cat].color}"></i>${esc(I.place(l).name)}`);
       d.onclick = () => UI.select(l);
       lay.appendChild(d); labels.set(l.id, d);
     }
@@ -51,9 +52,9 @@
     $("#rotl").onclick = () => S.rotate(-1);
     $("#rotr").onclick = () => S.rotate(1);
 
-    const timeModes = ["auto", "day", "night", "cycle"], tName = { auto: "Авто", day: "День", night: "Ночь", cycle: "Цикл" };
+    const timeModes = ["auto", "day", "night", "cycle"], tName = { auto: "tAuto", day: "tDay", night: "tNight", cycle: "tCycle" };
     const tBtn = $("#btn-time");
-    const setTime = (m) => { City.timeMode = m; store.set("time", m); tBtn.querySelector("b").textContent = tName[m]; };
+    const setTime = (m) => { City.timeMode = m; store.set("time", m); tBtn.querySelector("b").textContent = t(tName[m]); };
     tBtn.onclick = () => setTime(timeModes[(timeModes.indexOf(City.timeMode) + 1) % 4]);
     setTime(store.get("time", "auto"));
     const qBtn = $("#btn-q"), qs = ["auto", "low", "mid", "high"];
@@ -61,15 +62,36 @@
       store.set("q", q);
       const real = q === "auto" ? UI.autoQuality() : q;
       City.setQuality(C.quality[real], real);
-      qBtn.querySelector("b").textContent = q === "auto" ? "Авто·" + C.quality[real].label : C.quality[real].label;
+      const ql = t({ low: "qLow", mid: "qMid", high: "qHigh" }[real]);
+      qBtn.querySelector("b").textContent = q === "auto" ? t("qAuto") + "·" + ql : ql;
     };
     qBtn.onclick = () => setQ(qs[(qs.indexOf(store.get("q", "auto")) + 1) % 4]);
     UI.applyQuality = () => setQ(store.get("q", "auto"));
     const aBtn = $("#btn-anim");
-    const setAnim = (on) => { City.animOn = on; store.set("anim", on); aBtn.classList.toggle("off", !on); aBtn.querySelector("b").textContent = on ? "Вкл" : "Пауза"; };
+    const setAnim = (on) => { City.animOn = on; store.set("anim", on); aBtn.classList.toggle("off", !on); aBtn.querySelector("b").textContent = t(on ? "animOn" : "animOff"); };
     aBtn.onclick = () => setAnim(!City.animOn);
     setAnim(store.get("anim", !window.matchMedia("(prefers-reduced-motion: reduce)").matches));
     $("#btn-settings").onclick = () => $("#tools").classList.toggle("open");
+    const lBtn = $("#btn-lang");
+    const lMenu = $("#lang-menu");
+    const showLang = () => {
+      lBtn.querySelector("b").innerHTML = `${esc(I.dict[I.lang].langName)} <i class="dd">▾</i>`;
+      lMenu.querySelectorAll(".lang-opt").forEach((o) => { const on = o.dataset.lang === I.lang; o.classList.toggle("on", on); o.setAttribute("aria-checked", on); });
+    };
+    const openLang = (on) => { lMenu.hidden = !on; lBtn.classList.toggle("open", on); lBtn.setAttribute("aria-expanded", on); };
+    lBtn.onclick = (e) => { e.stopPropagation(); openLang(lMenu.hidden); };
+    lMenu.querySelectorAll(".lang-opt").forEach((o) => { o.onclick = (e) => { e.stopPropagation(); openLang(false); if (o.dataset.lang !== I.lang) I.set(o.dataset.lang); }; });
+    document.addEventListener("click", (e) => { if (!lMenu.hidden && !lMenu.contains(e.target)) openLang(false); });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lMenu.hidden) openLang(false); });
+    showLang();
+    // смена языка: пересобрать всё, что строится из кода
+    I.onChange.push(() => {
+      showLang(); setTime(City.timeMode); setAnim(City.animOn); UI.applyQuality();
+      cats.querySelectorAll(".chip").forEach((b) => { b.textContent = b.dataset.cat === "all" ? t("all") : I.cat(b.dataset.cat); });
+      for (const l of TPM.landmarks) { const d = labels.get(l.id); if (d) { d.innerHTML = `<i style="--c:${TPM.categories[l.cat].color}"></i>${esc(I.place(l).name)}`; d._w = 0; } }
+      renderList(); if (City.selected) showCard(City.selected);
+      lastKey = ""; lastWhereKey = ""; lastClock = 0;
+    });
 
     S.hooks.tap = (x, y) => { const l = TPM.models.pick(x, y); if (l) UI.select(l); else if (City.selected) UI.deselect(); };
     let hv = 0;
@@ -94,17 +116,17 @@
     p.classList.toggle("open", on); $("#btn-places").classList.toggle("on", on); $("#btn-places").setAttribute("aria-expanded", on);
     if (on && window.innerWidth >= 760) setTimeout(() => $("#search").focus({ preventScroll: true }), 260);
   }
-  // склонение: 1 здание, 2 здания, 5 зданий
-  const plural = (n, a, b, c) => { const m = n % 100, k = n % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k > 1 && k < 5 ? b : c; };
   function renderList() {
     const list = $("#list"); list.innerHTML = "";
-    const items = TPM.landmarks.filter((l) => (activeCat === "all" || l.cat === activeCat) && (!query || (l.name + " " + l.uz + " " + l.desc).toLowerCase().includes(query)));
+    const hay = (l) => { const p = I.place(l), en = TPM.placesL10n.en[l.id]; return [l.name, l.uz, p.name, p.desc, en && en.name].join(" ").toLowerCase(); };
+    const items = TPM.landmarks.filter((l) => (activeCat === "all" || l.cat === activeCat) && (!query || hay(l).includes(query)));
     $("#pl-count").textContent = items.length;
-    if (!items.length) list.appendChild(el("div", "empty", "Ничего не найдено — попробуйте другое слово"));
+    if (!items.length) list.appendChild(el("div", "empty", t("empty")));
     for (const l of items) {
       const row = el("button", "place");
       const th = el("div", "thumb"); th.appendChild(thumb(l, 72, 60)); row.appendChild(th);
-      row.appendChild(el("div", "pl-txt", `<b>${esc(l.name)}</b><span>${esc(l.uz)}</span><em class="tag" style="--c:${TPM.categories[l.cat].color}">${TPM.categories[l.cat].name}</em>`));
+      const pl = I.place(l);
+      row.appendChild(el("div", "pl-txt", `<b>${esc(pl.name)}</b><span>${esc(pl.sub)}</span><em class="tag" style="--c:${TPM.categories[l.cat].color}">${esc(I.cat(l.cat))}</em>`));
       row.appendChild(el("span", "pl-go", "▸"));
       row.onclick = () => { UI.select(l); if (window.innerWidth < 760) togglePanel(false); };
       list.appendChild(row);
@@ -138,11 +160,12 @@
     $("#card-art").innerHTML = ""; $("#card-art").appendChild(thumb(l, 340, 186));
     $("#card-icon").innerHTML = ""; $("#card-icon").appendChild(thumb(l, 62, 54));
     showPhoto(l);
-    $("#card-cat").textContent = cat.name; $("#card-cat").style.setProperty("--c", cat.color);
-    $("#card-title").textContent = l.name; $("#card-uz").textContent = l.uz; $("#card-desc").textContent = l.desc;
+    const pl = I.place(l);
+    $("#card-cat").textContent = I.cat(l.cat); $("#card-cat").style.setProperty("--c", cat.color);
+    $("#card-title").textContent = pl.name; $("#card-uz").textContent = pl.sub; $("#card-desc").textContent = pl.desc;
     const f = $("#card-facts"); f.innerHTML = "";
-    for (const k in l.facts) f.appendChild(el("div", "fact", `<span>${esc(k)}</span><b>${esc(l.facts[k])}</b>`));
-    $("#card-tip").textContent = l.tip;
+    for (const k in pl.facts) f.appendChild(el("div", "fact", `<span>${esc(k)}</span><b>${esc(pl.facts[k])}</b>`));
+    $("#card-tip").textContent = pl.tip;
     $("#card-gmaps").href = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
     $("#card-route").href = `https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}`;
     $("#card").classList.add("open"); $("#card").scrollTop = 0; $("#tools").classList.remove("open");
@@ -155,9 +178,9 @@
       const img = $("#card-photo img");
       img.onload = () => { if (City.selected === l) { fig.hidden = false; art.hidden = true; } };
       img.onerror = () => { fig.hidden = true; art.hidden = false; };
-      img.alt = l.name; img.src = p.src;
-      const lic = p.licenseUrl ? `<a href="${p.licenseUrl}" target="_blank" rel="noopener">${esc(p.license)}</a>` : esc(p.license);
-      $("#card-photo figcaption").innerHTML = `Фото: ${esc(p.artist)} · ${lic} · <a href="${p.page}" target="_blank" rel="noopener">Wikimedia Commons</a>`;
+      img.alt = I.place(l).name; img.src = p.src;
+      const lic = p.licenseUrl ? `<a href="${p.licenseUrl}" target="_blank" rel="noopener">${esc(p.license || t("seeFile"))}</a>` : esc(p.license || t("seeFile"));
+      $("#card-photo figcaption").innerHTML = `${t("photo")}: ${esc(p.artist || t("unknownAuthor"))} · ${lic} · <a href="${p.page}" target="_blank" rel="noopener">Wikimedia Commons</a>`;
     });
   }
   function fromHash() {
@@ -200,12 +223,12 @@
     if (now - lastClock > 1000) {
       lastClock = now;
       const h = City.hour, hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
-      const season = { winter: "зима", spring: "весна", summer: "лето", autumn: "осень" }[City.season];
-      $("#clock").textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} · Ташкент · ${season}`;
+      const season = t("seasons")[City.season];
+      $("#clock").textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} · ${t("city")} · ${season}`;
       let b = 0; for (const r of T.loaded.values()) if (r.state === "ok" && T.wanted && T.wanted.has(r.k)) b += r.bcount || 0;
       const cars = S.mpp < C.carMpp ? TPM.traffic.cars.filter((c) => c.e).length : 0;
-      $("#st-b").textContent = b.toLocaleString("ru"); $("#st-b-w").textContent = plural(b, "здание", "здания", "зданий");
-      $("#st-c").textContent = cars.toLocaleString("ru"); $("#st-c-w").textContent = plural(cars, "машина", "машины", "машин");
+      $("#st-b").textContent = b.toLocaleString(I.lang === "uz" ? "ru" : I.lang); $("#st-b-w").textContent = I.plural(b, t("bld"));
+      $("#st-c").textContent = cars.toLocaleString(I.lang === "uz" ? "ru" : I.lang); $("#st-c-w").textContent = I.plural(cars, t("car"));
     }
   };
   let tt = 0;

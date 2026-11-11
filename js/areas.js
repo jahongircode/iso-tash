@@ -26,10 +26,10 @@
     return bd < 1500 ? best : null;
   }
   A.where = function (x, z) {
-    let district = null, inCity = true;
+    let district = null, districtUz = null, inCity = true;
     const d = A.data;
     if (d && d.districts && d.districts.length) {
-      for (const it of d.districts) if (inside(it, x, z)) { district = it.name; break; }
+      for (const it of d.districts) if (inside(it, x, z)) { district = it.name; districtUz = it.uz; break; }
       if (d.city && !inside(d.city, x, z)) inCity = false;
     }
     if (!district) {
@@ -37,8 +37,10 @@
       let best = null, bd = Infinity; for (const f of fb) { const dd = Math.hypot(f.x - x, f.z - z); if (dd < bd) { bd = dd; best = f; } }
       if (best && bd < 7000) district = best.n;
     }
+    const I = TPM.i18n, t = I.t;
     const p = nearestPlace(x, z), nt = district && /Нов|Yangi/i.test(district);
-    return { place: p ? p.n : null, district: district || (inCity ? "Ташкент" : "Ташкентская область"),
-      city: nt ? "Новый Ташкент · строится" : inCity ? "Ташкент" : "Ташкентская область" };
+    const pname = p ? (I.lang === "ru" ? p.n : (p.lt || I.latin(p.n))) : null;
+    return { place: pname, district: district ? I.district(district, districtUz) : (inCity ? t("city") : t("region")),
+      city: nt ? t("newCity") : inCity ? t("city") : t("region") };
   };
 })();
