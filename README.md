@@ -14,6 +14,8 @@
 
 # iso-tash — Tashkent Pixel Map
 
+**Live: [pixeltashkent.com](https://pixeltashkent.com)**
+
 A living isometric pixel-art map of Tashkent, Uzbekistan. Explore the city as a real-time **WebGL 2** scene powered by **three.js**, with a custom shader that adds pixel-art colours, dithering and depth outlines.
 
 Buildings, roads, parks, waterways and trees are derived from OpenStreetMap and delivered as pre-baked city tiles. The map runs locally in your browser; an internet connection is only needed for external photos, fonts and map links.
