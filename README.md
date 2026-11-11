@@ -96,4 +96,3 @@ The original iso-tash application source code is licensed under the [MIT License
 - [three.js](https://threejs.org) is MIT-licensed; [earcut](https://github.com/mapbox/earcut) is ISC-licensed. Their notices remain applicable.
 - Landmark reference and card photos: Wikimedia Commons and Wikipedia; photo authors and licences are shown with the images.
 - Fonts: Inter, Pixelify Sans and Press Start 2P (SIL Open Font License).
-- Visual reference: [Isometric Warsaw](https://bedirhanyildirim.com/warsaw-izo/) by Bedirhan Yıldırım.
