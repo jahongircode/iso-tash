@@ -11,7 +11,7 @@
     set(k, v) { try { localStorage.setItem("tpm3-" + k, JSON.stringify(v)); } catch (e) {} },
   };
   const UI = TPM.ui = { store };
-  let labels = new Map(), activeCat = "all", query = "", tour = null;
+  let labels = new Map(), activeCat = "all", query = "";
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   function thumb(l, w, h) {
@@ -35,7 +35,8 @@
     $("#search").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderList(); });
     $("#btn-places").onclick = () => togglePanel();
     $("#places-close").onclick = () => togglePanel(false);
-    $("#btn-tour").onclick = () => toggleTour();
+    const total = TPM.landmarks.filter((l) => l.mx !== undefined || l.lat).length;
+    $("#places-count").textContent = total;
     const lay = $("#labels");
     for (const l of TPM.landmarks) {
       const d = el("div", "lbl", `<i style="--c:${TPM.categories[l.cat].color}"></i>${esc(l.name)}`);
@@ -88,15 +89,23 @@
     if (mem >= 8 && cpu >= 8 && window.innerWidth > 900) return "high";
     return "mid";
   };
-  function togglePanel(force) { const p = $("#places"); p.classList.toggle("open", force ?? !p.classList.contains("open")); }
+  function togglePanel(force) {
+    const p = $("#places"), on = force ?? !p.classList.contains("open");
+    p.classList.toggle("open", on); $("#btn-places").classList.toggle("on", on); $("#btn-places").setAttribute("aria-expanded", on);
+    if (on && window.innerWidth >= 760) setTimeout(() => $("#search").focus({ preventScroll: true }), 260);
+  }
+  // склонение: 1 здание, 2 здания, 5 зданий
+  const plural = (n, a, b, c) => { const m = n % 100, k = n % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k > 1 && k < 5 ? b : c; };
   function renderList() {
     const list = $("#list"); list.innerHTML = "";
     const items = TPM.landmarks.filter((l) => (activeCat === "all" || l.cat === activeCat) && (!query || (l.name + " " + l.uz + " " + l.desc).toLowerCase().includes(query)));
-    if (!items.length) list.appendChild(el("div", "empty", "Ничего не найдено"));
+    $("#pl-count").textContent = items.length;
+    if (!items.length) list.appendChild(el("div", "empty", "Ничего не найдено — попробуйте другое слово"));
     for (const l of items) {
       const row = el("button", "place");
       const th = el("div", "thumb"); th.appendChild(thumb(l, 72, 60)); row.appendChild(th);
-      row.appendChild(el("div", "pl-txt", `<b>${esc(l.name)}</b><span>${esc(l.uz)}</span><em style="--c:${TPM.categories[l.cat].color}">${TPM.categories[l.cat].name}</em>`));
+      row.appendChild(el("div", "pl-txt", `<b>${esc(l.name)}</b><span>${esc(l.uz)}</span><em class="tag" style="--c:${TPM.categories[l.cat].color}">${TPM.categories[l.cat].name}</em>`));
+      row.appendChild(el("span", "pl-go", "▸"));
       row.onclick = () => { UI.select(l); if (window.innerWidth < 760) togglePanel(false); };
       list.appendChild(row);
     }
@@ -122,7 +131,6 @@
   UI.deselect = function () {
     City.selected = null; $("#card").classList.remove("open");
     try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
-    if (tour) toggleTour(false);
   };
   function step(d) { const a = TPM.landmarks, i = a.indexOf(City.selected); UI.select(a[(i + d + a.length) % a.length]); }
   function showCard(l) {
@@ -157,16 +165,6 @@
     if (l && l !== City.selected) UI.select(l, { noHash: true });
   }
   UI.fromHash = fromHash;
-  function toggleTour(force) {
-    const on = force ?? !tour, b = $("#btn-tour");
-    if (!on) { clearInterval(tour); tour = null; b.classList.remove("on"); b.textContent = "▶ Экскурсия"; return; }
-    let i = Math.max(0, TPM.landmarks.indexOf(City.selected));
-    const go = () => { const l = TPM.landmarks[i++ % TPM.landmarks.length]; UI.select(l, { noHash: true }); };
-    go(); tour = setInterval(go, 9000);
-    b.classList.add("on"); b.textContent = "■ Стоп";
-    if (window.innerWidth < 760) togglePanel(false);
-  }
-
   // ---------- каждый кадр ----------
   let lastKey = "", lastClock = 0, lastWhere = 0, lastWhereKey = "";
   const pp = [0, 0];
@@ -188,7 +186,7 @@
         d.style.display = on ? "" : "none";
         if (on) { d.style.transform = `translate(${o.x | 0}px,${(o.y - 24) | 0}px) translateX(-50%)`; d.classList.toggle("sel", o.l === City.selected); }
       }
-      $("#compass svg").style.transform = `rotate(${-S.az * 180 / Math.PI}deg)`;
+      $("#rose").setAttribute("transform", `rotate(${(-45 - S.az * 180 / Math.PI).toFixed(1)} 24 24)`);   // север — вверх-влево при az = 0
     }
     const now = performance.now();
     if (now - lastWhere > 350) {
@@ -205,7 +203,9 @@
       const season = { winter: "зима", spring: "весна", summer: "лето", autumn: "осень" }[City.season];
       $("#clock").textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} · Ташкент · ${season}`;
       let b = 0; for (const r of T.loaded.values()) if (r.state === "ok" && T.wanted && T.wanted.has(r.k)) b += r.bcount || 0;
-      $("#stats").textContent = `домов в кадре ~${b.toLocaleString("ru")} · машин ${S.mpp < C.carMpp ? TPM.traffic.cars.filter((c) => c.e).length : 0}`;
+      const cars = S.mpp < C.carMpp ? TPM.traffic.cars.filter((c) => c.e).length : 0;
+      $("#st-b").textContent = b.toLocaleString("ru"); $("#st-b-w").textContent = plural(b, "здание", "здания", "зданий");
+      $("#st-c").textContent = cars.toLocaleString("ru"); $("#st-c-w").textContent = plural(cars, "машина", "машины", "машин");
     }
   };
   let tt = 0;

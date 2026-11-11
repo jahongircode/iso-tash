@@ -3,21 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <title>Tashkent Pixel Map — живая 3D пиксельная карта Ташкента</title>
+  <title>PixelTashkent — живая 3D пиксельная карта Ташкента</title>
   <meta name="description" content="Интерактивная изометрическая пиксельная карта Ташкента: достопримечательности, живые улицы, светофоры, день и ночь.">
   <meta name="theme-color" content="#231d18">
-  <link rel="icon" href="assets/favicon.png">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.png" sizes="32x32">
   <link rel="canonical" href="https://pixeltashkent.com/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://pixeltashkent.com/">
-  <meta property="og:title" content="Tashkent Pixel Map — живая 3D пиксельная карта Ташкента">
+  <meta property="og:title" content="PixelTashkent — живая 3D пиксельная карта Ташкента">
   <meta property="og:description" content="Интерактивная изометрическая пиксельная карта Ташкента: достопримечательности, живые улицы, светофоры, день и ночь.">
   <meta property="og:image" content="https://pixeltashkent.com/assets/readme-banner.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=2026111101">
 </head>
 <body>
   <div id="stage">
@@ -28,16 +29,18 @@
   <!-- логотип -->
   <header id="brand" class="px-panel">
     <div class="logo">
-      <span class="dome"></span>
+      <img class="logo-icon" src="assets/logo.svg" alt="" width="44" height="44">
       <div>
-        <h1>TASHKENT<small>PIXEL MAP</small></h1>
-        <p>Живая карта Ташкента</p>
+        <h1><span class="w1">Pixel</span><span class="w2">Tashkent</span></h1>
+        <p>Живая 3D-карта Ташкента</p>
       </div>
     </div>
-    <div class="brand-btns">
-      <button id="btn-places" class="px-btn gold">☰ Места</button>
-      <button id="btn-tour" class="px-btn">▶ Экскурсия</button>
-    </div>
+    <button id="btn-places" class="places-btn" aria-expanded="false" aria-controls="places">
+      <svg class="pi" viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h4v1h1v1h1v3h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-3h1v-1h1zM3 2v2h2v-2z"/></svg>
+      <span class="pb-txt">Места<span class="pb-more"> на карте</span></span>
+      <span id="places-count" class="pb-count"></span>
+      <span class="pb-arrow" aria-hidden="true">▸</span>
+    </button>
   </header>
 
   <!-- где я: квартал / район -->
@@ -56,10 +59,15 @@
   <!-- список мест -->
   <aside id="places" class="px-panel">
     <div class="pl-head">
-      <h2>Куда сходить</h2>
+      <svg class="pi" viewBox="0 0 8 8" width="18" height="18" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h4v1h1v1h1v3h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-3h1v-1h1zM3 2v2h2v-2z"/></svg>
+      <h2>Места</h2>
+      <span id="pl-count" class="pl-count"></span>
       <button id="places-close" class="x" aria-label="Закрыть">✕</button>
     </div>
-    <input id="search" type="search" placeholder="Поиск: базар, мечеть, парк…" autocomplete="off">
+    <label class="search-box">
+      <svg viewBox="0 0 8 8" width="14" height="14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h3v1h1v3h-1v1h-3v-1h-1v-3h1zM1 1v3h3v-3zM5 5h1v1h1v1h1v1h-1v-1h-1v-1h-1z"/></svg>
+      <input id="search" type="search" placeholder="Поиск: базар, мечеть, парк…" autocomplete="off">
+    </label>
     <div id="cats"></div>
     <div id="list"></div>
   </aside>
@@ -106,19 +114,29 @@
     <button id="rotl" class="px-btn icon" aria-label="Повернуть влево" title="Повернуть (Q)">⟲</button>
     <button id="rotr" class="px-btn icon" aria-label="Повернуть вправо" title="Повернуть (E)">⟳</button>
   </div>
-  <div id="compass" title="Север — вверх-влево (изометрическая проекция)">
-    <svg viewBox="0 0 40 40" width="40" height="40" shape-rendering="crispEdges" aria-hidden="true">
-      <rect x="0" y="0" width="40" height="40" fill="#241d18"/>
-      <rect x="2" y="2" width="36" height="36" fill="none" stroke="#4b3d31" stroke-width="2"/>
-      <polygon points="8,12 22,20 18,24" fill="#d2553f"/>
-      <polygon points="32,28 18,24 22,20" fill="#f3e7cf"/>
-      <text x="6" y="11" font-family="Press Start 2P, monospace" font-size="7" fill="#ffcf4a">С</text>
+  <div id="compass" class="px-panel" title="Компас: красная стрелка указывает на север">
+    <svg viewBox="0 0 48 48" width="48" height="48" shape-rendering="crispEdges" aria-hidden="true">
+      <g id="rose">
+        <polygon points="18,4 30,4 38,10 44,18 44,30 38,38 30,44 18,44 10,38 4,30 4,18 10,10" fill="#2f2620" stroke="#4b3d31" stroke-width="2"/>
+        <rect x="23" y="7" width="2" height="3" fill="#b9a98d"/><rect x="23" y="38" width="2" height="3" fill="#b9a98d"/>
+        <rect x="7" y="23" width="3" height="2" fill="#b9a98d"/><rect x="38" y="23" width="3" height="2" fill="#b9a98d"/>
+        <polygon points="24,6 28,24 20,24" fill="#e2553f"/>
+        <polygon points="24,6 24,24 20,24" fill="#b23a28"/>
+        <polygon points="24,42 20,24 28,24" fill="#f3e7cf"/>
+        <polygon points="24,42 24,24 28,24" fill="#c9bb9e"/>
+        <rect x="22" y="22" width="4" height="4" fill="#ffcf4a"/>
+        <rect x="23" y="23" width="2" height="2" fill="#1a1512"/>
+        <text x="24" y="15" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="6" fill="#ffcf4a" class="nl">С</text>
+      </g>
     </svg>
   </div>
 
   <footer id="hud">
     <div id="clock">--:--</div>
-    <div id="stats"></div>
+    <div id="stats">
+      <span class="st" title="Зданий в кадре"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#ffcf4a" d="M3 0h2v1h1v1h1v1h1v1h-1v4h-2v-2h-2v2h-2v-4h-1v-1h1v-1h1v-1h1z"/></svg><b id="st-b">0</b> <span id="st-b-w">зданий</span></span>
+      <span class="st" title="Машин на улицах в кадре"><svg viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3fb0c4" d="M2 1h4v1h1v2h1v2h-1v1h-1v-1h-4v1h-1v-1h-1v-2h1v-2h1zM2 2v2h4v-2z"/></svg><b id="st-c">0</b> <span id="st-c-w">машин</span></span>
+    </div>
     <div id="status" style="display:none"></div>
   </footer>
   <div id="attr">Данные © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · рельеф: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">SRTM / Terrain Tiles</a> · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></div>
@@ -127,29 +145,29 @@
   <noscript><p class="nojs">Для работы карты включите JavaScript.</p></noscript>
   <p id="nogl" class="nojs" hidden>Браузер не поддерживает WebGL — обновите браузер или включите аппаратное ускорение.</p>
 
-  <script src="lib/three.min.js"></script>
-  <script src="lib/earcut-src.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/terrain.js"></script>
-  <script src="js/landmarks.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/geo-worker.js"></script>
-  <script src="js/scene.js"></script>
-  <script src="js/tiles.js"></script>
-  <script src="js/models.js"></script>
-  <script src="js/models-detail.js"></script>
-  <script src="js/models-decor.js"></script>
-  <script src="js/traffic.js"></script>
-  <script src="js/city.js"></script>
-  <script src="js/areas.js"></script>
-  <script src="js/minimap.js"></script>
-  <script src="js/photos.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="data/index.js"></script>
-  <script src="data/lm.js"></script>
-  <script src="data/terrain.js"></script>
-  <script src="data/areas.js"></script>
-  <script src="data/minimap.js"></script>
-  <script src="js/main.js"></script>
+  <script src="lib/three.min.js?v=2026111101"></script>
+  <script src="lib/earcut-src.js?v=2026111101"></script>
+  <script src="js/config.js?v=2026111101"></script>
+  <script src="js/terrain.js?v=2026111101"></script>
+  <script src="js/landmarks.js?v=2026111101"></script>
+  <script src="js/data.js?v=2026111101"></script>
+  <script src="js/geo-worker.js?v=2026111101"></script>
+  <script src="js/scene.js?v=2026111101"></script>
+  <script src="js/tiles.js?v=2026111101"></script>
+  <script src="js/models.js?v=2026111101"></script>
+  <script src="js/models-detail.js?v=2026111101"></script>
+  <script src="js/models-decor.js?v=2026111101"></script>
+  <script src="js/traffic.js?v=2026111101"></script>
+  <script src="js/city.js?v=2026111101"></script>
+  <script src="js/areas.js?v=2026111101"></script>
+  <script src="js/minimap.js?v=2026111101"></script>
+  <script src="js/photos.js?v=2026111101"></script>
+  <script src="js/ui.js?v=2026111101"></script>
+  <script src="data/index.js?v=2026111101"></script>
+  <script src="data/lm.js?v=2026111101"></script>
+  <script src="data/terrain.js?v=2026111101"></script>
+  <script src="data/areas.js?v=2026111101"></script>
+  <script src="data/minimap.js?v=2026111101"></script>
+  <script src="js/main.js?v=2026111101"></script>
 </body>
 </html>
