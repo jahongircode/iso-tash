@@ -8,7 +8,7 @@
   const D = {
     ru: {
       langName: "Русский",
-      tagline: "Живая 3D-карта Ташкента",
+      tagline: "Живая изометрическая карта Ташкента",
       places: "Места", placesMore: " на карте",
       placesTitle: "Места",
       search: "Поиск: базар, мечеть, парк…",
@@ -38,7 +38,7 @@
     },
     en: {
       langName: "English",
-      tagline: "A living 3D map of Tashkent",
+      tagline: "A living isometric map of Tashkent",
       places: "Places", placesMore: " on the map",
       placesTitle: "Places",
       search: "Search: bazaar, mosque, park…",
@@ -68,7 +68,7 @@
     },
     uz: {
       langName: "O'zbekcha",
-      tagline: "Toshkentning jonli 3D xaritasi",
+      tagline: "Toshkentning jonli izometrik xaritasi",
       places: "Joylar", placesMore: " xaritada",
       placesTitle: "Joylar",
       search: "Qidiruv: bozor, masjid, bog'…",

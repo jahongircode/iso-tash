@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/readme-banner.png" alt="PixelTashkent: a living 3D pixel-art map of Tashkent, Hazrati Imam at dusk" width="100%" />
+  <img src="assets/readme-banner.png" alt="PixelTashkent: a living isometric pixel-art map of Tashkent, Hazrati Imam at dusk" width="100%" />
 </div>
 
 <div align="center">
@@ -37,7 +37,7 @@ The renderer uses multiple levels of detail (LOD) to keep a city-sized scene res
 |---|---|
 | Close | Detailed geometry and real-time shadows |
 | Mid | Simplified tree crowns; shadows are reduced |
-| Far | Pre-rendered tile textures for ground, roads, water and low vegetation; tall buildings and landmarks remain 3D |
+| Far | Pre-rendered tile textures for ground, roads, water and low vegetation; tall buildings and landmarks keep their full geometry |
 
 Tiles are loaded only when visible. Web Workers decode tile data and build geometry; OffscreenCanvas rasterises far-view textures. Instancing, merged meshes, frustum culling and quality presets help reduce GPU and CPU work.
 
