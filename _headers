@@ -1,0 +1,25 @@
+# Cloudflare Pages: заголовки ответа.
+# Файлы без хеша в имени, поэтому кэш короткий, с фоновым обновлением: после деплоя изменения доходят за минуты.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/data/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+/lib/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/js/*
+  Cache-Control: public, max-age=600, stale-while-revalidate=86400
+
+/css/*
+  Cache-Control: public, max-age=600, stale-while-revalidate=86400
+
+/tools/*
+  X-Robots-Tag: noindex

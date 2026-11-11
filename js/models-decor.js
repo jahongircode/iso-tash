@@ -32,6 +32,8 @@
 //  гостиницы Aura и Rakat Plaza, «Тошшахартрансхизмат», «Суперцентр»;
 //  уточнены по фото: Mega Planet, Конгресс-центр, Алайский базар, Южный вокзал, Центробанк, Исламабад, Исламская академия;
 //  партия 7 (по фото): Radisson Blu, Ramada, хокимият Ташкента, «Панорама», Shodlik Palace, «Самарканд Дарвоза»;
+//  ресторан Köfteci Ramiz в парке Tashkent City (круглый стеклянный павильон);
+//  жилые комплексы Tashkent City у парка: ЖК Boulevard (неоклассика) и ЖК Gardens Residence;
 //  мемориал «Шахидлар хотираси»: ротонда с бирюзовым куполом, партер, музей памяти жертв репрессий.
 //  Сверены с фотографиями; контуры корпусов — из OSM (data/lm.js, поле parts).
 // =====================================================================
@@ -466,42 +468,99 @@
     const [fx, fz] = FP(f, 0, B + 24); b.cyl(fx, 0, fz, 9, 0.6, GR, 20); b.cyl(fx, 0.55, fz, 8.4, 0.1, [0.3, 0.5, 0.62], 20); b.cyl(fx, 0.6, fz, 0.4, 3.5, [0.8, 0.9, 1], 6);
   };
 
-  // ---------------- небоскрёбы делового района Tashkent City ----------------
-  // SQB — круглая стеклянная башня с белыми вертикальными рёбрами и светящейся короной под куполом;
-  // BoMI — тонкая пластина тёмного стекла с открытой рамой-короной; Asaka Bank — тёмно-зелёное стекло
-  // с белыми поясами и ступенчатым верхом; Aloqa Bank — светло-голубое стекло с белыми ламелями
-  // и уступами наверху. На верхах — логотипы-надписи.
+  // Башни банков Tashkent City — сверены с фотографиями и рендерами; контуры и высоты из OSM:
+  //  • SQB (Узпромстройбанк, 150 м): квадрат со скруглёнными углами, тёмное сине-серое стекло в частых
+  //    серебристых импостах, золотистые вертикальные кромки на углах, стеклянная корона-экран со скошенным
+  //    верхом, светлое лобби с навесом;
+  //  • Bomi Finance Center (160/172 м): основной объём в частых белых вертикальных ламелях разной глубины
+  //    (волнистый рисунок), подиум из тёмного зеркального стекла, центральный гребень тёмного стекла над
+  //    кровлей, красный логотип BOMI на углу; ночью ламели и пояса светятся белым;
+  //  • Asaka Bank (100–108 м): шестигранная призма тёмного сине-зелёного стекла со скошенной кровлей,
+  //    красный логотип ASAKA под верхом;
+  //  • Aloqabank (100/120 м): два сблокированных объёма — низкий Г-образный голубого стекла и высокая
+  //    пластина с белыми рёбрами, вывеска ALOQABANK.
+  const slopeTop = (b, p, y0, top, col, list) => { // стены от y0 до наклонной кровли top(x,z) и сама кровля
+    const arr = [];
+    for (let i = 0; i < p.length; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length];
+      arr.push(x0, y0, z0, x1, y0, z1, x1, top(x1, z1), z1, x0, y0, z0, x1, top(x1, z1), z1, x0, top(x0, z0), z0); }
+    b.raw(arr, col, list);
+    const tri = THREE.ShapeUtils.triangulateShape(p.map((v) => new THREE.Vector2(v[0], v[1])), []), r = [];
+    for (const t of tri) for (const i of t) r.push(p[i][0], top(p[i][0], p[i][1]), p[i][1]);
+    b.raw(r, k3(col, 0.8));
+  };
   function tcTower(b, o, kind) {
-    const q = localParts(o)[0], f = frame(q), H = q.h, sig = (txt, px, y, side = 1) => { const [x, z] = FP(f, 0, side * (f.W / 2 + 0.6)); sign(b, txt, x, y, z, f.vx * side, f.vz * side, px, [0.95, 0.95, 0.97]); };
+    const Q = localParts(o), SIL = [0.78, 0.8, 0.84];
     if (kind === "sqb") {
-      const R = Math.min(f.L, f.W) / 2, GL = [0.32, 0.46, 0.6];
-      b.winRing(se(R - 0.4, R - 0.4, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), 0, H - 8, GL, 95);
-      for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; b.box(f.cx + Math.cos(a) * R, 6, f.cz + Math.sin(a) * R, 0.5, H - 14, 0.9, [0.92, 0.93, 0.95], -a + Math.PI / 2); }
-      for (let y = 6; y < H - 8; y += 13.2) b.cyl(f.cx, y, f.cz, R + 0.3, 0.5, [0.92, 0.93, 0.95], 28);
-      b.cyl(f.cx, 0, f.cz, R + 3, 6, [0.24, 0.3, 0.36], 28, R + 3, true); b.cyl(f.cx, 6, f.cz, R + 3.4, 0.8, [0.9, 0.9, 0.92], 28);
-      b.cyl(f.cx, H - 8, f.cz, R - 1.5, 6, [0.5, 0.75, 0.95], 28, R - 1, true); b.loft(se(R - 1, R - 1, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), H - 8, se(R - 1, R - 1, 2, 28).map(([x, z]) => [x + f.cx, z + f.cz]), H - 2, [0.6, 0.85, 1], "led");
-      b.dome(f.cx, H - 2, f.cz, R - 1, [0.86, 0.88, 0.9], { hk: 0.35, seg: 28, tip: false }); b.cyl(f.cx, H - 2 + (R - 1) * 0.35, f.cz, 0.4, 16, [0.85, 0.86, 0.9], 6, 0.1);
+      const q = Q[0], p = q.p, f = frame(q), H = 150, HC = H - 12, GL = [0.18, 0.26, 0.36], GOLD = [0.86, 0.7, 0.42];
+      b.loft(offset(p, -1.2), 0, offset(p, -1.2), 9, [0.5, 0.6, 0.66], "glow");                          // лобби
+      pilasters(b, offset(p, -1.2), 0, 9, 3, 0.3, 0.3, SIL);
+      band(b, p, 0.1, 9, 1, SIL);
+      b.winRing(p, 10, HC, GL, 230);
+      pilasters(b, p, 10, HC, 1.5, 0.12, 0.25, SIL);                                                     // импосты
+      for (let y = 14.2; y < HC; y += 4.2) band(b, p, 0.05, y, 0.12, [0.32, 0.38, 0.46]);
+      for (let i = 0; i < p.length; i++) {                                                             // золотые кромки на скруглениях
+        const a = p[(i + p.length - 1) % p.length], c = p[i], e = p[(i + 1) % p.length];
+        if (Math.hypot(c[0] - a[0], c[1] - a[1]) > 6 && Math.hypot(e[0] - c[0], e[1] - c[1]) > 6) continue;
+        const [mx, mz] = [c[0] - f.cx, c[1] - f.cz], l = Math.hypot(mx, mz) || 1;
+        b.box(c[0] + mx / l * 0.3, 9, c[1] + mz / l * 0.3, 0.35, H - 9, 0.35, GOLD); to(b, "warm");
+      }
+      cap(b, offset(p, -0.5), HC, [0.4, 0.42, 0.46]);
+      const tp = (x, z) => H - 6 + 6 * (((x - f.cx) * f.ux + (z - f.cz) * f.uz) / (f.L / 2));            // скошенный верх короны
+      { const arr = []; for (let i = 0; i < p.length; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length];
+          arr.push(x0, HC, z0, x1, HC, z1, x1, tp(x1, z1), z1, x0, HC, z0, x1, tp(x1, z1), z1, x0, tp(x0, z0), z0); }
+        b.raw(arr, [0.36, 0.5, 0.64], "glow"); }
+      for (let i = 0; i < p.length; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length]; b.beam(x0, tp(x0, z0), z0, x1, tp(x1, z1), z1, 0.5, [0.95, 0.96, 1], "cool", 0.5); }
+      pilasters(b, p, HC, H - 6, 3, 0.15, 0.2, SIL);
+      for (const s of [-1, 1]) { const [x, z] = FP(f, 0, s * (f.W / 2 + 0.5)); sign(b, "SQB", x, HC - 9, z, f.vx * s, f.vz * s, 0.9, [0.3, 0.55, 1], "neon", 0.2); }
+      const e2 = FP(f, 0, f.W / 2 + 4); b.box(e2[0], 7.5, e2[1], 18, 0.6, 8, SIL, f.ry); to(b, "cool");                 // навес входа
       return;
     }
-    const A = f.L / 2, B = f.W / 2, rect = (a, c) => [FP(f, -a, -c), FP(f, a, -c), FP(f, a, c), FP(f, -a, c)];
-    const st = { bomi: { gl: [0.12, 0.2, 0.32], fin: [0.55, 0.62, 0.7], top: 14, setb: 0 }, asaka: { gl: [0.12, 0.3, 0.3], fin: [0.9, 0.92, 0.9], top: 10, setb: 2 }, aloqa: { gl: [0.42, 0.6, 0.78], fin: [0.96, 0.97, 0.98], top: 8, setb: 2 } }[kind];
-    b.loft(rect(A + 4, B + 4), 0, rect(A + 4, B + 4), 7, [0.24, 0.3, 0.36], "glow"); cap(b, rect(A + 4, B + 4), 7, [0.6, 0.62, 0.64]); band(b, rect(A + 4, B + 4), 0.2, 6.6, 0.8, st.fin);
-    let hTop = H - st.top;
-    b.winRing(rect(A, B), 7, hTop, st.gl, 96 + kind.length);
-    if (kind === "asaka") for (let y = 10.3; y < hTop; y += 3.3) band(b, rect(A, B), 0.15, y, 0.3, st.fin);
-    else pilasters(b, rect(A, B), 7, hTop, kind === "aloqa" ? 1.6 : 2.2, 0.3, 0.4, st.fin);
-    if (kind === "bomi") { // открытая рама-корона
-      for (const [a, c] of [[-A, -B], [A, -B], [A, B], [-A, B]]) { const [x, z] = FP(f, a * 0.98, c * 0.9); b.box(x, hTop, z, 1, st.top, 1, st.fin, f.ry); }
-      for (const y of [hTop + st.top * 0.5, H - 0.8]) band(b, rect(A, B * 0.9), 0.1, y, 0.8, st.fin);
-      cap(b, rect(A - 0.5, B * 0.85), hTop, [0.5, 0.52, 0.56]);
-      for (let k = -2; k <= 2; k++) { const [x, z] = FP(f, k * A / 3, 0); b.box(x, hTop, z, 0.4, st.top * 0.9, f.W * 0.8, [0.75, 0.85, 1], f.ry, true); }
-    } else { // уступы
-      let a = A, c = B, y = hTop;
-      for (let k = 0; k < 2; k++) { a -= st.setb * (k + 1); c -= st.setb * 0.6; const r = rect(a, c); b.winRing(r, y, y + st.top / 2, st.gl, 97 + k); band(b, r, 0.2, y + st.top / 2 - 0.6, 0.6, st.fin); y += st.top / 2; }
-      cap(b, rect(a, c), y, [0.55, 0.56, 0.6]);
-      for (const s of [-1, 1]) sig(kind === "asaka" ? "ASAKA BANK" : "ALOQA BANK", Math.min(0.6, f.L * 0.8 / 59), hTop - 7, s);
+    if (kind === "bomi") {
+      const q = Q[0], p = q.p, H = 160, GL = [0.28, 0.36, 0.44], WH = [0.96, 0.96, 0.95];
+      b.loft(offset(p, 0.6), 0, offset(p, 0.6), 22, [0.14, 0.18, 0.24], "glow");                         // зеркальный подиум
+      for (let y = 4.4; y < 22; y += 4.4) band(b, p, 0.62, y, 0.18, [0.3, 0.33, 0.38]);
+      pilasters(b, offset(p, 0.6), 0, 22, 3, 0.15, 0.2, [0.3, 0.33, 0.38]);
+      b.winRing(p, 22, H - 2, GL, 231);
+      edges(p, (x0, z0, ux, uz, nx, nz, L, ry, ei) => {                                                  // белые ламели волной
+        for (let t = 0.6, k = 0; t < L - 0.3; t += 1.25, k++) {
+          const d = 0.35 + 0.9 * (0.5 + 0.5 * Math.sin(k * 0.42 + ei * 1.7)), x = x0 + ux * t + nx * d / 2, z = z0 + uz * t + nz * d / 2;
+          b.box(x, 22, z, 0.22, H - 24, d, WH, ry); to(b, "lit");
+        }
+      });
+      band(b, p, 0.7, 22, 0.6, WH, "cool"); band(b, p, 0.7, H - 2, 2, WH, "cool"); cap(b, p, H, [0.5, 0.52, 0.55]);
+      const sq = Q[1]; if (sq) { b.winRing(offset(sq.p, -0.3), H, 172, [0.16, 0.22, 0.3], 232); pilasters(b, offset(sq.p, -0.3), H, 172, 1.6, 0.12, 0.2, SIL);
+        band(b, offset(sq.p, -0.3), 0.3, 171, 1, [0.9, 0.92, 0.95], "cool"); cap(b, offset(sq.p, -0.3), 172, [0.45, 0.47, 0.5]); }
+      const f = frame(q);
+      for (const s of [-1, 1]) { const [x, z] = FP(f, s * f.L * 0.28, s * (f.W / 2 + 1.4)); sign(b, "BOMI", x, H - 12, z, f.vx * s, f.vz * s, 1.0, [0.86, 0.1, 0.12], "neon", 0.25); }
+      return;
     }
-    band(b, rect(A, B), 0.25, hTop, 0.8, st.fin);
+    if (kind === "asaka") {
+      const q = Q[Q.length - 1], p = q.p, f = frame(q), GL = [0.08, 0.2, 0.24];
+      const top = (x, z) => 100 + 8 * (0.5 + 0.5 * (((x - f.cx) * f.ux + (z - f.cz) * f.uz) / (f.L / 2)));
+      b.loft(offset(p, -1), 0, offset(p, -1), 7, [0.3, 0.42, 0.46], "glow"); pilasters(b, offset(p, -1), 0, 7, 3, 0.3, 0.3, SIL);
+      b.winRing(p, 7.5, 99, GL, 233);
+      pilasters(b, p, 7.5, 99, 1.4, 0.1, 0.22, [0.32, 0.38, 0.4]);
+      for (let y = 11.7; y < 99; y += 4.2) band(b, p, 0.04, y, 0.15, [0.16, 0.28, 0.3]);
+      slopeTop(b, p, 99, top, [0.16, 0.3, 0.34], "glow");
+      for (let i = 0; i < p.length; i++) { const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length]; b.beam(x0, top(x0, z0), z0, x1, top(x1, z1), z1, 0.4, SIL, "cool", 0.4); }
+      for (let i = 0; i < p.length; i++) { const [x, z] = p[i], [mx, mz] = [x - f.cx, z - f.cz], l = Math.hypot(mx, mz) || 1; b.box(x + mx / l * 0.2, 7, z + mz / l * 0.2, 0.5, top(x, z) - 7, 0.5, SIL); }
+      const [sx, sz] = FP(f, f.L * 0.18, f.W / 2 + 0.6); sign(b, "ASAKA", sx, 92, sz, f.vx, f.vz, 0.75, [0.88, 0.1, 0.12], "neon", 0.2);
+      const [sx2, sz2] = FP(f, f.L * 0.18, -f.W / 2 - 0.6); sign(b, "ASAKA", sx2, 92, sz2, -f.vx, -f.vz, 0.75, [0.88, 0.1, 0.12], "neon", 0.2);
+      return;
+    }
+    if (kind === "aloqa") {
+      const lo = Q[0], sl = Q[1], GLL = [0.3, 0.46, 0.62], GLD = [0.18, 0.3, 0.46], WH = [0.94, 0.95, 0.97];
+      b.loft(offset(lo.p, -1), 0, offset(lo.p, -1), 7, [0.4, 0.52, 0.6], "glow"); pilasters(b, offset(lo.p, -1), 0, 7, 3, 0.3, 0.3, SIL);
+      b.winRing(lo.p, 7, 98, GLL, 234); pilasters(b, lo.p, 7, 98, 1.6, 0.12, 0.2, WH);
+      for (let y = 7 + 16.8; y < 98; y += 16.8) band(b, lo.p, 0.1, y, 0.9, [0.2, 0.3, 0.42]);
+      band(b, lo.p, 0.2, 98, 2, WH, "cool"); cap(b, lo.p, 100, [0.5, 0.52, 0.56]);
+      if (sl) {
+        const p = offset(sl.p, 0.4), f = frame(sl);
+        b.winRing(p, 7, 117, GLD, 235); pilasters(b, p, 7, 117, 2.4, 0.4, 0.6, WH, "lit");
+        band(b, p, 0.3, 117, 3, WH, "cool"); cap(b, p, 120, [0.48, 0.5, 0.54]);
+        for (const s of [-1, 1]) { const [x, z] = FP(f, s * (f.L / 2 + 0.9), 0); sign(b, "ALOQABANK", x, 110, z, f.ux * s, f.uz * s, 0.18, [0.25, 0.55, 1], "neon", 0.15); }
+      }
+    }
   }
   M.tc_sqb = (b, o) => tcTower(b, o, "sqb");
   M.tc_bomi = (b, o) => tcTower(b, o, "bomi");
@@ -2995,5 +3054,159 @@
         band(b, p, 0.6, H - 2, 2, BE, "lit"); cap(b, p, H, [0.6, 0.58, 0.56]);
       }
     }
+  };
+
+  // Ресторан Köfteci Ramiz в парке Tashkent City (у пруда) — сверено с фотографиями: одноэтажный круглый
+  // павильон со сплошным остеклением в тонких тёмно-серых рамах (низ — матовое стекло), тёмный
+  // выступающий карниз и плоская кровля; сзади — глухой сектор кухни из бежевого камня; на кровле —
+  // серебристый жалюзийный короб вентиляции с зелёной вывеской RAMIZ и флаги Узбекистана и Турции;
+  // вход в тёмном портале, у входа — летняя терраса с зонтами. Ночью зал светится тёплым светом,
+  // вывеска — зелёным неоном.
+  M.ramiz = (b, o) => {
+    const q = localParts(o)[0], p = q.p, R = Math.sqrt(q.A / Math.PI), H = 5.6, DG = [0.26, 0.27, 0.29], BE = [0.86, 0.8, 0.68];
+    const toW = (x, z) => o.local(x, z), dir = (wx, wz) => { const [tx, tz] = toW(wx, wz), dx = tx - q.cx, dz = tz - q.cz, l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l]; };
+    const back = dir(-2620, -575), front = dir(-2705, -490);                                    // кухня — к северо-востоку, вход — к парку (юго-запад)
+    b.loft(offset(p, 0.3), 0, offset(p, 0.3), 0.4, [0.55, 0.55, 0.56]);                             // цоколь
+    const g = offset(p, -0.2);
+    b.loft(g, 0.4, g, H - 0.6, [0.5, 0.6, 0.64], "glow");                                            // остекление
+    band(b, g, 0.03, 0.4, 0.9, [0.86, 0.88, 0.88]);                                                  // матовый низ
+    pilasters(b, g, 0.4, H - 0.6, 1.7, 0.12, 0.15, DG);                                              // рамы
+    band(b, g, 0.04, 2.9, 0.08, DG);
+    // глухой бежевый сектор кухни
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], mx = (x0 + x1) / 2 - q.cx, mz = (z0 + z1) / 2 - q.cz, l = Math.hypot(mx, mz) || 1;
+      if ((mx * back[0] + mz * back[1]) / l < 0.7) continue;
+      b.loft([[x0 + mx / l * 0.15, z0 + mz / l * 0.15], [x1 + mx / l * 0.15, z1 + mz / l * 0.15]], 0.4, [[x0 + mx / l * 0.15, z0 + mz / l * 0.15], [x1 + mx / l * 0.15, z1 + mz / l * 0.15]], H - 0.6, BE, "lit");
+    }
+    b.loft(offset(p, 0.7), H - 0.8, offset(p, 0.7), H, DG); cap(b, offset(p, 0.7), H, [0.5, 0.5, 0.52]);   // карниз и кровля
+    band(b, p, 0.72, H - 0.8, 0.08, [0.95, 0.9, 0.75], "warm");                                       // подсветка карниза
+    // вентиляционный короб с жалюзи и вывеской
+    const bx = q.cx + back[0] * R * 0.35, bz = q.cz + back[1] * R * 0.35, ry = Math.atan2(front[0], front[1]);
+    b.box(bx, H, bz, 12, 2.2, 3.2, [0.78, 0.79, 0.8], ry);
+    for (let y = H + 0.3; y < H + 2.1; y += 0.35) b.box(bx + front[0] * 1.62, y, bz + front[1] * 1.62, 11.6, 0.08, 0.06, [0.6, 0.61, 0.63], ry);
+    sign(b, "RAMIZ", bx + front[0] * 1.75, H + 0.45, bz + front[1] * 1.75, front[0], front[1], 0.24, [0.03, 0.48, 0.2], "neon", 0.1);
+    for (const [s, cols] of [[-1, UZ], [1, [[0.85, 0.1, 0.12], [0.85, 0.1, 0.12]]]]) {
+      const rx = front[1] * s, rz = -front[0] * s; flagPole(b, bx + rx * 7, H, bz + rz * 7, 4, cols);
+    }
+    // вход: тёмный портал с дверями
+    const ex = q.cx + front[0] * (R - 0.1), ez = q.cz + front[1] * (R - 0.1);
+    b.box(ex, 0.4, ez, 3.4, 3.2, 0.6, DG, ry); b.box(ex + front[0] * 0.32, 0.4, ez + front[1] * 0.32, 2.4, 2.6, 0.06, [0.2, 0.24, 0.27], ry); to(b, "glow");
+    // летняя терраса: настил, столики и зонты
+    const tx = q.cx + front[0] * (R + 6), tz = q.cz + front[1] * (R + 6), sx = front[1], sz = -front[0];
+    b.box(tx + sx * 9, 0, tz + sz * 9, 10, 0.25, 8, [0.6, 0.48, 0.36], ry);
+    for (let i = 0; i < 4; i++) {
+      const ux = tx + sx * (5.5 + (i % 2) * 7) + front[0] * (i < 2 ? -2 : 2), uz = tz + sz * (5.5 + (i % 2) * 7) + front[1] * (i < 2 ? -2 : 2);
+      b.cyl(ux, 0.25, uz, 0.5, 0.75, [0.9, 0.9, 0.88], 8); b.cyl(ux, 0.25, uz, 0.05, 2.4, [0.3, 0.3, 0.3], 4);
+      b.cone(ux, 2.3, uz, 1.5, 0.6, [0.12, 0.42, 0.28], 8);
+    }
+  };
+
+  // ======================= жилые комплексы Tashkent City у парка =======================
+  // обход рёбер контура: колбэк получает (x0, z0, ux, uz, nx, nz, L, ry) — n наружу
+  const edges = (p, fn) => {
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i], [x1, z1] = p[(i + 1) % p.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.5) continue;
+      fn(x0, z0, (x1 - x0) / L, (z1 - z0) / L, (z1 - z0) / L, -(x1 - x0) / L, L, Math.atan2(-(z1 - z0), x1 - x0), i);
+    }
+  };
+  const hsh = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+  // ЖК Boulevard (Dream City, 2019–2022) — сверено с фотографиями: парижская неоклассика.
+  //  • первый этаж — рустованный камень с арочными витринами и замковыми камнями, карниз над ним;
+  //  • 6–7 этажей кремовой штукатурки: парные белые пилястры, окна с наличниками, французские балконы
+  //    с чёрными коваными решётками, пояса между этажами;
+  //  • венчающий карниз с балюстрадой, мансарда из тёмного цинка со слуховыми окнами;
+  //  • на углах кварталов — ротонды-купола с фонарём и шпилем; низкие корпуса — аркады-проходы.
+  //  Ночью витрины светятся, карнизы и фасады подсвечены тёплым.
+  M.boulevard = (b, o) => {
+    const ST = [0.86, 0.8, 0.69], CR = [0.95, 0.91, 0.82], WH = [0.98, 0.96, 0.91], ZN = [0.34, 0.36, 0.41], IRON = [0.12, 0.12, 0.14], GL = [0.22, 0.28, 0.32];
+    localParts(o).forEach((q, qi) => {
+      const p = q.p, low = q.h < 12, H = low ? 7.5 : 25, G = 5.2;
+      // ---- первый этаж: руст и арочные витрины ----
+      b.loft(p, 0, p, G, ST);
+      for (let y = 0.6; y < G - 0.3; y += 0.62) band(b, p, 0.04, y, 0.08, k3(ST, 0.82));                  // руст
+      edges(p, (x0, z0, ux, uz, nx, nz, L, ry) => {
+        if (L < 4) return; const n = Math.floor(L / 4.4), s0 = (L - n * 4.4) / 2;
+        for (let k = 0; k < n; k++) { const t = s0 + 4.4 * k + 2.2, x = x0 + ux * t + nx * 0.06, z = z0 + uz * t + nz * 0.06;
+          b.box(x, 0.3, z, 2.6, 3.4, 0.12, GL, ry); to(b, "glow");                                            // витрина
+          b.box(x, 3.7, z, 1.9, 0.5, 0.12, GL, ry); to(b, "glow"); b.box(x, 4.2, z, 1.1, 0.35, 0.12, GL, ry); to(b, "glow"); // арочный верх
+          b.box(x, 4.3, z, 0.5, 0.65, 0.2, WH, ry);                                                           // замковый камень
+        }
+      });
+      band(b, p, 0.45, G, 0.55, WH, "warm");                                                                  // карниз первого этажа
+      if (low) { band(b, p, 0.2, G + 0.55, 1.4, WH); for (let y = G + 0.8; y < H - 0.2; y += 0.5) band(b, p, 0.25, y, 0.12, k3(WH, 0.85)); cap(b, p, H - 0.2, [0.55, 0.55, 0.56]); return; }
+      // ---- этажи: кремовая штукатурка, пилястры, пояса, балконы ----
+      const HT = H - 2.4;
+      b.winRing(p, G + 0.55, HT, CR, 200 + (qi % 5));
+      pilasters(b, p, G + 0.55, HT, 9, 0.55, 0.25, WH);
+      for (let y = G + 0.55 + 3.1; y < HT - 0.5; y += 3.1) band(b, p, 0.1, y, 0.22, WH);                      // межэтажные пояса
+      band(b, p, 0.12, G + 3.2, 0.12, WH);
+      edges(p, (x0, z0, ux, uz, nx, nz, L, ry, i) => {                                                     // французские балконы
+        if (L < 14) return; const n = Math.floor((L - 4) / 4.5), s0 = (L - n * 4.5) / 2;
+        for (let k = 0; k < n; k++) { if (k % 2 && hsh(qi, i * 31 + k) < 0.5) continue; const t = s0 + 4.5 * k + 2.25;
+          for (const fl of [1, 3, 5]) { const y = G + 0.55 + 3.1 * fl, x = x0 + ux * t + nx * 0.5, z = z0 + uz * t + nz * 0.5;
+            if (y > HT - 2) continue; b.box(x, y - 0.1, z, 2.4, 0.18, 1.0, WH, ry); b.box(x + nx * 0.45, y + 0.08, z + nz * 0.45, 2.3, 0.85, 0.06, IRON, ry); }
+        }
+      });
+      // ---- венчающий карниз, балюстрада, мансарда со слуховыми окнами ----
+      band(b, p, 0.85, HT, 0.6, WH, "warm"); band(b, p, 0.4, HT + 0.6, 0.3, WH);
+      b.loft(offset(p, 0.15), HT + 0.9, offset(p, 0.15), HT + 1.9, WH); pilasters(b, offset(p, 0.18), HT + 0.9, HT + 1.9, 1.8, 0.3, 0.12, k3(WH, 0.82)); // балюстрада
+      const m0 = offset(p, -0.6), m1 = offset(p, -2.6);
+      b.loft(m0, HT + 1.9, m1, H + 3.6, ZN); cap(b, m1, H + 3.6, k3(ZN, 0.9));
+      edges(m0, (x0, z0, ux, uz, nx, nz, L, ry) => {
+        if (L < 6) return; const n = Math.floor(L / 4.5), s0 = (L - n * 4.5) / 2;
+        for (let k = 0; k < n; k++) { const t = s0 + 4.5 * k + 2.25, x = x0 + ux * t - nx * 0.3, z = z0 + uz * t - nz * 0.3;
+          b.box(x, HT + 2.2, z, 1.5, 1.8, 1.4, CR, ry); b.box(x + nx * 0.71, HT + 2.4, z + nz * 0.71, 0.9, 1.2, 0.04, GL, ry); to(b, "glow");
+          b.box(x, HT + 4.0, z, 1.7, 0.35, 1.6, ZN, ry); }
+      });
+      // ---- угловые ротонды с куполом: на выпуклых углах с длинными смежными рёбрами ----
+      let towers = 0;
+      for (let i = 0; i < p.length && towers < 2; i++) {
+        const a = p[(i + p.length - 1) % p.length], c = p[i], e = p[(i + 1) % p.length];
+        const l1 = Math.hypot(c[0] - a[0], c[1] - a[1]), l2 = Math.hypot(e[0] - c[0], e[1] - c[1]), cr = (c[0] - a[0]) * (e[1] - c[1]) - (c[1] - a[1]) * (e[0] - c[0]);
+        if (l1 < 18 || l2 < 18 || cr <= 0 || hsh(qi, i) < 0.35) continue;
+        const ix = ((a[0] - c[0]) / l1 + (e[0] - c[0]) / l2), iz = ((a[1] - c[1]) / l1 + (e[1] - c[1]) / l2), il = Math.hypot(ix, iz) || 1;
+        const tx = c[0] + ix / il * 3.2, tz = c[1] + iz / il * 3.2; towers++;
+        b.cyl(tx, HT + 1.9, tz, 3.6, 3.2, CR, 16); b.columns(tx, tz, HT + 1.9, 3.7, 12, 0.22, 3.0, WH);
+        b.cyl(tx, H + 2.7, tz, 4.0, 0.5, WH, 16); b.dome(tx, H + 3.2, tz, 3.6, ZN, { hk: 1.15, seg: 16, tip: false });
+        b.cyl(tx, H + 7.2, tz, 0.9, 1.6, WH, 8); to(b, "warm"); b.cone(tx, H + 8.8, tz, 1.0, 1.4, ZN, 8); b.cyl(tx, H + 10.2, tz, 0.08, 1.6, P.gold, 4);
+      }
+    });
+  };
+
+  // ЖК Gardens Residence (Dream City) — сверено с фотографиями: современные 8–12-этажные башни.
+  //  • стеклянный первый этаж с лобби и тёмной рамой;
+  //  • белые фасады с вертикальными вставками терракотового кирпича во всю высоту;
+  //  • на длинных фасадах — балконы со стеклянным ограждением в тёмных рамах;
+  //  • верхний этаж отступает, на кровле — терраса с перголой и машинное помещение лифта.
+  //  Ночью светятся лобби, окна и кромки балконов.
+  M.gardens = (b, o) => {
+    const WH = [0.95, 0.95, 0.93], TC = [0.7, 0.42, 0.3], DK = [0.24, 0.25, 0.27], GR = [0.62, 0.74, 0.78];
+    localParts(o).forEach((q, qi) => {
+      const p = q.p, f = frame(q), r = hsh(qi, 7), H = 26 + Math.round(r * 4) * 3.2, G = 4.5, top = H - 3.2;
+      b.loft(offset(p, -0.6), 0, offset(p, -0.6), G, [0.28, 0.36, 0.42], "glow");
+      pilasters(b, offset(p, -0.6), 0, G, 3, 0.2, 0.25, DK); band(b, p, 0.1, G - 0.4, 0.4, DK);
+      b.winRing(p, G, top, WH, 210 + (qi % 6));
+      edges(p, (x0, z0, ux, uz, nx, nz, L, ry, i) => {                                                     // терракотовые вставки
+        if (L < 9) return; const t = L * (0.2 + 0.6 * hsh(qi, i)), w = Math.min(4.5, L * 0.25), x = x0 + ux * t + nx * 0.12, z = z0 + uz * t + nz * 0.12;
+        b.box(x, G, z, w, top - G, 0.25, TC, ry);
+        for (let y = G + 1.2; y < top - 1; y += 3.2) b.box(x + nx * 0.14, y, z + nz * 0.14, w * 0.5, 1.4, 0.04, [0.2, 0.24, 0.28], ry);
+      });
+      // балконы со стеклянным ограждением на двух длинных фасадах
+      for (const s of [-1, 1]) {
+        const bl = f.L * (0.45 + 0.2 * hsh(qi, s + 3)), ry = f.ry;
+        for (let y = G + 3.2; y < top - 0.5; y += 3.2) {
+          const [x, z] = FP(f, (hsh(qi, y | 0) - 0.5) * 2, s * (f.W / 2 + 0.65));
+          b.box(x, y - 0.2, z, bl, 0.22, 1.3, WH, ry);
+          const [gx2, gz2] = FP(f, (hsh(qi, y | 0) - 0.5) * 2, s * (f.W / 2 + 1.25)); b.box(gx2, y + 0.02, gz2, bl, 1.0, 0.06, GR, ry);
+          b.box(gx2, y + 1.0, gz2, bl, 0.08, 0.1, DK, ry); to(b, "warm");
+        }
+      }
+      // отступ верхнего этажа, терраса с перголой, лифтовая
+      const pt = offset(p, -2.2); b.winRing(pt, top, H, [0.82, 0.84, 0.85], 220 + (qi % 3)); cap(b, p, top, [0.62, 0.62, 0.63]); cap(b, pt, H, [0.6, 0.6, 0.62]);
+      band(b, p, 0.05, top, 1.1, DK);
+      for (let k = -2; k <= 2; k++) { const [x, z] = FP(f, k * 1.4, f.W / 2 - 1.1); b.box(x, top + 2.8, z, 0.15, 0.15, 2.0, DK, f.ry); }
+      b.box(f.cx, H, f.cz, 3.2, 2.6, 2.4, WH, f.ry);
+    });
   };
 })();
