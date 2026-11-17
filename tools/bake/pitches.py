@@ -71,13 +71,115 @@ def wvar(n):
 def wsv(v): return wvar(v * 2 if v >= 0 else -v * 2 - 1)
 
 
-def rings(el):
-    if "geometry" in el: return [[(p["lat"], p["lon"]) for p in el["geometry"]]]
-    out = []
-    for m in el.get("members", []):
-        if m.get("role") in ("outer", "") and "geometry" in m: out.append([(p["lat"], p["lon"]) for p in m["geometry"]])
-    return out
+def _ring_points(geometry):
+    """Validate and normalize an OSM way geometry."""
+    if not isinstance(geometry, list) or len(geometry) < 2:
+        return None
 
+    points = []
+
+    try:
+        for point in geometry:
+            if not isinstance(point, dict):
+                return None
+
+            lat = float(point["lat"])
+            lon = float(point["lon"])
+
+            if not (
+                math.isfinite(lat)
+                and math.isfinite(lon)
+                and -90 <= lat <= 90
+                and -180 <= lon <= 180
+            ):
+                return None
+
+            coordinate = (lat, lon)
+
+            if not points or coordinate != points[-1]:
+                points.append(coordinate)
+
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+
+    return points if len(points) >= 2 else None
+
+
+def _is_closed_ring(points):
+    return (
+        len(points) >= 4
+        and points[0] == points[-1]
+        and len(set(points[:-1])) >= 3
+    )
+
+
+def _assemble_outer_rings(members):
+    """Join fragmented OSM outer ways into complete closed rings."""
+    segments = []
+
+    if not isinstance(members, list):
+        return []
+
+    for member in members:
+        if not isinstance(member, dict):
+            continue
+
+        if member.get("role") not in ("outer", ""):
+            continue
+
+        points = _ring_points(member.get("geometry"))
+
+        if points is not None:
+            segments.append(points)
+
+    rings = []
+
+    while segments:
+        ring = segments.pop()
+
+        while ring[0] != ring[-1]:
+            joined = False
+
+            for index, segment in enumerate(segments):
+                if segment[0] == ring[-1]:
+                    ring.extend(segment[1:])
+                elif segment[-1] == ring[-1]:
+                    ring.extend(reversed(segment[:-1]))
+                elif segment[-1] == ring[0]:
+                    ring = segment[:-1] + ring
+                elif segment[0] == ring[0]:
+                    ring = list(reversed(segment[1:])) + ring
+                else:
+                    continue
+
+                segments.pop(index)
+                joined = True
+                break
+
+            if not joined:
+                break
+
+        if _is_closed_ring(ring):
+            rings.append(ring)
+
+    return rings
+
+
+def rings(el):
+    if not isinstance(el, dict):
+        return []
+
+    members = el.get("members")
+
+    if isinstance(members, list):
+        return _assemble_outer_rings(members)
+
+    points = _ring_points(el.get("geometry"))
+
+    if points is not None and _is_closed_ring(points):
+        return [points]
+
+    return []
 
 def bake(src, D):
     els = json.load(open(src, encoding="utf-8"))["elements"]
